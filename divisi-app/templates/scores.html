@@ -8,9 +8,9 @@
   <ul>
     {% for score in scores %}
       <li>
-        <a href="{{ url_for('uploaded_file', filename=score.filename) }}">
-          {{ score.filename }}
-        </a> — {{ score.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+        <a href="{{ url_for('uploaded_file', filepath=score.title ~ '/' ~ score.version ~ '/' ~ score.filename) }}">
+          {{ score.title }}
+        </a> — {{ score.version }} — {{ score.timestamp.strftime('%Y-%m-%d %H:%M:%S') }} 
       </li>
     {% else %}
       <li>No scores uploaded yet.</li>

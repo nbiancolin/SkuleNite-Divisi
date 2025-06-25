@@ -6,7 +6,13 @@
 <body>
   <h1>Upload MuseScore File</h1>
   <form method="post" enctype="multipart/form-data">
-    <input type="file" name="file" accept=".mscz" required>
+    <input type="file" name="file" accept=".pdf" required>
+    <input type="text" name="title" placeholder="Score Title" required>
+    <p> Select whether this version is a MAJOR (1.0.0), MINOR (1.1.0) or PATCH (1.1.1)</p>
+    <input type="radio" name="type" value="major" checked> Major
+    <input type="radio" name="type" value="minor"> Minor
+    <input type="radio" name="type" value="release"> Release
+    <br><br>
     <button type="submit">Upload</button>
   </form>
   <br>
