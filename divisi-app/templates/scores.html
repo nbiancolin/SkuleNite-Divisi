@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Uploaded Scores</title>
+</head>
+<body>
+  <h1>Uploaded Scores</h1>
+  <ul>
+    {% for score in scores %}
+      <li>
+        <a href="{{ url_for('uploaded_file', filename=score.filename) }}">
+          {{ score.filename }}
+        </a> — {{ score.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+      </li>
+    {% else %}
+      <li>No scores uploaded yet.</li>
+    {% endfor %}
+  </ul>
+  <a href="{{ url_for('index') }}">Back to Upload</a>
+</body>
+</html>

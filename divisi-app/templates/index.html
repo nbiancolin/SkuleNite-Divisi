@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Upload Score</title>
+</head>
+<body>
+  <h1>Upload MuseScore File</h1>
+  <form method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".mscz" required>
+    <button type="submit">Upload</button>
+  </form>
+  <br>
+  <a href="{{ url_for('scores') }}">View Uploaded Scores</a>
+</body>
+</html>
