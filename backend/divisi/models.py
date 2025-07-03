@@ -50,7 +50,7 @@ class ScoreOrder(models.Model):
 class ScoreOrderEntry(models.Model):
     score_order = models.ForeignKey(ScoreOrder, related_name='entries', on_delete=models.CASCADE)
     part_title = models.CharField(max_length=120)
-    score_order_id = models.PositiveIntegerField()
+    score_order_list_id = models.PositiveIntegerField()
 
     class Meta:
         unique_together = ('score_order', 'score_order_id')
