@@ -39,7 +39,9 @@ const EnsemblesPage: React.FC = () => {
   const rows = ensembles.map((ensemble) => (
     <Table.Tr key={ensemble.id}>
       <Table.Td>{ensemble.id}</Table.Td>
-      <Table.Td>{ensemble.title}</Table.Td>
+      <Table.Td>
+        <a href={`/ensembles?id=${ensemble.id}`}>{ensemble.title}</a>
+      </Table.Td>
     </Table.Tr>
   ));
 
