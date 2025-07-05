@@ -6,9 +6,15 @@ import { Outlet } from 'react-router-dom';
 export default function Layout() {
   return (
     <AppShell
-      header={<HeaderSimple />}
+      header={{height: 60}}
+      padding="md"
     >
-      <Outlet />
+      <AppShell.Header>
+        <HeaderSimple />
+      </AppShell.Header>
+      <AppShell.Main>
+        <Outlet />
+      </AppShell.Main>
     </AppShell>
   );
 }
