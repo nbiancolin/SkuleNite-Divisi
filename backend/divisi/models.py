@@ -11,11 +11,14 @@ class Ensemble(models.Model):
 class Arrangement(models.Model):
     ensemble = models.ForeignKey(Ensemble, related_name='arrangements', on_delete=models.CASCADE)
     title=models.CharField(max_length=255)
-    subtitle=models.CharField(max_length=255)
+    subtitle=models.CharField(max_length=255, blank=True, null=True)
+    act_number=models.IntegerField(default=1)
+    piece_number=models.IntegerField(default=1)
     
 
     def __str__(self):
-        return f"{self.title} (v{self.version})"
+        #return f"{self.title} (v{self.versions})"
+        return f"{self.title}"
 
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(Arrangement, related_name='versions', on_delete=models.CASCADE)
@@ -27,7 +30,7 @@ def _part_upload_path(instance, filename):
     ensemble = instance.version.arrangement.ensemble.title
     arrangement = instance.version.arrangement.title
     version = instance.version.version_label
-    return f"{ensemble}/{arrangement}/{version}/"
+    return f"{ensemble}/{arrangement}/{version}/{filename}"
 
 
 class Part(models.Model):
