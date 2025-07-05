@@ -17,6 +17,7 @@
     "@mantine/next": "^6.0.22",
     "@mantine/notifications": "^8.1.2",
     "@mantinex/mantine-logo": "^2.0.0",
+    "axios": "^1.10.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.3"
