@@ -1,12 +1,18 @@
 # SkuleNite-Divisi
 Skule Nite Arrangement Management Website
 
+Runs inside a docker containter!
 
-Eventually -- react frontend (will require a refactor prob)
-https://blog.miguelgrinberg.com/post/how-to-create-a-react--flask-project
+3 main apps:
+- React Frontend (/frontend)
+- Django Backend (/backend)
+  - (& associated postgresql database)
+- Celery Workers (/part-formatter)
+  - for part prep
 
-To Run:
-DJANGO
+to run:
 ```
-python manage.py runserver
+docker-compose up --build
 ```
+for dev, will do live reloads so no need to re-run it every time
+(need to figure something out for prod)
