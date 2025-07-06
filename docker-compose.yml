@@ -11,7 +11,7 @@ services:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
     environment:
-      - DJANGO_SETTINGS_MODULE=myproject.settings
+      - DJANGO_SETTINGS_MODULE=backend.settings
       - POSTGRES_DB=mydb
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass
@@ -28,8 +28,8 @@ services:
       - ./frontend:/app
       - /app/node_modules   # avoid overwriting node_modules
     ports:
-      - "3000:3000"
-    command: npm start
+      - "5173:5173"
+    command: npm run dev
     stdin_open: true
     tty: true
 

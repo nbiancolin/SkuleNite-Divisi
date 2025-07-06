@@ -67,8 +67,8 @@ class Migration(migrations.Migration):
                 ('score_order', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='divisi.scoreorder')),
             ],
             options={
-                'ordering': ['score_order_id'],
-                'unique_together': {('score_order', 'score_order_id')},
+                'ordering': ['score_order_list_id'],
+                'unique_together': {('score_order', 'score_order_list_id')},
             },
         ),
     ]
