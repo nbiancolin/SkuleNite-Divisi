@@ -1,3 +1,4 @@
 uploads/
 instance/
 *.pyc
+__pycache__

@@ -1,14 +1,15 @@
-from django.shortcuts import render
 from rest_framework import viewsets
 
-from .serializers import EnsembleSerializer, ArrangementSerializer
-from .models import Ensemble, Arrangement
+from .models import Arrangement, Ensemble
+from .serializers import ArrangementSerializer, EnsembleSerializer
 
-class EnsembleView(viewsets.ModelViewSet):
+
+class EnsembleViewSet(viewsets.ModelViewSet):
     serializer_class = EnsembleSerializer
     queryset = Ensemble.objects.all()
 
-class ArrangementView(viewsets.ModelViewSet):
+
+class ArrangementViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementSerializer
 
     def get_queryset(self):

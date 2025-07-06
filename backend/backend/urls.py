@@ -20,8 +20,8 @@ from rest_framework import routers
 from divisi import views
 
 router = routers.DefaultRouter()
-router.register(r'ensembles', views.EnsembleView, 'ensemble')
-router.register(r'arrangements', views.ArrangementView, 'arrangement')
+router.register(r'ensembles', views.EnsembleViewSet, 'ensemble')
+router.register(r'arrangements', views.ArrangementViewSet, 'arrangement')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
