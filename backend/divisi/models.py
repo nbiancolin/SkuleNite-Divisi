@@ -39,7 +39,7 @@ class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
-    version_label = models.CharField(max_length=10, default="1.0.0")  # 1.0.0 or v1.2.3
+    version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or v1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
 

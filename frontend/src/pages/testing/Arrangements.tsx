@@ -1,28 +1,46 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Table, Container, Title, Loader, Center } from '@mantine/core';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-interface Arrangement {
+interface Arrangements {
   id: number;
+  ensemble_name: string;
   title: string;
   subtitle: string;
-  arrangements: number[]
+  mvt_no: string;
 }
 
-const ArrangementPage: React.FC = () => {
-  const [arrangements, setArrangements] = useState<Arrangement[]>([]);
+interface EnsembleWithArrangements {
+  id: number;
+  name: string;
+  arrangements: Arrangements[]
+}
+
+function useQuery() {
+  return new URLSearchParams(useLocation().search);
+}
+
+const ArrangementsPage: React.FC = () => {
+  const [ensemblesWithArrangements, setEnsemblesWithArrangements] = useState<EnsembleWithArrangements[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  
-  const [searchParams] = useSearchParams()
-  const ensemble_id = searchParams.get("id")
+  const query = useQuery();
+  const id = query.get('ensemble_id');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchArrangements = async () => {
+    if (!id) {
+      navigate('/testing/ensembles');
+    }
+  }, [id, navigate]);
+
+  useEffect(() => {
+    const fetchEnsembles = async () => {
+      if (!id) return; // skip if no id
+
       try {
-        const response = await axios.get<Arrangement[]>(`http://localhost:8000/api/arrangement/?ensemble=${ensemble_id}`);
-        console.log(response)
-        setArrangements(response.data);
+        const response = await axios.get<EnsembleWithArrangements[]>(`http://localhost:8000/api/ensembles/?id=${id}`);
+        setEnsemblesWithArrangements(response.data);
       } catch (error) {
         console.error('Failed to fetch ensembles:', error);
       } finally {
@@ -30,8 +48,8 @@ const ArrangementPage: React.FC = () => {
       }
     };
 
-    fetchArrangements();
-  }, []);
+    fetchEnsembles();
+  }, [id]);
 
   if (loading) {
     return (
@@ -41,23 +59,27 @@ const ArrangementPage: React.FC = () => {
     );
   }
 
-  const rows = ensembles.map((ensemble) => (
-    <Table.Tr key={ensemble.id}>
-      <Table.Td>{ensemble.id}</Table.Td>
-      <Table.Td>
-        <a href={`/ensembles?id=${ensemble.id}`}>{ensemble.title}</a>
-      </Table.Td>
-    </Table.Tr>
-  ));
+  const rows = ensemblesWithArrangements.flatMap((ensemble) =>
+    ensemble.arrangements.map((arrangement) => (
+      <Table.Tr key={arrangement.id}>
+        <Table.Td>{arrangement.mvt_no}</Table.Td>
+        <Table.Td>{arrangement.title}</Table.Td>
+        <Table.Td>{arrangement.subtitle}</Table.Td>
+      </Table.Tr>
+    ))
+  );
 
   return (
     <Container py="md">
-      <Title order={2} mb="md">Ensembles</Title>
+      <Title order={2} mb="md">
+        Arrangements for Ensemble <em>{ensemblesWithArrangements[0].name}</em>
+      </Title>
       <Table striped highlightOnHover withTableBorder withColumnBorders>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>ID</Table.Th>
-            <Table.Th>Name</Table.Th>
+            <Table.Th>#</Table.Th>
+            <Table.Th>Title</Table.Th>
+            <Table.Th>Subtitle</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>{rows}</Table.Tbody>
@@ -66,4 +88,4 @@ const ArrangementPage: React.FC = () => {
   );
 };
 
-export default ArrangementPage;
+export default ArrangementsPage;

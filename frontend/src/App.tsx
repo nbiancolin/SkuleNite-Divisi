@@ -4,14 +4,21 @@ import LandingPage from './pages/LandingPage';
 import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
 import EnsemblesPage from './pages/testing/Ensembles';
+import ArrangementsPage from './pages/testing/Arrangements';
 
 function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/admin" Component={() => {
+          window.location.href = 'http://localhost:8000/admin';
+          return null
+        }}/>
+        <Route path="/app/dashboard" element={<Dashboard />} />
+        // app/score page eventually (for viewing scores)
         <Route path="/testing/ensembles" element={<EnsemblesPage />} />
+        <Route path="/testing/arrangements" element={<ArrangementsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

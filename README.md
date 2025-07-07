@@ -7,8 +7,7 @@ Runs inside a docker containter!
 - React Frontend (/frontend)
 - Django Backend (/backend)
   - (& associated postgresql database)
-- Celery Workers (/part-formatter)
-  - for part prep
+  - And associated Celery Server
 
 to run:
 ```

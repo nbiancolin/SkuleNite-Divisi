@@ -7,7 +7,7 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Arrangement
-        fields = ["id", "ensemble_name", "title", "subtitle", "mvt_no"]
+        fields = ["id", "ensemble_name", "title", "subtitle", "mvt_no", "latest"]
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
