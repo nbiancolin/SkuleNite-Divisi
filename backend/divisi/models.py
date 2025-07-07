@@ -30,6 +30,10 @@ class Arrangement(models.Model):
     @property
     def latest(self):
         return self.versions.filter(is_latest=True).first()
+    
+    @property
+    def latest_version(self):
+        return self.latest.version_label
 
     class Meta:
         ordering = ["act_number", "piece_number"]

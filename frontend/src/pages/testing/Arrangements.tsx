@@ -9,6 +9,7 @@ interface Arrangements {
   title: string;
   subtitle: string;
   mvt_no: string;
+  latest_version: string;
 }
 
 interface EnsembleWithArrangements {
@@ -64,8 +65,8 @@ const ArrangementsPage: React.FC = () => {
       <Table.Tr key={arrangement.id}>
         <Table.Td>{arrangement.mvt_no}</Table.Td>
         <Table.Td>{arrangement.title}</Table.Td>
-        <Table.Td>{arrangement.subtitle}</Table.Td>
-        <Table.Td><Button variant="filled">Upload Version</Button></Table.Td>
+        <Table.Td>{arrangement.latest_version}</Table.Td>
+        <Table.Td><Button variant="filled" onClick={() => {navigate(`/testing/upload-arrangement?id=${arrangement.id}`)}}>Upload Version</Button></Table.Td>
       </Table.Tr>
     ))
   );
@@ -73,14 +74,14 @@ const ArrangementsPage: React.FC = () => {
   return (
     <Container py="md">
       <Title order={2} mb="md">
-        Arrangements for Ensemble <em>{ensemblesWithArrangements[0].name}</em>
+        Arrangements for <em>{ensemblesWithArrangements[0].name}</em>
       </Title>
       <Table striped highlightOnHover withTableBorder withColumnBorders>
         <Table.Thead>
           <Table.Tr>
             <Table.Th>#</Table.Th>
             <Table.Th>Title</Table.Th>
-            <Table.Th>Subtitle</Table.Th>
+            <Table.Th>Version</Table.Th>
             <Table.Th></Table.Th>
           </Table.Tr>
         </Table.Thead>

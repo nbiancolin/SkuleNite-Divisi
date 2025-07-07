@@ -20,6 +20,12 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Arrangement.objects.all()
         ensemble_id = self.request.query_params.get("ensemble")
+        arrangement_id = self.request.query_params.get("id")
+        if arrangement_id:
+            try:
+                queryset = queryset.filter(id=int(arrangement_id))
+            except ValueError:
+                print("Invalid arrangement ID:", ensemble_id)
 
         if ensemble_id:
             try:
