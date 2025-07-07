@@ -1,7 +1,12 @@
 from rest_framework import viewsets
+from rest_framework.generics import CreateAPIView
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser
+from rest_framework.response import Response
+from rest_framework import status
 
-from .models import Arrangement, Ensemble
-from .serializers import ArrangementSerializer, EnsembleSerializer
+from .models import Arrangement, Ensemble, ArrangementVersion
+from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -23,3 +28,22 @@ class ArrangementViewSet(viewsets.ModelViewSet):
                 print("Invalid ensemble ID:", ensemble_id)
 
         return queryset
+
+
+class ArrangementVersionCreateView(CreateAPIView):
+    queryset = ArrangementVersion.objects.all()
+    serializer_class = ArrangementVersionSerializer
+
+
+class UploadArrangementPartsView(APIView):
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        print("HERE123")
+        serializer = UploadPartsSerializer(data=request.data)
+        if serializer.is_valid():
+            parts = serializer.save()
+            return Response({'message': f'{len(parts)} parts uploaded'}, status=status.HTTP_201_CREATED)
+        else:
+            print("PROBLEM")
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

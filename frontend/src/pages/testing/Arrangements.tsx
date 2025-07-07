@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Table, Container, Title, Loader, Center } from '@mantine/core';
+import { Table, Container, Title, Loader, Center, Button } from '@mantine/core';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 interface Arrangements {
@@ -65,6 +65,7 @@ const ArrangementsPage: React.FC = () => {
         <Table.Td>{arrangement.mvt_no}</Table.Td>
         <Table.Td>{arrangement.title}</Table.Td>
         <Table.Td>{arrangement.subtitle}</Table.Td>
+        <Table.Td><Button variant="filled">Upload Version</Button></Table.Td>
       </Table.Tr>
     ))
   );
@@ -80,6 +81,7 @@ const ArrangementsPage: React.FC = () => {
             <Table.Th>#</Table.Th>
             <Table.Th>Title</Table.Th>
             <Table.Th>Subtitle</Table.Th>
+            <Table.Th></Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>{rows}</Table.Tbody>

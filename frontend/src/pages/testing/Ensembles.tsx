@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Table, Container, Title, Loader, Center } from '@mantine/core';
-import { useLocation } from 'react-router-dom';
 
 interface Arrangements {
   id: number;
@@ -18,14 +17,9 @@ interface EnsembleWithArrangements {
 }
 
 
-function useQuery() {
-  return new URLSearchParams(useLocation().search);
-}
-
 const EnsemblesPage: React.FC = () => {
   const [ensembles, setEnsembles] = useState<EnsembleWithArrangements[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const query = useQuery();
 
   useEffect(() => {
     const fetchEnsembles = async () => {

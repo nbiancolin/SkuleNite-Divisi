@@ -19,11 +19,14 @@ from django.urls import path, include
 from rest_framework import routers
 from divisi import views
 
+from divisi.views import UploadArrangementPartsView
+
 router = routers.DefaultRouter()
 router.register(r'ensembles', views.EnsembleViewSet, 'ensemble')
 router.register(r'arrangements', views.ArrangementViewSet, 'arrangement')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/upload-parts/', UploadArrangementPartsView.as_view(), name='upload-parts'),
     path('api/', include(router.urls)),
 ]

@@ -2,3 +2,4 @@ uploads/
 instance/
 *.pyc
 __pycache__
+blob/

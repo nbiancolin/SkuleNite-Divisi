@@ -39,9 +39,43 @@ class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
-    version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or v1.2.3
+    version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
+
+    def _bump_version_label(self, version_type, old_version_label):
+        major, minor, patch = map(int, old_version_label.split("."))
+        if version_type == "major":
+            major += 1
+            minor = 0
+            patch = 0
+        elif version_type == "minor":
+            minor += 1
+            patch = 0
+        else:
+            patch += 1
+        return f"{major}.{minor}.{patch}"
+
+    def save(self, *args, **kwargs):
+        version_type = kwargs.pop("version_type", None)
+
+        if not self.pk and version_type:
+            # This is a new version, and caller wants to bump the version
+            latest = ArrangementVersion.objects.filter(
+                arrangement=self.arrangement, is_latest=True
+            ).first()
+
+            old_label = latest.version_label if latest else "0.0.0"
+            self.version_label = self._bump_version_label(version_type, old_label)
+
+            # Mark all other versions as not latest
+            ArrangementVersion.objects.filter(arrangement=self.arrangement).update(
+                is_latest=False
+            )
+
+            self.is_latest = True
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.arrangement.__str__} (v{self.version_label})"
@@ -52,10 +86,10 @@ class ArrangementVersion(models.Model):
 
 
 def _part_upload_path(instance, filename):
-    ensemble = instance.version.arrangement.ensemble.title.replace(" ", "_")
+    ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
     arrangement = instance.version.arrangement.title.replace(" ", "_")
     version = instance.version.version_label
-    return f"{ensemble}/{arrangement}/{version}/{filename}"
+    return f"blob/{ensemble}/{arrangement}/{version}/{filename}"
 
 
 class Part(models.Model):
