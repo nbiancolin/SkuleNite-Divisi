@@ -18,7 +18,6 @@ class Style(Enum):
     JAZZ = 2
 
 
-SELECTED_STYLE = Style.BROADWAY
 SHOW_TITLE = "MyShow"
 SHOW_NUMBER = "1-1"
 
@@ -452,37 +451,47 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             print(f"Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
 
 
-def mscz_main(mscz_path):
-    work_dir = TEMP_DIR + mscz_path.split("/")[-1]
+def mscz_main(
+    input_path, output_path, style_name, show_title=SHOW_TITLE, show_number=SHOW_NUMBER
+):
+    work_dir = TEMP_DIR + input_path.split("/")[-1]
 
-    with zipfile.ZipFile(mscz_path, "r") as zip_ref:
+    with zipfile.ZipFile(input_path, "r") as zip_ref:
         # Extract all files to "temp" and collect all .mscx files from the zip structure
         zip_ref.extractall(work_dir)
 
-    add_styles_to_score_and_parts(Style.BROADWAY, work_dir)
+    try:
+        selected_style = Style[style_name]
+    except:
+        print("ilygygluyfgklutyfkyutf -- style tag not proper, defaulting to broadway")
+        selected_style = Style.BROADWAY
+
+    add_styles_to_score_and_parts(selected_style, work_dir)
 
     mscx_files = [
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
     ]
     if not mscx_files:
         print("No .mscx files found in the provided mscz file.")
-        sys.exit(1)
+        shutil.rmtree(work_dir)
+        return
 
     for mscx_path in mscx_files:
         print(f"Processing {mscx_path}...")
-        process_mscx(mscx_path)
+        process_mscx(
+            mscx_path, selected_style, show_title=show_title, show_number=show_number
+        )
 
-    output_mscz_path = mscz_path.replace(".mscz", "_processed.mscz")
-    with zipfile.ZipFile(output_mscz_path, "w") as zip_out:
+    with zipfile.ZipFile(output_path, "w") as zip_out:
         for root, _, files in os.walk(work_dir):
             for file in files:
-                file_path = os.path.join(root, file)
+                file_path = os.path.join(root, file)s
                 zip_out.write(file_path, os.path.relpath(file_path, work_dir))
 
     shutil.rmtree(work_dir)
 
 
-def process_mscx(mscx_path, standalone=False):
+def process_mscx(mscx_path, selected_style, show_title, show_number, standalone=False):
     try:
         parser = ET.XMLParser()
         tree = ET.parse(mscx_path, parser)
@@ -501,8 +510,8 @@ def process_mscx(mscx_path, standalone=False):
         final_pass_through(staff)
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
-        if SELECTED_STYLE == Style.BROADWAY:
-            add_broadway_header(staff, SHOW_NUMBER, SHOW_TITLE)
+        if selected_style == Style.BROADWAY:
+            add_broadway_header(staff, show_number, show_title)
         add_part_name(staff)
 
         if standalone:
