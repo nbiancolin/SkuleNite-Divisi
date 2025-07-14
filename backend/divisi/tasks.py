@@ -22,14 +22,15 @@ def part_formatter_mscz(
 
 
 @shared_task
-def export_mscz_to_pdf(file_path):
+def export_mscz_to_pdf(uuid: int):
     """
     export parts to "done" location where users can download their files aain
     """
-    output_path = file_path[:-5] + ".pdf"
+    session = UploadSession.objects.get(id=uuid)
+    output_path = session.output_file_path[:-5] + ".pdf"
 
     try:
-        subprocess.run(["mscore4", file_path, "-o", output_path], check=True)
+        subprocess.run(["mscore4", session.output_file_path, "-o", output_path], check=True)
         return {"status": "success", "output": output_path}
     except subprocess.CalledProcessError as e:
         return {"status": "error", "details": str(e)}
