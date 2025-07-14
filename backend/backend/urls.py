@@ -17,16 +17,17 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from divisi import views
 
-from divisi.views import UploadArrangementPartsView
+from ensembles.views import UploadArrangementPartsView, EnsembleViewSet, ArrangementViewSet
+from divisi.views import UploadPartFormatter
 
 router = routers.DefaultRouter()
-router.register(r'ensembles', views.EnsembleViewSet, 'ensemble')
-router.register(r'arrangements', views.ArrangementViewSet, 'arrangement')
+router.register(r'ensembles', EnsembleViewSet, 'ensemble')
+router.register(r'arrangements', ArrangementViewSet, 'arrangement')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/upload-parts/', UploadArrangementPartsView.as_view(), name='upload-parts'),
+    path('api/upload-mscz/', UploadPartFormatter.as_view(), name='upload'),
     path('api/', include(router.urls)),
 ]

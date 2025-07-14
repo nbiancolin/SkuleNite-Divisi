@@ -1,55 +1,47 @@
-from rest_framework import viewsets
-from rest_framework.generics import CreateAPIView
 from rest_framework.views import APIView
-from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework import status
 
-from .models import Arrangement, Ensemble, ArrangementVersion
-from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
+import os
+
+from django.conf import settings
+
+from .tasks import part_formatter_mscz, export_mscz_to_pdf
 
 
-class EnsembleViewSet(viewsets.ModelViewSet):
-    serializer_class = EnsembleSerializer
-    queryset = Ensemble.objects.all()
+class UploadPartFormatter(APIView):
 
+    def post(self, request, *args, **kwargs):
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        file_dir = "blob/in_progress/"
+        os.makedirs(file_dir, exist_ok=True)
+        file_path = os.path.join(file_dir, uploaded_file.name)
+        with open(file_path, "wb+") as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
 
-class ArrangementViewSet(viewsets.ModelViewSet):
-    serializer_class = ArrangementSerializer
+        # Run part_formatter_mscz task synchronously
+        result = part_formatter_mscz.apply_async(args=[file_path])
+        result.wait()  # Wait for task to finish
 
-    def get_queryset(self):
-        queryset = Arrangement.objects.all()
-        ensemble_id = self.request.query_params.get("ensemble")
-        arrangement_id = self.request.query_params.get("id")
-        if arrangement_id:
-            try:
-                queryset = queryset.filter(id=int(arrangement_id))
-            except ValueError:
-                print("Invalid arrangement ID:", ensemble_id)
+        if result.failed():
+            return Response({"error": "part_formatter_mscz failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if ensemble_id:
-            try:
-                queryset = queryset.filter(ensemble_id=int(ensemble_id))
-            except ValueError:
-                print("Invalid ensemble ID:", ensemble_id)
+        # Now run export_mscz task
+        export_result = export_mscz_to_pdf.apply_async(args=[file_path])
+        export_result.wait()
 
-        return queryset
+        if export_result.failed():
+            return Response({"error": "export_mscz failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # Assume export_mscz returns a list of PDF file paths
+        pdf_files = export_result.result if export_result.result else []
 
-class ArrangementVersionCreateView(CreateAPIView):
-    queryset = ArrangementVersion.objects.all()
-    serializer_class = ArrangementVersionSerializer
+        # Prepare response with PDF files (as URLs or file names)
+        pdf_urls = [os.path.join(settings.MEDIA_URL, os.path.basename(pdf)) for pdf in pdf_files]
 
-
-class UploadArrangementPartsView(APIView):
-    parser_classes = [MultiPartParser]
-
-    def post(self, request):
-        print("HERE123")
-        serializer = UploadPartsSerializer(data=request.data)
-        if serializer.is_valid():
-            parts = serializer.save()
-            return Response({'message': f'{len(parts)} parts uploaded'}, status=status.HTTP_201_CREATED)
-        else:
-            print("PROBLEM")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "File processed", "pdfs": pdf_urls}, status=status.HTTP_200_OK)
+    

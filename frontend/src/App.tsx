@@ -6,6 +6,7 @@ import NotFound from './pages/NotFound';
 import EnsemblesPage from './pages/testing/Ensembles';
 import ArrangementsPage from './pages/testing/Arrangements';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
+import PartFormatterPage from './pages/testing/PartFormatterPage'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/admin" Component={() => {
+          // TODO: Remove this for production !!!
           window.location.href = 'http://localhost:8000/admin';
           return null
         }}/>
@@ -21,6 +23,8 @@ function App() {
         <Route path="/testing/ensembles" element={<EnsemblesPage />} />
         <Route path="/testing/arrangements" element={<ArrangementsPage />} />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />
+
+        <Route path="testing/part-formatter" element={<PartFormatterPage/>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
