@@ -8,22 +8,33 @@ import {
   Center,
   Text,
   Notification,
+  Group,
+  TextInput,
 } from "@mantine/core";
-import { Check, X, UploadCloud } from "lucide-react"; // alternative icon set
+import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 
 export default function PartFormatterPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isFormatting, setIsFormatting] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // New states
+  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | null>(null);
+  const [showTitle, setShowTitle] = useState("");
+  const [showNumber, setShowNumber] = useState("");
 
   const handleUpload = async () => {
     if (!file) return;
 
-    setIsLoading(true);
+    setIsUploading(true);
     setError(null);
     setDownloadUrl(null);
+    setSessionId(null);
+    setSelectedStyle(null);
 
     const formData = new FormData();
     formData.append("file", file);
@@ -35,12 +46,49 @@ export default function PartFormatterPage() {
         },
       });
 
-      setDownloadUrl(response.data.download_url); // e.g., { download_url: "http://..." }
+      const id = response.data.session_id;
+      if (!id) throw new Error("No session ID returned");
+      setSessionId(id);
     } catch (err: any) {
       console.error("Upload error:", err);
       setError(err.response?.data?.detail || "Upload failed.");
     } finally {
-      setIsLoading(false);
+      setIsUploading(false);
+    }
+  };
+
+  const handleStyleSelect = (style: "jazz" | "broadway") => {
+    setSelectedStyle(style);
+  };
+
+  const handleFormatRequest = async () => {
+    if (!sessionId || !selectedStyle) return;
+
+    if (selectedStyle === "broadway" && (!showTitle || !showNumber)) {
+      setError("Please provide both show title and show number.");
+      return;
+    }
+
+    setIsFormatting(true);
+    setError(null);
+    setDownloadUrl(null);
+
+    try {
+      const response = await axios.post("http://localhost:8000/api/format-mscz/", {
+        session_id: sessionId,
+        style: selectedStyle,
+        ...(selectedStyle === "broadway" && {
+          show_title: showTitle,
+          show_number: showNumber,
+        }),
+      });
+
+      setDownloadUrl(response.data.download_url);
+    } catch (err: any) {
+      console.error("Formatting error:", err);
+      setError(err.response?.data?.detail || "Formatting failed.");
+    } finally {
+      setIsFormatting(false);
     }
   };
 
@@ -62,14 +110,61 @@ export default function PartFormatterPage() {
 
       <Button
         onClick={handleUpload}
-        disabled={!file || isLoading}
+        disabled={!file || isUploading}
         fullWidth
-        loading={isLoading}
+        loading={isUploading}
       >
-        Upload & Process
+        Upload
       </Button>
 
-      {isLoading && (
+      {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
+        <Center mt="xl">
+          <div>
+            <Text mb="sm" align="center">
+              Choose a style to format your file:
+            </Text>
+            <Group position="center">
+              <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
+              <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
+            </Group>
+          </div>
+        </Center>
+      )}
+
+      {selectedStyle === "broadway" && (
+        <Center mt="xl">
+          <div style={{ width: "100%" }}>
+            <Text mb="sm" align="center">
+              Enter show details:
+            </Text>
+            <TextInput
+              label="Show Title"
+              value={showTitle}
+              onChange={(e) => setShowTitle(e.currentTarget.value)}
+              mb="md"
+              required
+            />
+            <TextInput
+              label="Show Number"
+              value={showNumber}
+              onChange={(e) => setShowNumber(e.currentTarget.value)}
+              mb="md"
+              required
+            />
+            <Button onClick={handleFormatRequest} fullWidth>
+              Format Broadway File
+            </Button>
+          </div>
+        </Center>
+      )}
+
+      {selectedStyle === "jazz" && (
+        <Center mt="xl">
+          <Button onClick={handleFormatRequest}>Format Jazz File</Button>
+        </Center>
+      )}
+
+      {isFormatting && (
         <Center mt="xl">
           <Loader size="lg" />
         </Center>

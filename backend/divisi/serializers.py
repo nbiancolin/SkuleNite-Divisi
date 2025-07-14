@@ -17,7 +17,7 @@ class UploadRequestSerializer(serializers.Serializer):
 
 
 class FormatMsczFileSerializer(serializers.Serializer):
-    uuid = serializers.UUIDField()
+    session_id = serializers.UUIDField()
     style = serializers.ChoiceField(choices=STYLE_CHOICES)
     show_title = serializers.CharField()
     show_number = serializers.CharField()

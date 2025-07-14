@@ -22,16 +22,18 @@ class UploadMsczFile(APIView):
         session = UploadSession.objects.create(
             user_agent=request.headers.get("User-Agent"),
             ip_address=request.META.get("REMOTE_ADDR"),
+            file_name = uploaded_file.name
         )
 
-        os.makedirs(session.mscz_file_path, exist_ok=True)
-        file_path = os.path.join(session.mscz_file_path, uploaded_file.name)
+        os.makedirs(session.mscz_file_location, exist_ok=True)
+        os.makedirs(session.output_file_location, exist_ok=True)
+        file_path = os.path.join(session.mscz_file_path)
         with open(file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
 
         return Response(
-            {"message": "File Uploaded Successfully", "uuid": session.id},
+            {"message": "File Uploaded Successfully", "session_id": session.id},
             status=status.HTTP_200_OK,
         )
 
@@ -49,10 +51,10 @@ class FormatMsczFile(APIView):
         style = serializer.validated_data['style']
         show_title = serializer.validated_data['show_title']
         show_number = serializer.validated_data['show_number']
-        uuid = request.data.get("uuid")
+        uuid = request.data.get("session_id")
 
         # This task takes in the session id, finds the file path, outputs the parts in a different directory
-        part_formatter_mscz.call(uuid, style, show_title, show_number)
+        part_formatter_mscz(uuid, style, show_title, show_number)
 
         # export parts asynchronously, when people call for downloads, block until ready when trying to download
         export_result = export_mscz_to_pdf.delay(uuid)

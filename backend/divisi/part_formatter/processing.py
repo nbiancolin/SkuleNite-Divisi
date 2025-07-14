@@ -485,7 +485,7 @@ def mscz_main(
     with zipfile.ZipFile(output_path, "w") as zip_out:
         for root, _, files in os.walk(work_dir):
             for file in files:
-                file_path = os.path.join(root, file)s
+                file_path = os.path.join(root, file)
                 zip_out.write(file_path, os.path.relpath(file_path, work_dir))
 
     shutil.rmtree(work_dir)
