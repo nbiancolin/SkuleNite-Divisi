@@ -10,7 +10,7 @@ NUM_MEASURES_PER_LINE = (
 )
 
 STYLES_DIR = "blob/_styles"
-TEMP_DIR = "blob/temp"  # TODO: Temp directory should be file-specific to allow for processing of multiple files
+TEMP_DIR = "blob/temp"  # TODO[SC-52]: move to settings.py
 
 
 class Style(Enum):

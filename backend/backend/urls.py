@@ -19,7 +19,7 @@ from django.urls import path, include
 from rest_framework import routers
 
 from ensembles.views import UploadArrangementPartsView, EnsembleViewSet, ArrangementViewSet
-from divisi.views import UploadPartFormatter
+from divisi.views import UploadMsczFile, FormatMsczFile
 
 router = routers.DefaultRouter()
 router.register(r'ensembles', EnsembleViewSet, 'ensemble')
@@ -28,6 +28,7 @@ router.register(r'arrangements', ArrangementViewSet, 'arrangement')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/upload-parts/', UploadArrangementPartsView.as_view(), name='upload-parts'),
-    path('api/upload-mscz/', UploadPartFormatter.as_view(), name='upload'),
+    path('api/upload-mscz/', UploadMsczFile.as_view(), name='upload'),
+    path('api/format-mscz/', FormatMsczFile.as_view(), name='upload'),
     path('api/', include(router.urls)),
 ]
