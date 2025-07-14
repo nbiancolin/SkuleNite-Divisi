@@ -10,12 +10,13 @@ from .tasks import part_formatter_mscz, export_mscz_to_pdf
 
 
 class UploadPartFormatter(APIView):
-
     def post(self, request, *args, **kwargs):
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
-            return Response({"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
         file_dir = "blob/in_progress/"
         os.makedirs(file_dir, exist_ok=True)
         file_path = os.path.join(file_dir, uploaded_file.name)
@@ -28,20 +29,31 @@ class UploadPartFormatter(APIView):
         result.wait()  # Wait for task to finish
 
         if result.failed():
-            return Response({"error": "part_formatter_mscz failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "part_formatter_mscz failed"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        processed_file_path = file_path[:-5] + "_processed.mscz"
 
         # Now run export_mscz task
-        export_result = export_mscz_to_pdf.apply_async(args=[file_path])
+        export_result = export_mscz_to_pdf.apply_async(args=[processed_file_path])
         export_result.wait()
 
         if export_result.failed():
-            return Response({"error": "export_mscz failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "export_mscz failed"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         # Assume export_mscz returns a list of PDF file paths
         pdf_files = export_result.result if export_result.result else []
 
         # Prepare response with PDF files (as URLs or file names)
-        pdf_urls = [os.path.join(settings.MEDIA_URL, os.path.basename(pdf)) for pdf in pdf_files]
+        pdf_urls = [
+            os.path.join(settings.MEDIA_URL, os.path.basename(pdf)) for pdf in pdf_files
+        ]
 
-        return Response({"message": "File processed", "pdfs": pdf_urls}, status=status.HTTP_200_OK)
-    
+        return Response(
+            {"message": "File processed", "pdfs": pdf_urls}, status=status.HTTP_200_OK
+        )
