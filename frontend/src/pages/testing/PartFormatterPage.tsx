@@ -83,7 +83,7 @@ export default function PartFormatterPage() {
         }),
       });
 
-      setDownloadUrl(response.data.download_url);
+      setDownloadUrl(response.data.score_download_url);
     } catch (err: any) {
       console.error("Formatting error:", err);
       setError(err.response?.data?.detail || "Formatting failed.");
