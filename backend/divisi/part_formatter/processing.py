@@ -9,8 +9,8 @@ NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
 
-STYLES_DIR = "_styles"
-TEMP_DIR = "blob/temp"  # TODO: Temp directory should be file-specific to allow for processing of multiple files
+STYLES_DIR = "blob/_styles"
+TEMP_DIR = "blob/temp"  # TODO[SC-52]: move to settings.py
 
 
 class Style(Enum):
@@ -18,7 +18,38 @@ class Style(Enum):
     JAZZ = 2
 
 
+SHOW_TITLE = "MyShow"
+SHOW_NUMBER = "1-1"
+
+
 # -- HELPER FUNCTIONS --
+def _make_show_number_text(show_number: str) -> ET.Element:
+    txt = ET.Element("Text")
+    style = ET.SubElement(txt, "style")
+    style.text = "user_2"
+    text = ET.SubElement(txt, "text")
+    text.text = show_number
+    return txt
+
+
+def _make_show_title_text(show_title: str) -> ET.Element:
+    txt = ET.Element("Text")
+    style = ET.SubElement(txt, "style")
+    style.text = "user_3"
+    text = ET.SubElement(txt, "text")
+    text.text = show_title
+    return txt
+
+
+def _make_part_name_text(part_name: str) -> ET.Element:
+    txt = ET.Element("Text")
+    style = ET.SubElement(txt, "style")
+    style.text = "instrument_excerpt"
+    text = ET.SubElement(txt, "text")
+    text.text = part_name
+    return txt
+
+
 def _make_line_break() -> ET.Element:
     lb = ET.Element("LayoutBreak")
     subtype = ET.SubElement(lb, "subtype")
@@ -76,6 +107,27 @@ def _add_page_break_to_measure(measure: ET.Element) -> None:
 def _add_double_bar_to_measure(measure: ET.Element) -> None:
     # Add the double bar as the very last tag in the measure
     measure.append(_make_double_bar())
+
+
+# -- Broadway specific formatting
+def add_broadway_header(staff: ET.Element, show_number: str, show_title: str) -> None:
+    for elem in staff:
+        # find first VBox
+        if elem.tag == "VBox":
+            elem.append(_make_show_number_text(show_number))
+            elem.append(_make_show_title_text(show_title))
+            return
+
+
+def add_part_name(staff: ET.Element, part_name: str = "CONDUCTOR SCORE") -> None:
+    for elem in staff:
+        if elem.tag == "VBox":
+            for child in elem.findall("Text"):
+                style = child.find("style")
+                if style is not None and style.text == "instrument_excerpt":
+                    return
+            elem.append(_make_part_name_text(part_name))
+            return
 
 
 # -- LayoutBreak formatting --
@@ -164,7 +216,7 @@ def add_double_bar_line_breaks(staff: ET.Element) -> ET.Element:
             prev_elem = staff[i]
             print(f"Adding Line Break to double Bar line at bar {i}")
             _add_line_break_to_measure_opt(prev_elem)
-    
+
     return staff
 
 
@@ -224,7 +276,7 @@ def add_regular_line_breaks(staff: ET.Element) -> ET.Element:
                 i = 0
             else:
                 i += 1
-    
+
     return staff
 
 
@@ -364,7 +416,7 @@ def final_pass_through(staff: ET.Element) -> ET.Element:
 
 
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
-def add_styles_to_score_and_parts(style: Style) -> None:
+def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
     """
     Depending on what style enum is selected, load either the jazz or broadway style file.
 
@@ -383,14 +435,14 @@ def add_styles_to_score_and_parts(style: Style) -> None:
         raise ValueError(f"Unsupported style: {style}")
 
     # Walk through files in temp directory
-    for root, _, files in os.walk(TEMP_DIR):
+    for root, _, files in os.walk(work_dir):
         for filename in files:
             if not filename.lower().endswith(".mss"):
                 continue
 
             full_path = os.path.join(root, filename)
-            # Get relative path from TEMP_DIR to check if it's inside "excerpts/"
-            rel_path = os.path.relpath(full_path, TEMP_DIR)
+            # Get relative path from work_dir to check if it's inside "excerpts/"
+            rel_path = os.path.relpath(full_path, work_dir)
             is_excerpt = "Excerpts" in rel_path
 
             source_style = part_style_path if is_excerpt else score_style_path
@@ -399,29 +451,38 @@ def add_styles_to_score_and_parts(style: Style) -> None:
             print(f"Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
 
 
-def mscz_main(mscz_path):
+def mscz_main(
+    input_path, output_path, style_name, show_title=SHOW_TITLE, show_number=SHOW_NUMBER
+):
+    work_dir = TEMP_DIR + input_path.split("/")[-1]
 
-    work_dir = TEMP_DIR + mscz_path.split("/")[-1]
-
-    with zipfile.ZipFile(mscz_path, "r") as zip_ref:
+    with zipfile.ZipFile(input_path, "r") as zip_ref:
         # Extract all files to "temp" and collect all .mscx files from the zip structure
         zip_ref.extractall(work_dir)
 
-    add_styles_to_score_and_parts(Style.BROADWAY)
+    try:
+        selected_style = Style[style_name]
+    except:
+        print("ilygygluyfgklutyfkyutf -- style tag not proper, defaulting to broadway")
+        selected_style = Style.BROADWAY
+
+    add_styles_to_score_and_parts(selected_style, work_dir)
 
     mscx_files = [
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
     ]
     if not mscx_files:
         print("No .mscx files found in the provided mscz file.")
-        sys.exit(1)
+        shutil.rmtree(work_dir)
+        return
 
     for mscx_path in mscx_files:
         print(f"Processing {mscx_path}...")
-        process_mscx(mscx_path)
+        process_mscx(
+            mscx_path, selected_style, show_title=show_title, show_number=show_number
+        )
 
-    output_mscz_path = mscz_path.replace(".mscz", "_processed.mscz")
-    with zipfile.ZipFile(output_mscz_path, "w") as zip_out:
+    with zipfile.ZipFile(output_path, "w") as zip_out:
         for root, _, files in os.walk(work_dir):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -430,7 +491,7 @@ def mscz_main(mscz_path):
     shutil.rmtree(work_dir)
 
 
-def process_mscx(mscx_path, standalone=False):
+def process_mscx(mscx_path, selected_style, show_title, show_number, standalone=False):
     try:
         parser = ET.XMLParser()
         tree = ET.parse(mscx_path, parser)
@@ -446,10 +507,12 @@ def process_mscx(mscx_path, standalone=False):
         add_rehearsal_mark_line_breaks(staff)
         add_double_bar_line_breaks(staff)
         add_regular_line_breaks(staff)
-        # balance_mm_rest_line_breaks(staff)
         final_pass_through(staff)
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
+        if selected_style == Style.BROADWAY:
+            add_broadway_header(staff, show_number, show_title)
+        add_part_name(staff)
 
         if standalone:
             out_path = mscx_path.replace("test-data", "test-data-copy")
