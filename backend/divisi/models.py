@@ -1,8 +1,13 @@
 from django.db import models
 from django.utils import timezone
 
+import os
+import shutil
 import uuid
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 class UploadSession(models.Model):
     """
@@ -32,6 +37,24 @@ class UploadSession(models.Model):
     @property
     def output_file_path(self) -> str:
         return f"blob/processed/{self.id}/{self.file_name}"
+    
+    def delete(self, **kwargs):
+        #delete files when session is deleted
+        paths_to_delete = [self.mscz_file_location, self.output_file_location]
+
+        for rel_path in paths_to_delete:
+            abs_path = os.path.abspath(rel_path) 
+
+            if os.path.exists(abs_path):
+                try:
+                    shutil.rmtree(abs_path)
+                    logger.info(f"Deleted folder: {abs_path}")
+                except Exception as e:
+                    logger.error(f"Failed to delete {abs_path}: {e}")
+            else:
+                logger.warning(f"Path does not exist, skipping: {abs_path}")
+
+        super().delete(**kwargs)
 
 
 class ProcessedFile(models.Model):
