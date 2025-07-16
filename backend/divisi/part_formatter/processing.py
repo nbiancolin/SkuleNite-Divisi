@@ -13,9 +13,15 @@ STYLES_DIR = "blob/_styles"
 TEMP_DIR = "blob/temp"  # TODO[SC-52]: move to settings.py
 
 
+
 class Style(Enum):
-    BROADWAY = 1
-    JAZZ = 2
+    BROADWAY = "broadway"
+    JAZZ = "jazz"
+
+
+SELECTED_STYLE = Style.BROADWAY
+SHOW_TITLE = "MyShow"
+SHOW_NUMBER = "1-1"
 
 
 SHOW_TITLE = "MyShow"
@@ -451,22 +457,25 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             print(f"Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
 
 
+
 def mscz_main(
     input_path, output_path, style_name, show_title=SHOW_TITLE, show_number=SHOW_NUMBER
 ):
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
+
     with zipfile.ZipFile(input_path, "r") as zip_ref:
         # Extract all files to "temp" and collect all .mscx files from the zip structure
         zip_ref.extractall(work_dir)
 
-    try:
-        selected_style = Style[style_name]
-    except:
-        print("ilygygluyfgklutyfkyutf -- style tag not proper, defaulting to broadway")
-        selected_style = Style.BROADWAY
+    # stry:
+        selected_style = Style(style_name)
+    # except:
+    #     print("ilygygluyfgklutyfkyutf -- style tag not proper, defaulting to broadway")
+    #     selected_style = Style.BROADWAY
 
     add_styles_to_score_and_parts(selected_style, work_dir)
+
 
     mscx_files = [
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
