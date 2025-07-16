@@ -14,8 +14,8 @@ TEMP_DIR = "blob/temp"  # TODO: Temp directory should be file-specific to allow 
 
 
 class Style(Enum):
-    BROADWAY = 1
-    JAZZ = 2
+    BROADWAY = "broadway"
+    JAZZ = "jazz"
 
 
 SELECTED_STYLE = Style.BROADWAY
@@ -459,7 +459,17 @@ def mscz_main(mscz_path):
         # Extract all files to "temp" and collect all .mscx files from the zip structure
         zip_ref.extractall(work_dir)
 
+<<<<<<< Updated upstream
     add_styles_to_score_and_parts(Style.BROADWAY, work_dir)
+=======
+    # stry:
+        selected_style = Style(style_name)
+    # except:
+    #     print("ilygygluyfgklutyfkyutf -- style tag not proper, defaulting to broadway")
+    #     selected_style = Style.BROADWAY
+
+    add_styles_to_score_and_parts(selected_style, work_dir)
+>>>>>>> Stashed changes
 
     mscx_files = [
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
