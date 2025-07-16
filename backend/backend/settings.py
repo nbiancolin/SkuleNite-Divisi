@@ -143,4 +143,5 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
 
-MEDIA_ROOT = "blob/"
+MEDIA_URL = "blob/"
+MEDIA_ROOT = BASE_DIR / "blob"
