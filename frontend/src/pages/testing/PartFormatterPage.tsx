@@ -10,6 +10,7 @@ import {
   Notification,
   Group,
   TextInput,
+  Collapse, 
 } from "@mantine/core";
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
@@ -19,6 +20,8 @@ export default function PartFormatterPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [measuresPerLine, setMeasuresPerLine] = useState<number>(6)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,6 +135,32 @@ export default function PartFormatterPage() {
             </Group>
           </div>
         </Center>
+      )}
+
+      {selectedStyle && (
+        <div>
+        <Center mt="md">
+            <Text
+              onClick={() => setShowAdvanced((o) => !o)}
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              c="blue"
+              size="sm"
+            >
+              {showAdvanced ? "Hide advanced style options" : "Advanced style options"}
+            </Text>
+          </Center>
+
+          <Collapse in={showAdvanced}>
+          {/*TODO[SC-42]: Make this value dynamic, and remove manual override */}
+            <TextInput
+              label="Measures per Line"
+              value={measuresPerLine}
+              onChange={(e) => setMeasuresPerLine(e.currentTarget.value)}
+              type="number"
+              mt="md"
+            />
+          </Collapse>
+        </div>
       )}
 
       {selectedStyle === "broadway" && (
