@@ -4,8 +4,6 @@ from rest_framework import status
 
 import os
 
-from django.conf import settings
-
 from .tasks import part_formatter_mscz, export_mscz_to_pdf
 from .models import UploadSession, ProcessedFile
 from .serializers import FormatMsczFileSerializer
@@ -22,7 +20,7 @@ class UploadMsczFile(APIView):
         session = UploadSession.objects.create(
             user_agent=request.headers.get("User-Agent"),
             ip_address=request.META.get("REMOTE_ADDR"),
-            file_name = uploaded_file.name
+            file_name=uploaded_file.name,
         )
 
         os.makedirs(session.mscz_file_location, exist_ok=True)
@@ -58,12 +56,10 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Format the parts (likely modifies files on disk)
         part_formatter_mscz(session_id, style, show_title, show_number)
 
-        # Export the score to PDF and get the relative output path
         try:
-            d = export_mscz_to_pdf(session_id) 
+            d = export_mscz_to_pdf(session_id)
             print(d)
             output_rel_path = d["output"]
         except Exception as e:
@@ -72,21 +68,13 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        #make path
-
-        # absolute_path = os.path.join(settings.MEDIA_ROOT, f"processed/{uuid}/")
-
-        # Confirm the file exists
-        # absolute_output_path = os.path.join(settings.MEDIA_ROOT, output_rel_path)
-        absolute_output_path = output_rel_path
-        if not os.path.exists(absolute_output_path):
+        if not os.path.exists(output_rel_path):
             return Response(
                 {"error": "Processed file not found."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        # Build full URL for frontend to download
-        print(output_rel_path)
-        file_url = request.build_absolute_uri(output_rel_path)
+
+        file_url = request.build_absolute_uri(f"/{output_rel_path}")
 
         return Response(
             {
