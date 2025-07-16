@@ -21,4 +21,3 @@ class FormatMsczFileSerializer(serializers.Serializer):
     style = serializers.ChoiceField(choices=STYLE_CHOICES)
     show_title = serializers.CharField(required=False, default=None)
     show_number = serializers.CharField(required=False, default=None)
-
