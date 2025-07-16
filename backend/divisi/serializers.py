@@ -4,6 +4,7 @@ from .models import UploadSession, ProcessedFile
 STYLE_CHOICES = [
     ("jazz", "Jazz"),
     ("broadway", "Broadway"),
+    ("classical", 'Classical')
 ]
 
 class UploadSessionSerializer(serializers.ModelSerializer):
@@ -21,3 +22,4 @@ class FormatMsczFileSerializer(serializers.Serializer):
     style = serializers.ChoiceField(choices=STYLE_CHOICES)
     show_title = serializers.CharField(required=False, default=None)
     show_number = serializers.CharField(required=False, default=None)
+    measures_per_line = serializers.IntegerField(required=False, default=None)

@@ -8,17 +8,24 @@ from divisi.models import UploadSession
 
 @shared_task
 def part_formatter_mscz(
-    uuid: int, style: str, show_title: str, show_number: str
+    uuid: int, style: str, show_title: str, show_number: str, num_measure_per_line: int,
 ) -> None:
     session = UploadSession.objects.get(id=uuid)
 
-    mscz_main(
-        input_path=session.mscz_file_path,
-        output_path=session.output_file_path,
-        style_name=style,
-        show_title=show_title,
-        show_number=show_number,
-    )
+    kwargs = {
+        "input_path": session.mscz_file_path,
+        "output_path": session.output_file_path,
+        "style_name": style,
+    }
+
+    if show_title is not None:
+        kwargs["show_title"] = show_title
+    if show_number is not None:
+        kwargs["show_number"] = show_number
+    if num_measure_per_line is not None:
+        kwargs["num_measure_per_line"] = num_measure_per_line
+
+    mscz_main(**kwargs)
 
 
 @shared_task

@@ -10,6 +10,7 @@ import {
   Notification,
   Group,
   TextInput,
+  Collapse, 
 } from "@mantine/core";
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
@@ -19,11 +20,13 @@ export default function PartFormatterPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [measuresPerLine, setMeasuresPerLine] = useState<number>(6)
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // New states
-  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical" | null>(null);
   const [showTitle, setShowTitle] = useState("");
   const [showNumber, setShowNumber] = useState("");
 
@@ -57,7 +60,7 @@ export default function PartFormatterPage() {
     }
   };
 
-  const handleStyleSelect = (style: "jazz" | "broadway") => {
+  const handleStyleSelect = (style: "jazz" | "broadway" | "classical") => {
     setSelectedStyle(style);
   };
 
@@ -81,6 +84,9 @@ export default function PartFormatterPage() {
           show_title: showTitle,
           show_number: showNumber,
         }),
+        ...(showAdvanced && {
+          measures_per_line: measuresPerLine,
+        })
       });
 
       setDownloadUrl(response.data.score_download_url);
@@ -117,6 +123,8 @@ export default function PartFormatterPage() {
         Upload
       </Button>
 
+      Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded
+
       {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
         <Center mt="xl">
           <div>
@@ -126,9 +134,36 @@ export default function PartFormatterPage() {
             <Group position="center">
               <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
               <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
+              <Button onClick={() => handleStyleSelect("classical")}>Classical</Button>
             </Group>
           </div>
         </Center>
+      )}
+
+      {selectedStyle && (
+        <div>
+        <Center mt="md">
+            <Text
+              onClick={() => setShowAdvanced((o) => !o)}
+              style={{ cursor: "pointer", textDecoration: "underline" }}
+              c="blue"
+              size="sm"
+            >
+              {showAdvanced ? "Hide advanced style options" : "Advanced style options"}
+            </Text>
+          </Center>
+
+          <Collapse in={showAdvanced}>
+          {/*TODO[SC-42]: Make this value dynamic, and remove manual override */}
+            <TextInput
+              label="Measures per Line"
+              value={measuresPerLine}
+              onChange={(e) => setMeasuresPerLine(e.currentTarget.value)}
+              type="number"
+              mt="md"
+            />
+          </Collapse>
+        </div>
       )}
 
       {selectedStyle === "broadway" && (
@@ -152,15 +187,15 @@ export default function PartFormatterPage() {
               required
             />
             <Button onClick={handleFormatRequest} fullWidth>
-              Format Broadway File
+              Format Musescore File
             </Button>
           </div>
         </Center>
       )}
 
-      {selectedStyle === "jazz" && (
+      {(selectedStyle === "jazz" || selectedStyle === "classical") && (
         <Center mt="xl">
-          <Button onClick={handleFormatRequest}>Format Jazz File</Button>
+          <Button onClick={handleFormatRequest}>Format Musescore File</Button>
         </Center>
       )}
 
@@ -185,7 +220,7 @@ export default function PartFormatterPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Click here to download.
+            Click here to download the Score.
           </a>
         </Notification>
       )}

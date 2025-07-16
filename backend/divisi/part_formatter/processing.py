@@ -249,9 +249,9 @@ def balance_mm_rest_line_breaks(staff: ET.Element) -> ET.Element:
     return staff
 
 
-def add_regular_line_breaks(staff: ET.Element) -> ET.Element:
+def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Element:
     """
-    We want to add a line break every `NUM_MEASURES_PER_LINE` measures.
+    We want to add a line break every `measures_per_line` measures.
     This does not include multi measure rests, these should be ignored.
     """
     i = 0
@@ -274,7 +274,7 @@ def add_regular_line_breaks(staff: ET.Element) -> ET.Element:
                 )  # Manual testing indicates otherwise ...
             i = 0
         else:
-            if i == (NUM_MEASURES_PER_LINE - 1) and elem.find("LayoutBreak") is None:
+            if i == (measures_per_line - 1) and elem.find("LayoutBreak") is None:
                 print("Adding Regular Line Break")
                 _add_line_break_to_measure(elem)
                 i = 0
@@ -455,16 +455,19 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             print(f"Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
 
 
-
 def mscz_main(
-    input_path, output_path, style_name, show_title=SHOW_TITLE, show_number=SHOW_NUMBER
+    input_path,
+    output_path,
+    style_name,
+    show_title=SHOW_TITLE,
+    show_number=SHOW_NUMBER,
+    num_measure_per_line=NUM_MEASURES_PER_LINE,
 ):
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
     with zipfile.ZipFile(input_path, "r") as zip_ref:
         # Extract all files to "temp" and collect all .mscx files from the zip structure
         zip_ref.extractall(work_dir)
-
 
     selected_style = Style(style_name)
 
@@ -481,7 +484,11 @@ def mscz_main(
     for mscx_path in mscx_files:
         print(f"Processing {mscx_path}...")
         process_mscx(
-            mscx_path, selected_style, show_title=show_title, show_number=show_number
+            mscx_path,
+            selected_style,
+            show_title=show_title,
+            show_number=show_number,
+            measures_per_line=num_measure_per_line,
         )
 
     with zipfile.ZipFile(output_path, "w") as zip_out:
@@ -493,7 +500,14 @@ def mscz_main(
     shutil.rmtree(work_dir)
 
 
-def process_mscx(mscx_path, selected_style, show_title, show_number, standalone=False):
+def process_mscx(
+    mscx_path,
+    selected_style,
+    show_title,
+    show_number,
+    measures_per_line,
+    standalone=False,
+):
     try:
         parser = ET.XMLParser()
         tree = ET.parse(mscx_path, parser)
@@ -508,7 +522,7 @@ def process_mscx(mscx_path, selected_style, show_title, show_number, standalone=
         prep_mm_rests(staff)
         add_rehearsal_mark_line_breaks(staff)
         add_double_bar_line_breaks(staff)
-        add_regular_line_breaks(staff)
+        add_regular_line_breaks(staff, measures_per_line)
         final_pass_through(staff)
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
