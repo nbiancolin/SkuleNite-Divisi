@@ -84,6 +84,9 @@ export default function PartFormatterPage() {
           show_title: showTitle,
           show_number: showNumber,
         }),
+        ...(showAdvanced && {
+          measures_per_line: measuresPerLine,
+        })
       });
 
       setDownloadUrl(response.data.score_download_url);

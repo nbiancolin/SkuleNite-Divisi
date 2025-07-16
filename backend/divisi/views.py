@@ -49,6 +49,7 @@ class FormatMsczFile(APIView):
         show_title = serializer.validated_data["show_title"]
         show_number = serializer.validated_data["show_number"]
         session_id = serializer.validated_data.get("session_id")
+        num_measure_per_line = serializer.validated_data["measures_per_line"]
 
         #Classical is just broadway minus
         if style == "classical":
@@ -60,7 +61,7 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        part_formatter_mscz(session_id, style, show_title, show_number)
+        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line)
 
         try:
             d = export_mscz_to_pdf(session_id)
