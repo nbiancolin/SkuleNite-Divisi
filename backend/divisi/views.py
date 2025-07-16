@@ -7,9 +7,11 @@ import os
 from django.conf import settings
 
 from .tasks import part_formatter_mscz, export_mscz_to_pdf
+from .models import UploadSession, ProcessedFile
+from .serializers import FormatMsczFileSerializer
 
 
-class UploadPartFormatter(APIView):
+class UploadMsczFile(APIView):
     def post(self, request, *args, **kwargs):
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
@@ -17,43 +19,80 @@ class UploadPartFormatter(APIView):
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        file_dir = "blob/in_progress/"
-        os.makedirs(file_dir, exist_ok=True)
-        file_path = os.path.join(file_dir, uploaded_file.name)
+        session = UploadSession.objects.create(
+            user_agent=request.headers.get("User-Agent"),
+            ip_address=request.META.get("REMOTE_ADDR"),
+            file_name = uploaded_file.name
+        )
+
+        os.makedirs(session.mscz_file_location, exist_ok=True)
+        os.makedirs(session.output_file_location, exist_ok=True)
+        file_path = os.path.join(session.mscz_file_path)
         with open(file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
 
-        # Run part_formatter_mscz task synchronously
-        result = part_formatter_mscz.apply_async(args=[file_path])
-        result.wait()  # Wait for task to finish
+        return Response(
+            {"message": "File Uploaded Successfully", "session_id": session.id},
+            status=status.HTTP_200_OK,
+        )
 
-        if result.failed():
+
+class FormatMsczFile(APIView):
+    def post(self, request, *args, **kwargs):
+        """
+        Get style properties, format parts, and return download link.
+        """
+        serializer = FormatMsczFileSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        style = serializer.validated_data["style"]
+        show_title = serializer.validated_data["show_title"]
+        show_number = serializer.validated_data["show_number"]
+        session_id = serializer.validated_data.get("session_id")
+
+        if not session_id:
             return Response(
-                {"error": "part_formatter_mscz failed"},
+                {"error": "Missing session_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Format the parts (likely modifies files on disk)
+        part_formatter_mscz(session_id, style, show_title, show_number)
+
+        # Export the score to PDF and get the relative output path
+        try:
+            d = export_mscz_to_pdf(session_id) 
+            print(d)
+            output_rel_path = d["output"]
+        except Exception as e:
+            return Response(
+                {"error": f"Export failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        processed_file_path = file_path[:-5] + "_processed.mscz"
+        #make path
 
-        # Now run export_mscz task
-        export_result = export_mscz_to_pdf.apply_async(args=[processed_file_path])
-        export_result.wait()
+        # absolute_path = os.path.join(settings.MEDIA_ROOT, f"processed/{uuid}/")
 
-        if export_result.failed():
+        # Confirm the file exists
+        # absolute_output_path = os.path.join(settings.MEDIA_ROOT, output_rel_path)
+        absolute_output_path = output_rel_path
+        if not os.path.exists(absolute_output_path):
             return Response(
-                {"error": "export_mscz failed"},
+                {"error": "Processed file not found."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # Assume export_mscz returns a list of PDF file paths
-        pdf_files = export_result.result if export_result.result else []
-
-        # Prepare response with PDF files (as URLs or file names)
-        pdf_urls = [
-            os.path.join(settings.MEDIA_URL, os.path.basename(pdf)) for pdf in pdf_files
-        ]
+        # Build full URL for frontend to download
+        print(output_rel_path)
+        file_url = request.build_absolute_uri(output_rel_path)
 
         return Response(
-            {"message": "File processed", "pdfs": pdf_urls}, status=status.HTTP_200_OK
+            {
+                "message": "File processed successfully.",
+                "score_download_url": file_url,
+            },
+            status=status.HTTP_200_OK,
         )
