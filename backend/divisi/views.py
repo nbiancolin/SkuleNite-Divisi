@@ -50,6 +50,10 @@ class FormatMsczFile(APIView):
         show_number = serializer.validated_data["show_number"]
         session_id = serializer.validated_data.get("session_id")
 
+        #Classical is just broadway minus
+        if style == "classical":
+            style = "broadway"
+
         if not session_id:
             return Response(
                 {"error": "Missing session_id"},

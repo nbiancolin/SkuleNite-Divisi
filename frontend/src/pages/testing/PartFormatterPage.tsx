@@ -23,7 +23,7 @@ export default function PartFormatterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // New states
-  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical" | null>(null);
   const [showTitle, setShowTitle] = useState("");
   const [showNumber, setShowNumber] = useState("");
 
@@ -57,7 +57,7 @@ export default function PartFormatterPage() {
     }
   };
 
-  const handleStyleSelect = (style: "jazz" | "broadway") => {
+  const handleStyleSelect = (style: "jazz" | "broadway" | "classical") => {
     setSelectedStyle(style);
   };
 
@@ -117,6 +117,8 @@ export default function PartFormatterPage() {
         Upload
       </Button>
 
+      Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded
+
       {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
         <Center mt="xl">
           <div>
@@ -126,6 +128,7 @@ export default function PartFormatterPage() {
             <Group position="center">
               <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
               <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
+              <Button onClick={() => handleStyleSelect("classical")}>Classical</Button>
             </Group>
           </div>
         </Center>
@@ -152,15 +155,15 @@ export default function PartFormatterPage() {
               required
             />
             <Button onClick={handleFormatRequest} fullWidth>
-              Format Broadway File
+              Format Musescore File
             </Button>
           </div>
         </Center>
       )}
 
-      {selectedStyle === "jazz" && (
+      {(selectedStyle === "jazz" || selectedStyle === "classical") && (
         <Center mt="xl">
-          <Button onClick={handleFormatRequest}>Format Jazz File</Button>
+          <Button onClick={handleFormatRequest}>Format Musescore File</Button>
         </Center>
       )}
 
@@ -185,7 +188,7 @@ export default function PartFormatterPage() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Click here to download.
+            Click here to download the Score.
           </a>
         </Notification>
       )}

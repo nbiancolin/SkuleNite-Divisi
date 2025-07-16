@@ -4,6 +4,7 @@ from .models import UploadSession, ProcessedFile
 STYLE_CHOICES = [
     ("jazz", "Jazz"),
     ("broadway", "Broadway"),
+    ("classical", 'Classical')
 ]
 
 class UploadSessionSerializer(serializers.ModelSerializer):
