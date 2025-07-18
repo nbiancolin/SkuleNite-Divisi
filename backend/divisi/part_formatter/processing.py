@@ -459,11 +459,14 @@ def mscz_main(
     input_path,
     output_path,
     style_name,
-    show_title=SHOW_TITLE,
-    show_number=SHOW_NUMBER,
     num_measure_per_line=NUM_MEASURES_PER_LINE,
     **kwargs,
 ):
+    if not kwargs.get("movementTitle"):
+        kwargs["movementTitle"] = ""
+    if not kwargs.get("workNumber"):
+        kwargs["workNumber"] = ""
+
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
     with zipfile.ZipFile(input_path, "r") as zip_ref:
@@ -539,7 +542,7 @@ def process_mscx(
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
-            add_broadway_header(staff, show_number, show_title)
+            add_broadway_header(staff, kwargs["workNumber"], show_title)
         add_part_name(staff)
 
         if standalone:

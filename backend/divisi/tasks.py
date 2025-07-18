@@ -8,7 +8,11 @@ from divisi.models import UploadSession
 
 @shared_task
 def part_formatter_mscz(
-    uuid: int, style: str, show_title: str, show_number: str, num_measure_per_line: int,
+    uuid: int,
+    style: str,
+    show_title: str,
+    show_number: str,
+    num_measure_per_line: int,
 ) -> None:
     session = UploadSession.objects.get(id=uuid)
 
@@ -24,7 +28,7 @@ def part_formatter_mscz(
         kwargs["arranger"] = arranger
     else:
         kwargs["arranger"] = "COMPOSER"
-    
+
     if show_title is not None:
         kwargs["movementTitle"] = show_title
     if show_number is not None:
@@ -44,7 +48,9 @@ def export_mscz_to_pdf(uuid: int):
     output_path = session.output_file_path[:-5] + ".pdf"
 
     try:
-        subprocess.run(["mscore4", session.output_file_path, "-o", output_path], check=True)
+        subprocess.run(
+            ["mscore4", session.output_file_path, "-o", output_path], check=True
+        )
         return {"status": "success", "output": output_path}
     except subprocess.CalledProcessError as e:
         return {"status": "error", "details": str(e)}
