@@ -97,7 +97,7 @@ export function UploadPartsForm() {
       </Radio.Group>
       
 
-      <Group position="right" mt="md">
+      <Group justify="right" mt="md">
         <Button onClick={handleUpload}>Upload</Button>
       </Group>
       {message && <Text mt="md">{message}</Text>}

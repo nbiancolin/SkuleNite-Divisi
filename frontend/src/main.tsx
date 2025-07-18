@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core';
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <MantineProvider withGlobalStyles withNormalizeCSS>
+      <MantineProvider>
         <App />
       </MantineProvider>
     </BrowserRouter>

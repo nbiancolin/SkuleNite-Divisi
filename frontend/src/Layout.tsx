@@ -1,6 +1,6 @@
 // Layout.tsx
 import { AppShell } from '@mantine/core';
-import { HeaderSimple } from './components/headerSimple';
+import { HeaderSimple } from './components/HeaderSimple';
 import { Outlet } from 'react-router-dom';
 
 export default function Layout() {
