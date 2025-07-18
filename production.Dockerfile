@@ -18,6 +18,8 @@ RUN npm run build
 FROM python:3.11 AS backend-build
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
 
 # Create user early
 RUN useradd -m myuser
