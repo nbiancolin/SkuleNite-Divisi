@@ -462,6 +462,7 @@ def mscz_main(
     show_title=SHOW_TITLE,
     show_number=SHOW_NUMBER,
     num_measure_per_line=NUM_MEASURES_PER_LINE,
+    **kwargs,
 ):
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
@@ -486,9 +487,10 @@ def mscz_main(
         process_mscx(
             mscx_path,
             selected_style,
-            show_title=show_title,
-            show_number=show_number,
             measures_per_line=num_measure_per_line,
+            # workNumber=show_number,
+            # movementTitle=show_title,
+            **kwargs,
         )
 
     with zipfile.ZipFile(output_path, "w") as zip_out:
@@ -501,12 +503,7 @@ def mscz_main(
 
 
 def process_mscx(
-    mscx_path,
-    selected_style,
-    show_title,
-    show_number,
-    measures_per_line,
-    standalone=False,
+    mscx_path, selected_style, measures_per_line, standalone=False, **kwargs
 ):
     try:
         parser = ET.XMLParser()
@@ -515,17 +512,21 @@ def process_mscx(
         score = root.find("Score")
         if score is None:
             raise ValueError("No <Score> tag found in the XML.")
-        
-        score_properties = {
-            "albumTitle": show_title,
-            "trackNum": show_number
-        }
-        
-        #set score properties
+
+        # set score properties
+
+        if kwargs["arranger"] == "COMPOSER":
+            for metaTag in score.findall("metaTag"):
+                if metaTag.attrib.get("name") == "composer":
+                    kwargs["arranger"] = metaTag.attrib.get("name")
+
         for metaTag in score.findall("metaTag"):
-            for k in score_properties.keys():
-                if metaTag.attrib.get(k):
-                    metaTag.attrib[k] = score_properties[k]
+            for k in kwargs.keys():
+                if metaTag.attrib.get("name") == k:
+                    metaTag.text = kwargs[k]
+
+        show_number = kwargs["workNumber"]
+        show_title = kwargs["movementTitle"]
 
         staves = score.findall("Staff")
 

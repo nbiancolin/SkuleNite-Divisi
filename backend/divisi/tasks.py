@@ -18,10 +18,17 @@ def part_formatter_mscz(
         "style_name": style,
     }
 
+    arranger = None
+
+    if arranger is not None:
+        kwargs["arranger"] = arranger
+    else:
+        kwargs["arranger"] = "COMPOSER"
+    
     if show_title is not None:
-        kwargs["show_title"] = show_title
+        kwargs["movementTitle"] = show_title
     if show_number is not None:
-        kwargs["show_number"] = show_number
+        kwargs["workNumber"] = show_number
     if num_measure_per_line is not None:
         kwargs["num_measure_per_line"] = num_measure_per_line
 
