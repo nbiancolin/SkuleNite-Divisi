@@ -459,10 +459,14 @@ def mscz_main(
     input_path,
     output_path,
     style_name,
-    show_title=SHOW_TITLE,
-    show_number=SHOW_NUMBER,
     num_measure_per_line=NUM_MEASURES_PER_LINE,
+    **kwargs,
 ):
+    if not kwargs.get("movementTitle"):
+        kwargs["movementTitle"] = ""
+    if not kwargs.get("workNumber"):
+        kwargs["workNumber"] = ""
+
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
     with zipfile.ZipFile(input_path, "r") as zip_ref:
@@ -486,9 +490,10 @@ def mscz_main(
         process_mscx(
             mscx_path,
             selected_style,
-            show_title=show_title,
-            show_number=show_number,
             measures_per_line=num_measure_per_line,
+            # workNumber=show_number,
+            # movementTitle=show_title,
+            **kwargs,
         )
 
     with zipfile.ZipFile(output_path, "w") as zip_out:
@@ -501,12 +506,7 @@ def mscz_main(
 
 
 def process_mscx(
-    mscx_path,
-    selected_style,
-    show_title,
-    show_number,
-    measures_per_line,
-    standalone=False,
+    mscx_path, selected_style, measures_per_line, standalone=False, **kwargs
 ):
     try:
         parser = ET.XMLParser()
@@ -515,6 +515,21 @@ def process_mscx(
         score = root.find("Score")
         if score is None:
             raise ValueError("No <Score> tag found in the XML.")
+
+        # set score properties
+
+        if kwargs["arranger"] == "COMPOSER":
+            for metaTag in score.findall("metaTag"):
+                if metaTag.attrib.get("name") == "composer":
+                    kwargs["arranger"] = metaTag.attrib.get("name")
+
+        for metaTag in score.findall("metaTag"):
+            for k in kwargs.keys():
+                if metaTag.attrib.get("name") == k:
+                    metaTag.text = kwargs[k]
+
+        show_number = kwargs["workNumber"]
+        show_title = kwargs["movementTitle"]
 
         staves = score.findall("Staff")
 
@@ -527,7 +542,7 @@ def process_mscx(
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
-            add_broadway_header(staff, show_number, show_title)
+            add_broadway_header(staff, kwargs["workNumber"], show_title)
         add_part_name(staff)
 
         if standalone:
