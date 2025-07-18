@@ -515,6 +515,17 @@ def process_mscx(
         score = root.find("Score")
         if score is None:
             raise ValueError("No <Score> tag found in the XML.")
+        
+        score_properties = {
+            "albumTitle": show_title,
+            "trackNum": show_number
+        }
+        
+        #set score properties
+        for metaTag in score.findall("metaTag"):
+            for k in score_properties.keys():
+                if metaTag.attrib.get(k):
+                    metaTag.attrib[k] = score_properties[k]
 
         staves = score.findall("Staff")
 
