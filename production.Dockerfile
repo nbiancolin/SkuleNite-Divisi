@@ -102,6 +102,9 @@ RUN chown -R myuser:myuser /app/backend
 # ==========================================
 FROM python:3.11-slim AS production
 
+# Disable GUI display (headless)
+ENV QT_QPA_PLATFORM=offscreen
+
 # Install OS dependencies
 RUN apt-get update && apt-get install -y \
     libpq-dev \
@@ -110,10 +113,51 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        fontconfig \
+        unzip \
+        xdg-utils \
+        ca-certificates \
+        libglib2.0-0 \
+        libfuse2 \
+        libasound2 \
+        libjack0 \
+        libnss3 \
+        libopengl0 \
+        libgl1 \
+        libglx0 \
+        libegl1 \
+        libx11-6 \
+        libxext6 \
+        libxrender1 \
+        libsm6 \
+        libice6 \
+        libxrandr2 \
+        libxinerama1 \
+        libxcursor1 \
+        libxi6 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxfixes3 \
+        libxss1 \
+        libatk1.0-0 \
+        libatk-bridge2.0-0 \
+        libgtk-3-0 \
+        libxkbcommon-x11-0 \
+        libxcb1 \
+        qt5dxcb-plugin \
+        p7zip-full && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy backend
 COPY --from=backend-build /app/backend /app/backend
+
+# Copy MuseScore from backend-build
+COPY --from=backend-build /opt/musescore /opt/musescore
+RUN ln -s /opt/musescore/AppRun /usr/local/bin/mscore4
 
 # Copy frontend build to Nginx
 COPY --from=frontend-build /app/frontend/dist /var/www/html
