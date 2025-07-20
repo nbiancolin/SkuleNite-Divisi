@@ -18,6 +18,8 @@ interface EnsembleWithArrangements {
   arrangements: Arrangements[]
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
@@ -40,7 +42,7 @@ const ArrangementsPage: React.FC = () => {
       if (!id) return; // skip if no id
 
       try {
-        const response = await axios.get<EnsembleWithArrangements[]>(`http://localhost:8000/api/ensembles/?id=${id}`);
+        const response = await axios.get<EnsembleWithArrangements[]>(`${API_BASE_URL}/ensembles/?id=${id}`);
         setEnsemblesWithArrangements(response.data);
       } catch (error) {
         console.error('Failed to fetch ensembles:', error);

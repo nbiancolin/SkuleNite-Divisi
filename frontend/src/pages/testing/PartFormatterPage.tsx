@@ -15,6 +15,8 @@ import {
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 export default function PartFormatterPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -43,7 +45,7 @@ export default function PartFormatterPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/upload-mscz/", formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload-mscz/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -77,7 +79,7 @@ export default function PartFormatterPage() {
     setDownloadUrl(null);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/format-mscz/", {
+      const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
         session_id: sessionId,
         style: selectedStyle,
         ...(selectedStyle === "broadway" && {

@@ -16,6 +16,7 @@ interface EnsembleWithArrangements {
   arrangements: Arrangements[]
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const EnsemblesPage: React.FC = () => {
   const [ensembles, setEnsembles] = useState<EnsembleWithArrangements[]>([]);
@@ -25,7 +26,7 @@ const EnsemblesPage: React.FC = () => {
     const fetchEnsembles = async () => {
       try {
         let response;
-        response = await axios.get<EnsembleWithArrangements[]>("http://localhost:8000/api/ensembles/");
+        response = await axios.get<EnsembleWithArrangements[]>(`${API_BASE_URL}/ensembles/`);
         setEnsembles(response.data);
         
       } catch (error) {
