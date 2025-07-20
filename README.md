@@ -9,9 +9,14 @@ Runs inside a docker containter!
   - (& associated postgresql database)
   - And associated Celery Server
 
-to run:
+to run (dev):
 ```
-docker-compose up --build
+docker-compose up --build -d
+```
+
+to run prod:
+```
+docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Backend:
