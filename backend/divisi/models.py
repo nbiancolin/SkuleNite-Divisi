@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils import timezone
+from django.conf import settings
 
 import os
 import shutil
@@ -24,19 +24,25 @@ class UploadSession(models.Model):
 
     @property
     def mscz_file_location(self) -> str:
-        return f"uploads/{self.id}"
+        return f"{settings.MEDIA_ROOT}/uploads/{self.id}"
 
     @property
     def mscz_file_path(self) -> str:
-        return f"uploads/{self.id}/{self.file_name}"
+        return f"{settings.MEDIA_ROOT}/uploads/{self.id}/{self.file_name}"
 
     @property
     def output_file_location(self) -> str:
-        return f"processed/{self.id}"
+        return f"{settings.MEDIA_ROOT}/processed/{self.id}"
 
     @property
     def output_file_path(self) -> str:
-        return f"processed/{self.id}/{self.file_name}"
+        return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
+    
+    def create(self, **kwargs):
+        super(UploadSession, self).save(**kwargs)
+        #create directories if they don't exist yet
+        os.makedirs(self.mscz_file_location, exist_ok=True)
+        os.makedirs(self.output_file_location, exist_ok=True)
     
     def delete(self, **kwargs):
         #delete files when session is deleted

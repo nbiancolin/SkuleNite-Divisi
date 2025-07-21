@@ -25,12 +25,7 @@ class UploadMsczFile(APIView):
             file_name=uploaded_file.name,
         )
 
-        file_path = os.path.join(settings.MEDIA_ROOT, session.mscz_file_path)
-        directory = os.path.join(settings.MEDIA_ROOT, session.mscz_file_location)
-        os.makedirs(directory, exist_ok=True)
-        out_directory = os.path.join(settings.MEDIA_ROOT, session.output_file_location)
-        os.makedirs(out_directory, exist_ok=True)
-        with open(file_path, "wb+") as f:
+        with open(session.mscz_file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
 
@@ -67,28 +62,26 @@ class FormatMsczFile(APIView):
 
         part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line)
 
-        try:
-            d = export_mscz_to_pdf(session_id)
-            print(d)
-            output_rel_path = d["output"]
-        except Exception as e:
-            return Response(
-                {"error": f"Export failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        res = export_mscz_to_pdf(session_id)
+        if res["status"] == "success":
+            #do success stuff
+            output_path = res["output"]
+        else:
+            #do error stuff
+            return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if not os.path.exists(output_rel_path):
+        if not os.path.exists(output_path):
             return Response(
                 {"error": "Processed file not found."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        file_url = request.build_absolute_uri(f"{settings.MEDIA_ROOT}{output_rel_path}")
+        score_url = request.build_absolute_uri(output_path)
 
         return Response(
             {
                 "message": "File processed successfully.",
-                "score_download_url": file_url,
+                "score_download_url": score_url,
             },
             status=status.HTTP_200_OK,
         )

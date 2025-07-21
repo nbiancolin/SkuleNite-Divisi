@@ -19,8 +19,8 @@ def part_formatter_mscz(
     session = UploadSession.objects.get(id=uuid)
 
     kwargs = {
-        "input_path": os.path.join(settings.MEDIA_ROOT, session.mscz_file_path),
-        "output_path": os.path.join(settings.MEDIA_ROOT, session.output_file_path),
+        "input_path": session.mscz_file_path,
+        "output_path": session.output_file_path,
         "style_name": style,
     }
 
