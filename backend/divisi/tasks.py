@@ -2,6 +2,8 @@ from celery import shared_task
 import subprocess
 import os
 
+from django.conf import settings
+
 from divisi.part_formatter.processing import mscz_main
 from divisi.models import UploadSession
 
@@ -17,8 +19,8 @@ def part_formatter_mscz(
     session = UploadSession.objects.get(id=uuid)
 
     kwargs = {
-        "input_path": session.mscz_file_path,
-        "output_path": session.output_file_path,
+        "input_path": os.path.join(settings.MEDIA_ROOT, session.mscz_file_path),
+        "output_path": os.path.join(settings.MEDIA_ROOT, session.output_file_path),
         "style_name": style,
     }
 

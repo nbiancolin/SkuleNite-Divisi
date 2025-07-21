@@ -498,8 +498,7 @@ def mscz_main(
             **kwargs,
         )
 
-    out = os.path.join(settings.MEDIA_ROOT, output_path)
-    with zipfile.ZipFile(out, "w") as zip_out:
+    with zipfile.ZipFile(output_path, "w") as zip_out:
         for root, _, files in os.walk(work_dir):
             for file in files:
                 file_path = os.path.join(root, file)

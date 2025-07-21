@@ -25,9 +25,11 @@ class UploadMsczFile(APIView):
             file_name=uploaded_file.name,
         )
 
-        os.makedirs(session.mscz_file_location, exist_ok=True)
-        os.makedirs(session.output_file_location, exist_ok=True)
         file_path = os.path.join(settings.MEDIA_ROOT, session.mscz_file_path)
+        directory = os.path.join(settings.MEDIA_ROOT, session.mscz_file_location)
+        os.makedirs(directory, exist_ok=True)
+        out_directory = os.path.join(settings.MEDIA_ROOT, session.output_file_location)
+        os.makedirs(out_directory, exist_ok=True)
         with open(file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
@@ -53,7 +55,7 @@ class FormatMsczFile(APIView):
         session_id = serializer.validated_data.get("session_id")
         num_measure_per_line = serializer.validated_data["measures_per_line"]
 
-        #Classical is just broadway minus
+        #Classical is just broadway minus show text
         if style == "classical":
             style = "broadway"
 
