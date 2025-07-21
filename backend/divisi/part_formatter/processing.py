@@ -5,6 +5,8 @@ import os
 import shutil
 from enum import Enum
 
+from django.conf import settings
+
 NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
@@ -496,7 +498,8 @@ def mscz_main(
             **kwargs,
         )
 
-    with zipfile.ZipFile(output_path, "w") as zip_out:
+    out = os.path.join(settings.MEDIA_ROOT, output_path)
+    with zipfile.ZipFile(out, "w") as zip_out:
         for root, _, files in os.walk(work_dir):
             for file in files:
                 file_path = os.path.join(root, file)

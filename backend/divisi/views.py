@@ -8,6 +8,8 @@ from .tasks import part_formatter_mscz, export_mscz_to_pdf
 from .models import UploadSession, ProcessedFile
 from .serializers import FormatMsczFileSerializer
 
+from django.conf import settings
+
 
 class UploadMsczFile(APIView):
     def post(self, request, *args, **kwargs):
@@ -25,7 +27,7 @@ class UploadMsczFile(APIView):
 
         os.makedirs(session.mscz_file_location, exist_ok=True)
         os.makedirs(session.output_file_location, exist_ok=True)
-        file_path = os.path.join(session.mscz_file_path)
+        file_path = os.path.join(settings.MEDIA_ROOT, session.mscz_file_path)
         with open(file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
@@ -79,7 +81,7 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        file_url = request.build_absolute_uri(f"/{output_rel_path}")
+        file_url = request.build_absolute_uri(f"{settings.MEDIA_ROOT}{output_rel_path}")
 
         return Response(
             {

@@ -24,19 +24,19 @@ class UploadSession(models.Model):
 
     @property
     def mscz_file_location(self) -> str:
-        return f"blob/uploads/{self.id}"
+        return f"uploads/{self.id}"
 
     @property
     def mscz_file_path(self) -> str:
-        return f"blob/uploads/{self.id}/{self.file_name}"
+        return f"uploads/{self.id}/{self.file_name}"
 
     @property
     def output_file_location(self) -> str:
-        return f"blob/processed/{self.id}"
+        return f"processed/{self.id}"
 
     @property
     def output_file_path(self) -> str:
-        return f"blob/processed/{self.id}/{self.file_name}"
+        return f"processed/{self.id}/{self.file_name}"
     
     def delete(self, **kwargs):
         #delete files when session is deleted
