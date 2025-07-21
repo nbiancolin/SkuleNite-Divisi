@@ -13,11 +13,6 @@ function App() {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/admin" Component={() => {
-          // TODO: Remove this for production !!!
-          window.location.href = 'http://localhost:8000/admin';
-          return null
-        }}/>
         <Route path="/app/dashboard" element={<Dashboard />} />
         // app/score page eventually (for viewing scores)
         <Route path="/testing/ensembles" element={<EnsemblesPage />} />

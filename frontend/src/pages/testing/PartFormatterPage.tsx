@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Container,
   FileInput,
@@ -15,13 +15,15 @@ import {
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 export default function PartFormatterPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [measuresPerLine, setMeasuresPerLine] = useState<number>(6)
+  const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +45,7 @@ export default function PartFormatterPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/upload-mscz/", formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload-mscz/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -77,7 +79,7 @@ export default function PartFormatterPage() {
     setDownloadUrl(null);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/format-mscz/", {
+      const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
         session_id: sessionId,
         style: selectedStyle,
         ...(selectedStyle === "broadway" && {
@@ -100,14 +102,14 @@ export default function PartFormatterPage() {
 
   return (
     <Container size="sm" py="xl">
-      <Title align="center" mb="xl">
+      <Title ta="center" mb="xl">
         Upload and Process File
       </Title>
 
       <FileInput
         placeholder="Choose a file"
         label="Select file"
-        icon={<UploadCloud size={18} />}
+        leftSection={<UploadCloud size={18} />}
         value={file}
         onChange={setFile}
         accept="*/*"
@@ -128,10 +130,10 @@ export default function PartFormatterPage() {
       {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
         <Center mt="xl">
           <div>
-            <Text mb="sm" align="center">
+            <Text mb="sm" ta="center">
               Choose a style to format your file:
             </Text>
-            <Group position="center">
+            <Group justify="center">
               <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
               <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
               <Button onClick={() => handleStyleSelect("classical")}>Classical</Button>
@@ -169,7 +171,7 @@ export default function PartFormatterPage() {
       {selectedStyle === "broadway" && (
         <Center mt="xl">
           <div style={{ width: "100%" }}>
-            <Text mb="sm" align="center">
+            <Text mb="sm" ta="center">
               Enter show details:
             </Text>
             <TextInput

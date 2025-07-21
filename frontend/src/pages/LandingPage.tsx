@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 export default function LandingPage() {
   return (
     <Container>
-      <Stack spacing="lg" align="center">
+      <Stack gap="lg" ta="center">
         <Title>Welcome to SkuleNite</Title>
         <Text>This is our awesome landing page!</Text>
         <Button component={Link} to="/dashboard">
