@@ -8,6 +8,8 @@ from .tasks import part_formatter_mscz, export_mscz_to_pdf
 from .models import UploadSession, ProcessedFile
 from .serializers import FormatMsczFileSerializer
 
+from django.conf import settings
+
 
 class UploadMsczFile(APIView):
     def post(self, request, *args, **kwargs):
@@ -23,10 +25,7 @@ class UploadMsczFile(APIView):
             file_name=uploaded_file.name,
         )
 
-        os.makedirs(session.mscz_file_location, exist_ok=True)
-        os.makedirs(session.output_file_location, exist_ok=True)
-        file_path = os.path.join(session.mscz_file_path)
-        with open(file_path, "wb+") as f:
+        with open(session.mscz_file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
 
@@ -51,7 +50,7 @@ class FormatMsczFile(APIView):
         session_id = serializer.validated_data.get("session_id")
         num_measure_per_line = serializer.validated_data["measures_per_line"]
 
-        #Classical is just broadway minus
+        #Classical is just broadway minus show text
         if style == "classical":
             style = "broadway"
 
@@ -63,28 +62,27 @@ class FormatMsczFile(APIView):
 
         part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line)
 
-        try:
-            d = export_mscz_to_pdf(session_id)
-            print(d)
-            output_rel_path = d["output"]
-        except Exception as e:
-            return Response(
-                {"error": f"Export failed: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
+        res = export_mscz_to_pdf(session_id)
+        if res["status"] == "success":
+            #do success stuff
+            output_path = res["output"]
+        else:
+            #do error stuff
+            return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if not os.path.exists(output_rel_path):
+        if not os.path.exists(output_path):
             return Response(
                 {"error": "Processed file not found."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        file_url = request.build_absolute_uri(f"/{output_rel_path}")
+        relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
+        score_url = request.build_absolute_uri(settings.MEDIA_URL + relative_path.replace("\\", "/"))
 
         return Response(
             {
                 "message": "File processed successfully.",
-                "score_download_url": file_url,
+                "score_download_url": score_url,
             },
             status=status.HTTP_200_OK,
         )

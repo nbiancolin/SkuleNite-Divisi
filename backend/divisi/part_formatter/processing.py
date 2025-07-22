@@ -5,12 +5,14 @@ import os
 import shutil
 from enum import Enum
 
+from django.conf import settings
+
 NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
 
-STYLES_DIR = "blob/_styles"
-TEMP_DIR = "blob/temp"  # TODO[SC-52]: move to settings.py
+STYLES_DIR = f"{settings.STATIC_ROOT}/_styles"
+TEMP_DIR = f"{settings.MEDIA_ROOT}/temp" 
 
 
 class Style(Enum):

@@ -2,6 +2,8 @@ from celery import shared_task
 import subprocess
 import os
 
+from django.conf import settings
+
 from divisi.part_formatter.processing import mscz_main
 from divisi.models import UploadSession
 

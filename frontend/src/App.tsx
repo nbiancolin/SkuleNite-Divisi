@@ -6,7 +6,7 @@ import NotFound from './pages/NotFound';
 import EnsemblesPage from './pages/testing/Ensembles';
 import ArrangementsPage from './pages/testing/Arrangements';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
-import PartFormatterPage from './pages/testing/PartFormatterPage'
+import PartFormatterPage from './pages/PartFormatterPage'
 
 function App() {
   return (
@@ -19,7 +19,7 @@ function App() {
         <Route path="/testing/arrangements" element={<ArrangementsPage />} />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />
 
-        <Route path="testing/part-formatter" element={<PartFormatterPage/>} />
+        <Route path="/part-formatter" element={<PartFormatterPage/>} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

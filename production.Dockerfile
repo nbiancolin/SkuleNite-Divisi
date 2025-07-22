@@ -111,6 +111,7 @@ RUN apt-get update && apt-get install -y \
     gettext \
     nginx \
     curl \
+    bash \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \
@@ -154,6 +155,7 @@ WORKDIR /app
 
 # Copy backend
 COPY --from=backend-build /app/backend /app/backend
+COPY --from=backend-build /usr/share/fonts /usr/share/fonts
 
 # Copy MuseScore from backend-build
 COPY --from=backend-build /opt/musescore /opt/musescore
