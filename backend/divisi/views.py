@@ -76,7 +76,8 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        score_url = request.build_absolute_uri(output_path)
+        relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
+        score_url = request.build_absolute_uri(settings.MEDIA_URL + relative_path.replace("\\", "/"))
 
         return Response(
             {
