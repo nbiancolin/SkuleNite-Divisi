@@ -1,14 +1,14 @@
 from .base import *
 
 DEBUG = False
-ALLOWED_HOSTS = ["138.197.171.221", "localhost", "127.0.0.1", "divisi.nbiancolin.ca"] #TODO[SC-70]: Create domain and add it here
+ALLOWED_HOSTS = ["146.190.255.211", "localhost", "127.0.0.1", "divisi.nbiancolin.ca"] #TODO[SC-70]: Create domain and add it here
 
 STATIC_ROOT = BASE_DIR / "static"
 
 MEDIA_URL = "blob/"
 MEDIA_ROOT = BASE_DIR / "blob"
 
-CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SECURE = True
 SECURE_SSL_REDIRECT = False  #TODO Remoe for prod
 
