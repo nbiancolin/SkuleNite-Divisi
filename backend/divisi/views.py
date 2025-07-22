@@ -78,11 +78,13 @@ class FormatMsczFile(APIView):
 
         relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
         score_url = request.build_absolute_uri(settings.MEDIA_URL + relative_path.replace("\\", "/"))
+        mscz_url = score_url[:-3] + "mscz"
 
         return Response(
             {
                 "message": "File processed successfully.",
                 "score_download_url": score_url,
+                "mscz_download_url": mscz_url
             },
             status=status.HTTP_200_OK,
         )

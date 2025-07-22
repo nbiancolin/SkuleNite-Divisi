@@ -25,6 +25,7 @@ export default function PartFormatterPage() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [msczUrl, setMsczUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // New states
@@ -38,6 +39,7 @@ export default function PartFormatterPage() {
     setIsUploading(true);
     setError(null);
     setDownloadUrl(null);
+    setMsczUrl(null);
     setSessionId(null);
     setSelectedStyle(null);
 
@@ -77,6 +79,7 @@ export default function PartFormatterPage() {
     setIsFormatting(true);
     setError(null);
     setDownloadUrl(null);
+    setMsczUrl(null);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
@@ -92,6 +95,7 @@ export default function PartFormatterPage() {
       });
 
       setDownloadUrl(response.data.score_download_url);
+      setMsczUrl(response.data.mscz_download_url);
     } catch (err: any) {
       console.error("Formatting error:", err);
       setError(err.response?.data?.detail || "Formatting failed.");
@@ -223,7 +227,15 @@ export default function PartFormatterPage() {
             rel="noopener noreferrer"
           >
             Click here to download the Score.
-          </a>
+          </a><br/>
+          <a
+            href={msczUrl ?? undefined}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            >
+              Click Here to download the Processed Musescore File.
+            </a>
         </Notification>
       )}
 
