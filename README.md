@@ -26,3 +26,5 @@ Backend:
 
 for dev, will do live reloads so no need to re-run it every time
 (need to figure something out for prod)
+
+> NOTE: If you log into DJANGO ADMIN then try to use the websirte it wont work. Clear cookies for the site then try again

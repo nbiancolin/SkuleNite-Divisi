@@ -5,6 +5,10 @@ set -e
 echo "Running Django migrations..."
 python manage.py migrate --noinput
 
+# Collect static files
+echo "Collecting static files..."
+python manage.py collectstatic --noinput
+
 # Start Gunicorn
 echo "Starting Gunicorn..."
 gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile - &
