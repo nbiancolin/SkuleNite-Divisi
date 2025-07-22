@@ -38,7 +38,7 @@ class UploadSession(models.Model):
     def output_file_path(self) -> str:
         return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
     
-    def create(self, **kwargs):
+    def save(self, **kwargs):
         super(UploadSession, self).save(**kwargs)
         #create directories if they don't exist yet
         os.makedirs(self.mscz_file_location, exist_ok=True)
