@@ -3,7 +3,7 @@ name: Deploy to DigitalOcean
 on:
   push:
     branches:
-      - main  # or whichever branch you want to trigger deploy
+      - main  
 
 jobs:
   deploy:
@@ -24,5 +24,5 @@ jobs:
           cd /app  # folder where your repo lives
           git pull origin main
           docker compose down
-          docker compose up -d --build
+          docker compose -f docker-compose.prod.yml up -d --build
         EOF
