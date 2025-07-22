@@ -155,6 +155,7 @@ WORKDIR /app
 
 # Copy backend
 COPY --from=backend-build /app/backend /app/backend
+COPY --from=backend-build /usr/share/fonts /usr/share/fonts
 
 # Copy MuseScore from backend-build
 COPY --from=backend-build /opt/musescore /opt/musescore
