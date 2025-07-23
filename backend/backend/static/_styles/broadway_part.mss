@@ -476,7 +476,7 @@
     <evenHeaderL>$p</evenHeaderL>
     <evenHeaderC></evenHeaderC>
     <evenHeaderR></evenHeaderR>
-    <oddHeaderL>$:trackNum:. $:workTitle:
+    <oddHeaderL>$:workNumber:. $:workTitle:
 [r. $M] 
 
 </oddHeaderL>
@@ -488,14 +488,13 @@
     <evenFooterL></evenFooterL>
     <evenFooterC>$:copyright:</evenFooterC>
     <evenFooterR></evenFooterR>
-    <oddFooterL>NBMS Music Services
-Nicholas Biancolin
-https://bit.ly/nbms</oddFooterL>
+    <oddFooterL>Divisi App
+http://divisi.nbiancolin.ca/part-formatter</oddFooterL>
     <oddFooterC> 
 $C
  
 </oddFooterC>
-    <oddFooterR>$:albumTitle:
+    <oddFooterR>$:movementTitle:
 v$:versionNum:</oddFooterR>
     <voltaPosAbove x="0" y="-3"/>
     <voltaHook>2.2</voltaHook>
