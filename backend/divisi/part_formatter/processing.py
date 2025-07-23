@@ -137,6 +137,19 @@ def add_part_name(staff: ET.Element, part_name: str = "CONDUCTOR SCORE") -> None
 
 
 # -- LayoutBreak formatting --
+def strip_existing_linebreaks(staff: ET.Element) -> ET.Element:
+    """
+    Go through each measure in score. If measure has a linebreak (or pagebreak), remove it, so that it doesnt interfere
+    """
+    #TODO[SC-XX]: Set this up so that it keeps these, and does the line break formatting around them
+    for elem in staff:
+        if elem.tag == "Measure":
+            lb = elem.find("LayoutBreak")
+            if lb is not None:
+                elem.remove(lb)
+    return staff
+
+
 def prep_mm_rests(staff: ET.Element) -> ET.Element:
     """
     Go through each measure in score.
@@ -536,6 +549,7 @@ def process_mscx(
         staves = score.findall("Staff")
 
         staff = staves[0]  # noqa  -- only add layout breaks to the first staff
+        strip_existing_linebreaks(staff)
         prep_mm_rests(staff)
         add_rehearsal_mark_line_breaks(staff)
         add_double_bar_line_breaks(staff)
@@ -544,7 +558,7 @@ def process_mscx(
         add_page_breaks(staff)
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
-            add_broadway_header(staff, kwargs["workNumber"], show_title)
+            add_broadway_header(staff, show_number, show_title)
         add_part_name(staff)
 
         if standalone:
