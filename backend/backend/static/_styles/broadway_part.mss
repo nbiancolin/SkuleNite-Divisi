@@ -488,7 +488,7 @@
     <evenFooterL></evenFooterL>
     <evenFooterC>$:copyright:</evenFooterC>
     <evenFooterR></evenFooterR>
-    <oddFooterL>Divisi App
+    <oddFooterL>Made with Divisi App
 http://divisi.nbiancolin.ca/part-formatter</oddFooterL>
     <oddFooterC> 
 $C
