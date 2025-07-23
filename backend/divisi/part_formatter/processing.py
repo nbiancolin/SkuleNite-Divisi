@@ -240,6 +240,7 @@ def add_double_bar_line_breaks(staff: ET.Element) -> ET.Element:
 
 
 # TODO[SC-37]: make it acc work
+# TODO: I think this is broken, fix
 def balance_mm_rest_line_breaks(staff: ET.Element) -> ET.Element:
     """
     Scenario: We have:
@@ -277,7 +278,7 @@ def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Ele
 
         if (
             elem.find("voice") is not None
-            and elem.find("voice").find("RehearsalMark") is not None
+            and (elem.find("voice").find("RehearsalMark") is not None or elem.find("voice").find("BarLine") is not None)
         ):
             i = 0
 
@@ -395,6 +396,10 @@ def final_pass_through(staff: ET.Element) -> ET.Element:
     Adjusts poorly balanced lines. If a line has only 2 measures and the previous has 4+:
     - If prev has 4: remove the break before it.
     - If prev has >4: remove the break and move it to the midpoint.
+
+    TODO:
+    When balancing, if line break to be removed is on a measure with Rehearsal Mark or Double Bar -- do not remove it, and instead remove the current break
+     '' as above, but if theres a slur going over the bar, remove current line brek
     """
     lines = []
     current_line = []
