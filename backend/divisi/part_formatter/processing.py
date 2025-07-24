@@ -93,6 +93,11 @@ def _add_line_break_to_measure_opt(measure: ET.Element) -> None:
         return
     _add_line_break_to_measure(measure)
 
+def _remove_line_break_from_measure(measure: ET.Element) -> None:
+    lb = measure.find("LayoutBreak")
+    if lb is not None:
+        measure.remove(lb)
+
 
 def _add_page_break_to_measure(measure: ET.Element) -> None:
     # if line break already there, replace with a page break
@@ -407,6 +412,93 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
                 first_index = second_index = -1
     return staff
 
+def new_final_pass_through(staff: ET.Element) -> ET.Element:
+    """
+    Adjusts poorly balanced lines. 
+    Use 3 pointers, one points to the start of the first line (initial), 
+    first points to the end of the "first" line, and 
+    "second" points to the end of the second line
+
+    if "first" has a double bar on it, or a rehearsal mark on the bar after it, we are skipping this iteration
+    -> first is given the value of second, and continue looking until you find second
+
+    if len from initial to first (line1_len) is >=4, and len from (first +1) to second (line2_len) is <= 2,
+    - If prev has 4: remove the break before it.
+    - If prev has >4: remove the break and move it to the midpoint.
+
+    TODO: (future Ticket) as above, but if theres a slur going over the bar, remove current line brek
+
+    len = second - first + 1
+    """
+
+    print("louygugkutyfgkytgfkytgfkjyt")
+
+    initial = None
+    first = None
+    second = None
+
+    for i in range(len(staff)):
+        elem = staff[i]
+        if elem.tag != "Measure":
+            continue
+
+        if initial == None:
+            initial = i
+
+        if any(child.tag == "BarLine" for child in elem) and first is not None:
+            #reset the count, set initial to the bar after
+            initial = i +1
+            first = None
+            second = None
+            continue
+
+        if any(child.tag == "RehearsalMark" for child in elem):
+            #reset the count, set initial for current bar
+            initial = i
+            first = None
+            second = None
+            continue
+        
+
+        if second is None:
+            #continue looking until we find a line break
+            if any(child.tag == "LayoutBreak" for child in elem):
+                if first is None:
+                    first = i
+                    continue
+                else:
+                    second = i
+                    #dont contiue! go to the finally
+            else:
+                continue
+        
+        #first and second have been set correctly, 
+        # time to to the balancing
+        line1_len = first - initial +1
+        line2_len = second - first +1
+
+        print(f"Line 1: {line1_len}, Line 2 {line2_len}")
+
+        if line1_len >= 4 and line2_len <= 2:
+            print("Lines being balanced")
+            _remove_line_break_from_measure(staff[first])
+            if line1_len > 4:
+                #Re-insert line break to midpoint of the two
+                midpoint = (initial + second) // 2
+                _add_line_break_to_measure_opt(staff[midpoint])
+
+        initial = i+1
+        first = None
+        second = None
+
+    return staff
+
+
+
+
+
+
+
 
 def final_pass_through(staff: ET.Element) -> ET.Element:
     """
@@ -459,6 +551,7 @@ def final_pass_through(staff: ET.Element) -> ET.Element:
 
 
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
+#TODO: Allow users to set page and staff spacing from the website
 def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
     """
     Depending on what style enum is selected, load either the jazz or broadway style file.
@@ -580,7 +673,7 @@ def process_mscx(
         add_rehearsal_mark_line_breaks(staff)
         add_double_bar_line_breaks(staff)
         add_regular_line_breaks(staff, measures_per_line)
-        final_pass_through(staff)
+        new_final_pass_through(staff)
         add_page_breaks(staff)          #TODO: Only add page breaks if not working on conductor score
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
