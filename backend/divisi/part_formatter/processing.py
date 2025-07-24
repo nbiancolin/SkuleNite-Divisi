@@ -278,7 +278,13 @@ def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Ele
 
         if (
             elem.find("voice") is not None
-            and (elem.find("voice").find("RehearsalMark") is not None or elem.find("voice").find("BarLine") is not None)
+            and elem.find("voice").find("RehearsalMark") is not None
+        ):
+            i = 1
+
+        if (
+            elem.find("voice") is not None
+            and elem.find("voice").find("BarLine") is not None
         ):
             i = 0
 
@@ -290,7 +296,7 @@ def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Ele
                 )  # Manual testing indicates otherwise ...
             i = 0
         else:
-            if i == (measures_per_line - 1) and elem.find("LayoutBreak") is None:
+            if i == (measures_per_line) and elem.find("LayoutBreak") is None:
                 print("Adding Regular Line Break")
                 _add_line_break_to_measure(elem)
                 i = 0
@@ -305,6 +311,9 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
     Add page breaks to staff to improve vertical readability.
     - Aim for 7–9 lines per page: 7–8 for first page, 8–9 for others.
     - Favor breaks before multimeasure rests or rehearsal marks.
+
+    TODO: If chart is a piano chart (or something with miltiple staves), numbers should be smaller
+    Need to also make it so that it hides empty staves
     """
 
     def is_line_break(measure):
@@ -320,6 +329,14 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
             and voice.find("RehearsalMark") is not None
             and measure.attrib.get("_mm") is not None
         )
+    
+    def has_double_bar(measure):
+        voice = measure.find("voice")
+        return (
+            voice is not None
+            and voice.find("BarLine") is not None
+            and measure.attrib.get("_mm") is not None
+        )
 
     def choose_best_break(
         first_elem, second_elem, first_index, second_index, lines_on_page
@@ -328,30 +345,30 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
         next_first = staff[first_index + 1] if first_index + 1 < len(staff) else None
         next_second = staff[second_index + 1] if second_index + 1 < len(staff) else None
 
-        # Prefer break before a rehearsal mark
-        if next_second is not None and has_rehearsal_mark(next_second):
-            _add_page_break_to_measure(second_elem)
-            print("1")
-            return 0
-        elif next_first is not None and has_rehearsal_mark(next_first):
-            _add_page_break_to_measure(second_elem)
-            print("2")
-            return 0
-        # Prefer multimeasure rest (BarLine is a proxy for that)
-        elif first_elem.find("BarLine") is not None:
-            _add_page_break_to_measure(first_elem)
-            print("3")
+        first_option = (first_elem, next_first)
+        second_option = (second_elem, next_second)
+
+        #Check if line break would put a MM rest on new page (best case)
+        if first_option[1] is not None and first_option[1].attrib.get("_mm") is not None:
+            _add_page_break_to_measure(first_option[0])
             return 1
-        elif second_elem.find("BarLine") is not None:
-            _add_page_break_to_measure(second_elem)
-            print("4")
+        elif second_option[1] is not None and second_option[1].attrib.get("_mm") is not None:
+            _add_page_break_to_measure(second_option[0])
             return 0
+
+        #then, prefer if we can put a rehearsal mark on a new page
+        if first_option[1] is not None and (has_rehearsal_mark(first_option[1]) or has_double_bar(first_option[0])):
+            _add_page_break_to_measure(first_option[0])
+            return 1
+        elif second_option[1] is not None and (has_rehearsal_mark(second_option[1]) or has_double_bar(second_option[0])):
+            _add_page_break_to_measure(second_option[0])
+            return 0
+        
         else:
-            _add_page_break_to_measure(first_elem)
-            print("3")
+            print("Oops, couldn't find a good spot, adding a page break to first one")
+            _add_page_break_to_measure(first_option[0])
             return 1
 
-        print("added page break")
 
     num_line_breaks_per_page = 0
     first_page = True
@@ -400,6 +417,8 @@ def final_pass_through(staff: ET.Element) -> ET.Element:
     TODO:
     When balancing, if line break to be removed is on a measure with Rehearsal Mark or Double Bar -- do not remove it, and instead remove the current break
      '' as above, but if theres a slur going over the bar, remove current line brek
+    TODO:
+    This breaks after like half the score. Maybe re-write it?
     """
     lines = []
     current_line = []
@@ -537,6 +556,8 @@ def process_mscx(
             raise ValueError("No <Score> tag found in the XML.")
 
         # set score properties
+        if kwargs.get("versionNum") is None:
+            kwargs["versionNum"] = "1.0.0"
 
         if kwargs["arranger"] == "COMPOSER":
             for metaTag in score.findall("metaTag"):
@@ -560,7 +581,7 @@ def process_mscx(
         add_double_bar_line_breaks(staff)
         add_regular_line_breaks(staff, measures_per_line)
         final_pass_through(staff)
-        add_page_breaks(staff)
+        add_page_breaks(staff)          #TODO: Only add page breaks if not working on conductor score
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
             add_broadway_header(staff, show_number, show_title)
