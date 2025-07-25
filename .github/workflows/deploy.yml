@@ -21,10 +21,10 @@ jobs:
     - name: Deploy to Droplet
       run: |
         ssh -o StrictHostKeyChecking=no ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }} << 'EOF'
-          cd /app  # folder where your repo lives
-          git pull origin main
-          docker compose down
+          set -e
+          cd /app
+          git fetch origin main
+          git reset --hard origin/main
+          docker compose -f docker-compose.prod.yml pull
           docker compose -f docker-compose.prod.yml up -d --build
-          docker compose down
-          docker compose -f docker-compose.prod.yml up 
         EOF
