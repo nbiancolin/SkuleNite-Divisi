@@ -8,8 +8,11 @@ from .tasks import part_formatter_mscz, export_mscz_to_pdf
 from .models import UploadSession, ProcessedFile
 from .serializers import FormatMsczFileSerializer
 
+import logging
+
 from django.conf import settings
 
+logger = logging.getLogger("PartFormatter")
 
 class UploadMsczFile(APIView):
     def post(self, request, *args, **kwargs):
@@ -60,6 +63,8 @@ class FormatMsczFile(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        logger.warning("In MSCZ Api View")
+        
         part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line)
 
         res = export_mscz_to_pdf(session_id)

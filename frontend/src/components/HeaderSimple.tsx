@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Burger, Container, Group } from '@mantine/core';
+import { Burger, Container, Group, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { MantineLogo } from '@mantinex/mantine-logo';
 import classes from './HeaderSimple.module.css';
 
 const links = [
@@ -12,7 +11,7 @@ const links = [
 
 export function HeaderSimple() {
   const [opened, { toggle }] = useDisclosure(false);
-  const [active, setActive] = useState(links[0].link);
+  const [active, setActive] = useState(() => window.location.pathname);
 
   const items = links.map((link) => (
     <a
@@ -20,8 +19,7 @@ export function HeaderSimple() {
       href={link.link}
       className={classes.link}
       data-active={active === link.link || undefined}
-      onClick={(event) => {
-        event.preventDefault();
+      onClick={() => {
         setActive(link.link);
       }}
     >
@@ -32,7 +30,7 @@ export function HeaderSimple() {
   return (
     <header className={classes.header}>
       <Container size="md" className={classes.inner}>
-        <MantineLogo size={28} />
+        <Title order={2}>Divisi App</Title>
         <Group gap={5} visibleFrom="xs">
           {items}
         </Group>

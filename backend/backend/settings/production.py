@@ -1,7 +1,7 @@
 from .base import *
 
 DEBUG = False
-ALLOWED_HOSTS = ["146.190.255.211", "localhost", "127.0.0.1", "divisi.nbiancolin.ca"] #TODO[SC-70]: Create domain and add it here
+ALLOWED_HOSTS = ["146.190.255.211", "localhost", "127.0.0.1", "divisi.nbiancolin.ca"]
 
 STATIC_ROOT = BASE_DIR / "static"
 
@@ -9,7 +9,7 @@ MEDIA_URL = "blob/"
 MEDIA_ROOT = BASE_DIR / "blob"
 
 CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = False  #TODO: Change these once we get SSL up and running
+SESSION_COOKIE_DOMAIN = 'divisi.nbiancolin.ca'
 SECURE_SSL_REDIRECT = False  #TODO Remoe for prod
 
 LOGGING = {
