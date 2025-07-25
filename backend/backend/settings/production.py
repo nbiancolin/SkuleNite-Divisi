@@ -9,9 +9,7 @@ MEDIA_URL = "blob/"
 MEDIA_ROOT = BASE_DIR / "blob"
 
 CSRF_COOKIE_SECURE = False
-SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_DOMAIN = 'divisi.nbiancolin.ca'
-
 SECURE_SSL_REDIRECT = False  #TODO Remoe for prod
 
 LOGGING = {

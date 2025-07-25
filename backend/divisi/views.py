@@ -71,6 +71,9 @@ class FormatMsczFile(APIView):
         if res["status"] == "success":
             #do success stuff
             output_path = res["output"]
+            session = UploadSession.objects.get(id=session_id)
+            session.completed = True
+            session.save()
         else:
             #do error stuff
             return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
