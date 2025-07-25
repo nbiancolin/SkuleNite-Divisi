@@ -107,9 +107,10 @@ export default function PartFormatterPage() {
   return (
     <Container size="sm" py="xl">
       <Title ta="center" mb="xl">
-        Upload and Process File
+        Format a Musescore File!
       </Title>
-
+      <Text>Simply upload your .mscz file, and select your style options, and your Musescore File will be formatted!</Text>
+      <Text>If you would like part formatted as well, make sure to "open all" the parts in the Musescore File first!</Text>
       <FileInput
         placeholder="Choose a file"
         label="Select file"
@@ -129,7 +130,7 @@ export default function PartFormatterPage() {
         Upload
       </Button>
 
-      Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded
+      <Text>Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded</Text>
 
       {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
         <Center mt="xl">

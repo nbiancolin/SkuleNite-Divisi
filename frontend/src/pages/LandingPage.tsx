@@ -6,10 +6,10 @@ export default function LandingPage() {
   return (
     <Container>
       <Stack gap="lg" ta="center">
-        <Title>Welcome to SkuleNite</Title>
-        <Text>This is our awesome landing page!</Text>
-        <Button component={Link} to="/dashboard">
-          Go to Dashboard
+        <Title>Welcome to Divisi App!</Title>
+        <Text>An Ensemble Score Management Site</Text>
+        <Button component={Link} to="/part-formatter">
+          Try our Part Formatter!
         </Button>
       </Stack>
     </Container>
