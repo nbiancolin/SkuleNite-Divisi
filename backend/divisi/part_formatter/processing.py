@@ -4,15 +4,18 @@ import zipfile
 import os
 import shutil
 from enum import Enum
-
+import logging
 from django.conf import settings
+
+logger = logging.getLogger("MsczFormatting")
+
 
 NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
 
 STYLES_DIR = f"{settings.STATIC_ROOT}/_styles"
-TEMP_DIR = f"{settings.MEDIA_ROOT}/temp" 
+TEMP_DIR = f"{settings.MEDIA_ROOT}/temp"
 
 
 class Style(Enum):
@@ -93,6 +96,7 @@ def _add_line_break_to_measure_opt(measure: ET.Element) -> None:
         return
     _add_line_break_to_measure(measure)
 
+
 def _remove_line_break_from_measure(measure: ET.Element) -> None:
     lb = measure.find("LayoutBreak")
     if lb is not None:
@@ -146,12 +150,10 @@ def strip_existing_linebreaks(staff: ET.Element) -> ET.Element:
     """
     Go through each measure in score. If measure has a linebreak (or pagebreak), remove it, so that it doesnt interfere
     """
-    #TODO[SC-XX]: Set this up so that it keeps these, and does the line break formatting around them
+    # TODO[SC-XX]: Set this up so that it keeps these, and does the line break formatting around them
     for elem in staff:
         if elem.tag == "Measure":
-            lb = elem.find("LayoutBreak")
-            if lb is not None:
-                elem.remove(lb)
+            _remove_line_break_from_measure(elem)
     return staff
 
 
@@ -334,7 +336,7 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
             and voice.find("RehearsalMark") is not None
             and measure.attrib.get("_mm") is not None
         )
-    
+
     def has_double_bar(measure):
         voice = measure.find("voice")
         return (
@@ -353,27 +355,36 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
         first_option = (first_elem, next_first)
         second_option = (second_elem, next_second)
 
-        #Check if line break would put a MM rest on new page (best case)
-        if first_option[1] is not None and first_option[1].attrib.get("_mm") is not None:
+        # Check if line break would put a MM rest on new page (best case)
+        if (
+            first_option[1] is not None
+            and first_option[1].attrib.get("_mm") is not None
+        ):
             _add_page_break_to_measure(first_option[0])
             return 1
-        elif second_option[1] is not None and second_option[1].attrib.get("_mm") is not None:
+        elif (
+            second_option[1] is not None
+            and second_option[1].attrib.get("_mm") is not None
+        ):
             _add_page_break_to_measure(second_option[0])
             return 0
 
-        #then, prefer if we can put a rehearsal mark on a new page
-        if first_option[1] is not None and (has_rehearsal_mark(first_option[1]) or has_double_bar(first_option[0])):
+        # then, prefer if we can put a rehearsal mark on a new page
+        if first_option[1] is not None and (
+            has_rehearsal_mark(first_option[1]) or has_double_bar(first_option[0])
+        ):
             _add_page_break_to_measure(first_option[0])
             return 1
-        elif second_option[1] is not None and (has_rehearsal_mark(second_option[1]) or has_double_bar(second_option[0])):
+        elif second_option[1] is not None and (
+            has_rehearsal_mark(second_option[1]) or has_double_bar(second_option[0])
+        ):
             _add_page_break_to_measure(second_option[0])
             return 0
-        
+
         else:
             print("Oops, couldn't find a good spot, adding a page break to first one")
             _add_page_break_to_measure(first_option[0])
             return 1
-
 
     num_line_breaks_per_page = 0
     first_page = True
@@ -412,11 +423,12 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
                 first_index = second_index = -1
     return staff
 
+
 def new_final_pass_through(staff: ET.Element) -> ET.Element:
     """
-    Adjusts poorly balanced lines. 
-    Use 3 pointers, one points to the start of the first line (initial), 
-    first points to the end of the "first" line, and 
+    Adjusts poorly balanced lines.
+    Use 3 pointers, one points to the start of the first line (initial),
+    first points to the end of the "first" line, and
     "second" points to the end of the second line
 
     if "first" has a double bar on it, or a rehearsal mark on the bar after it, we are skipping this iteration
@@ -431,127 +443,110 @@ def new_final_pass_through(staff: ET.Element) -> ET.Element:
     len = second - first + 1
     """
 
-    print("louygugkutyfgkytgfkytgfkjyt")
+    logger.info("[FinalPass] Starting new_final_pass_through")
 
-    initial = None
-    first = None
-    second = None
+    def is_mm(measure: ET.Element) -> bool:
+        return measure.attrib.get("_mm") is not None
 
-    for i in range(len(staff)):
+    def has_break(measure: ET.Element) -> bool:
+        return measure.find(".//LayoutBreak") is not None
+
+    def has_double_bar(measure: ET.Element) -> bool:
+        return measure.find(".//BarLine") is not None
+
+    def has_rehearsal_mark(measure: ET.Element) -> bool:
+        return measure.find(".//RehearsalMark") is not None
+
+    initial, first, second = None, None, None
+    n = len(staff)
+    i = 0
+
+    while i < n:
         elem = staff[i]
         if elem.tag != "Measure":
+            i += 1
             continue
 
-        if initial == None:
+        # Set initial if not already set
+        if initial is None:
             initial = i
+            logger.info(f"[FinalPass] Initial set to {initial}")
 
-        if any(child.tag == "BarLine" for child in elem) and first is not None:
-            #reset the count, set initial to the bar after
-            initial = i +1
-            first = None
-            second = None
-            continue
+        # Searching for first and second line breaks
+        if has_break(elem):
+            if first is None:
+                first = i
+                logger.info(f"[FinalPass] First break found at {first}")
+            elif second is None:
+                second = i
+                logger.info(f"[FinalPass] Second break found at {second}")
 
-        if any(child.tag == "RehearsalMark" for child in elem):
-            #reset the count, set initial for current bar
-            initial = i
-            first = None
-            second = None
-            continue
-        
+        # We have first and second, now analyze the two lines
+        if first is not None and second is not None:
+            line1_measures = [
+                m
+                for m in staff[initial : first + 1]
+                if m.tag == "Measure" and not is_mm(m)
+            ]
+            line2_measures = [
+                m
+                for m in staff[first + 1 : second + 1]
+                if m.tag == "Measure" and not is_mm(m)
+            ]
+            line1_len = len(line1_measures)
+            line2_len = len(line2_measures)
 
-        if second is None:
-            #continue looking until we find a line break
-            if any(child.tag == "LayoutBreak" for child in elem):
-                if first is None:
-                    first = i
-                    continue
-                else:
-                    second = i
-                    #dont contiue! go to the finally
-            else:
+            logger.info(
+                f"[FinalPass] Line 1 length={line1_len}, Line 2 length={line2_len}, initial={initial}, first={first}, second={second}"
+            )
+
+            if has_double_bar(staff[first]) or has_rehearsal_mark(staff[first +1]):
+                #continue
+                logger.warning(f"[FinalPass] first found bar ({first}) has a special marking, continue onwards")
+                initial = first
+                first = second
+                second = None
+                i += 1
                 continue
-        
-        #first and second have been set correctly, 
-        # time to to the balancing
-        line1_len = first - initial +1
-        line2_len = second - first +1
 
-        print(f"Line 1: {line1_len}, Line 2 {line2_len}")
+            if line1_len >= 4 and line2_len <= 2:
+                logger.warning(
+                    f"[FinalPass] Balancing lines at measures {first} and {second}"
+                )
+                _remove_line_break_from_measure(staff[first])
 
-        if line1_len >= 4 and line2_len <= 2:
-            print("Lines being balanced")
-            _remove_line_break_from_measure(staff[first])
-            if line1_len > 4:
-                #Re-insert line break to midpoint of the two
-                midpoint = (initial + second) // 2
-                _add_line_break_to_measure_opt(staff[midpoint])
-
-        initial = i+1
-        first = None
-        second = None
-
-    return staff
-
-
-
-
-
-
-
-
-def final_pass_through(staff: ET.Element) -> ET.Element:
-    """
-    Adjusts poorly balanced lines. If a line has only 2 measures and the previous has 4+:
-    - If prev has 4: remove the break before it.
-    - If prev has >4: remove the break and move it to the midpoint.
-
-    TODO:
-    When balancing, if line break to be removed is on a measure with Rehearsal Mark or Double Bar -- do not remove it, and instead remove the current break
-     '' as above, but if theres a slur going over the bar, remove current line brek
-    TODO:
-    This breaks after like half the score. Maybe re-write it?
-    """
-    lines = []
-    current_line = []
-
-    for elem in staff:
-        if elem.tag != "Measure":
-            continue
-        current_line.append(elem)
-        if any(child.tag == "LayoutBreak" for child in elem):
-            lines.append(current_line)
-            current_line = []
-    if current_line:
-        lines.append(current_line)
-
-    for idx in range(1, len(lines)):
-        this_line = lines[idx]
-        prev_line = lines[idx - 1]
-        if len(this_line) <= 2:
-            if len(prev_line) == 4:
-                for elem in reversed(prev_line):
-                    lb = next(
-                        (child for child in elem if child.tag == "LayoutBreak"), None
+                if line1_len > 4:
+                    # Reinsert line break roughly in the middle of the combined line
+                    all_measures = [
+                        m
+                        for m in staff[initial : second + 1]
+                        if m.tag == "Measure" and not is_mm(m)
+                    ]
+                    midpoint_index = (len(all_measures) -1) // 2
+                    midpoint_measure = all_measures[midpoint_index]
+                    _add_line_break_to_measure_opt(midpoint_measure)
+                    logger.info(
+                        f"[FinalPass] Moved break to midpoint (measure index {midpoint_measure})"
                     )
-                    if lb is not None:
-                        elem.remove(lb)
-                        break
-            elif len(prev_line) > 4:
-                for elem in reversed(prev_line):
-                    lb = next(
-                        (child for child in elem if child.tag == "LayoutBreak"), None
-                    )
-                    if lb is not None:
-                        elem.remove(lb)
-                        break
-                split_index = len(prev_line) // 2
-                _add_line_break_to_measure(prev_line[split_index])
+
+                # Reset pointers after balancing
+                i = second + 1
+                initial, first, second = None, None, None
+                continue
+            else:
+                logger.info("[FinalPass] No balancing needed, moving to next pair")
+                initial = first
+                first = second
+                second = None
+
+        i += 1
+
+    logger.info("[FinalPass] Completed new_final_pass_through")
     return staff
 
 
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
-#TODO: Allow users to set page and staff spacing from the website
+# TODO: Allow users to set page and staff spacing from the website
 def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
     """
     Depending on what style enum is selected, load either the jazz or broadway style file.
@@ -674,7 +669,9 @@ def process_mscx(
         add_double_bar_line_breaks(staff)
         add_regular_line_breaks(staff, measures_per_line)
         new_final_pass_through(staff)
-        add_page_breaks(staff)          #TODO: Only add page breaks if not working on conductor score
+        # add_page_breaks(
+        #     staff
+        # )  # TODO: Only add page breaks if not working on conductor score
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
             add_broadway_header(staff, show_number, show_title)
