@@ -11,7 +11,7 @@ const links = [
 
 export function HeaderSimple() {
   const [opened, { toggle }] = useDisclosure(false);
-  const [active, setActive] = useState(false);   //TODO: Have this be set by default to the page that the user is on
+  const [active, setActive] = useState(() => window.location.pathname);
 
   const items = links.map((link) => (
     <a
@@ -19,7 +19,7 @@ export function HeaderSimple() {
       href={link.link}
       className={classes.link}
       data-active={active === link.link || undefined}
-      onClick={(event) => {
+      onClick={() => {
         setActive(link.link);
       }}
     >
