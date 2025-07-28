@@ -15,6 +15,7 @@ def part_formatter_mscz(
     show_title: str,
     show_number: str,
     num_measure_per_line: int,
+    version_num: int,
 ) -> None:
     session = UploadSession.objects.get(id=uuid)
 
@@ -22,6 +23,7 @@ def part_formatter_mscz(
         "input_path": session.mscz_file_path,
         "output_path": session.output_file_path,
         "style_name": style,
+        "versionNum": version_num if version_num is not None else "1.0.0" #TODO[SC-83]: Move to settings.py
     }
 
     arranger = None
