@@ -24,6 +24,7 @@ export default function PartFormatterPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
+  const [versionNum, setVersionNum] = useState<string>("1.0.0")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [msczUrl, setMsczUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export default function PartFormatterPage() {
         }),
         ...(showAdvanced && {
           measures_per_line: measuresPerLine,
+          version_num: versionNum
         })
       });
 
@@ -166,6 +168,13 @@ export default function PartFormatterPage() {
               label="Measures per Line"
               value={measuresPerLine}
               onChange={(e) => setMeasuresPerLine(e.currentTarget.value)}
+              type="number"
+              mt="md"
+            />
+            <TextInput
+              label="Version Number (1.0.0, 2.2.3, etc)"
+              value={versionNum}
+              onChange={(e) => setVersionNum(e.currentTarget.value)}
               type="number"
               mt="md"
             />
