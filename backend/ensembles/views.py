@@ -7,6 +7,9 @@ from rest_framework import status
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
+from logging import getLogger
+
+logger = getLogger("EnsembleViews")
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -25,13 +28,13 @@ class ArrangementViewSet(viewsets.ModelViewSet):
             try:
                 queryset = queryset.filter(id=int(arrangement_id))
             except ValueError:
-                print("Invalid arrangement ID:", ensemble_id)
+                logger.warning("Invalid arrangement ID:", ensemble_id)
 
         if ensemble_id:
             try:
                 queryset = queryset.filter(ensemble_id=int(ensemble_id))
             except ValueError:
-                print("Invalid ensemble ID:", ensemble_id)
+                logger.warning("Invalid ensemble ID:", ensemble_id)
 
         return queryset
 
@@ -45,13 +48,11 @@ class UploadArrangementPartsView(APIView):
     parser_classes = [MultiPartParser]
 
     def post(self, request):
-        print("HERE123")
         serializer = UploadPartsSerializer(data=request.data)
         if serializer.is_valid():
             parts = serializer.save()
             return Response({'message': f'{len(parts)} parts uploaded'}, status=status.HTTP_201_CREATED)
         else:
-            print("PROBLEM")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
