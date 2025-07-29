@@ -30,10 +30,10 @@ def part_formatter_mscz(
 
     if arranger is not None:
         kwargs["arranger"] = arranger
+    else:
+        kwargs["arranger"] = "COMPOSER"
     if composer is not None:
         kwargs["compopser"] = composer
-        if arranger is None:
-            kwargs["arranger"] = composer
 
     if show_title is not None:
         kwargs["movementTitle"] = show_title

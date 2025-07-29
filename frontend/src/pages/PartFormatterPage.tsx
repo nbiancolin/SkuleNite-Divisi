@@ -23,8 +23,6 @@ export default function PartFormatterPage() {
   const [isFormatting, setIsFormatting] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
-  const [versionNum, setVersionNum] = useState<string>("1.0.0")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [msczUrl, setMsczUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +31,10 @@ export default function PartFormatterPage() {
   const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical" | null>(null);
   const [showTitle, setShowTitle] = useState("");
   const [showNumber, setShowNumber] = useState("");
+  const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
+  const [versionNum, setVersionNum] = useState<string>("1.0.0")
+  const [composer, setComposer] = useState<string | null>(null)
+  const [arranger, setArranger] = useState<string | null>(null)
 
   const handleUpload = async () => {
     if (!file) return;
@@ -86,6 +88,8 @@ export default function PartFormatterPage() {
       const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
         session_id: sessionId,
         style: selectedStyle,
+        composer: composer,
+        arranger: arranger,
         ...(selectedStyle === "broadway" && {
           show_title: showTitle,
           show_number: showNumber,
@@ -202,6 +206,19 @@ export default function PartFormatterPage() {
               mb="md"
               required
             />
+            <TextInput
+              label="Composer"
+              value={composer}
+              onChange={(e) => setComposer(e.currentTarget.value)}
+              mb="md"
+            />
+            <TextInput
+              label="Arranger"
+              value={arranger}
+              onChange={(e) => setArranger(e.currentTarget.value)}
+              mb="md"
+            />
+            {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
             <Button onClick={handleFormatRequest} fullWidth>
               Format Musescore File
             </Button>
@@ -211,7 +228,22 @@ export default function PartFormatterPage() {
 
       {(selectedStyle === "jazz" || selectedStyle === "classical") && (
         <Center mt="xl">
-          <Button onClick={handleFormatRequest}>Format Musescore File</Button>
+          <div style={{ width: "100%" }}>
+            <TextInput
+              label="Composer"
+              value={composer}
+              onChange={(e) => setComposer(e.currentTarget.value)}
+              mb="md"
+            />
+            <TextInput
+              label="Arranger"
+              value={arranger}
+              onChange={(e) => setArranger(e.currentTarget.value)}
+              mb="md"
+            />
+            {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
+            <Button onClick={handleFormatRequest}>Format Musescore File</Button>
+          </div>
         </Center>
       )}
 
