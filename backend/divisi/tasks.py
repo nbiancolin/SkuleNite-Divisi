@@ -12,10 +12,12 @@ from divisi.models import UploadSession
 def part_formatter_mscz(
     uuid: int,
     style: str,
-    show_title: str,
-    show_number: str,
-    num_measure_per_line: int,
-    version_num: int,
+    show_title: str | None,
+    show_number: str | None,
+    num_measure_per_line: int | None,
+    version_num: int | None,
+    composer: str | None,
+    arranger: str | None,
 ) -> None:
     session = UploadSession.objects.get(id=uuid)
 
@@ -26,12 +28,12 @@ def part_formatter_mscz(
         "versionNum": version_num if version_num is not None else "1.0.0" #TODO[SC-83]: Move to settings.py
     }
 
-    arranger = None
-
     if arranger is not None:
         kwargs["arranger"] = arranger
     else:
         kwargs["arranger"] = "COMPOSER"
+    if composer is not None:
+        kwargs["compopser"] = composer
 
     if show_title is not None:
         kwargs["movementTitle"] = show_title

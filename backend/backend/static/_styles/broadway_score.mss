@@ -480,7 +480,7 @@
 [r. $M] 
 </oddHeaderL>
     <oddHeaderC>- $p -</oddHeaderC>
-    <oddHeaderR>$:partName:</oddHeaderR>
+    <oddHeaderR>Conductor</oddHeaderR>
     <showFooter>1</showFooter>
     <footerFirstPage>1</footerFirstPage>
     <footerOddEven>0</footerOddEven>

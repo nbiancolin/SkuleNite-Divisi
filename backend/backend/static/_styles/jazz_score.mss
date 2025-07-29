@@ -478,7 +478,7 @@
     <evenHeaderR></evenHeaderR>
     <oddHeaderL></oddHeaderL>
     <oddHeaderC>- $p -</oddHeaderC>
-    <oddHeaderR>$:partName: - $:workTitle:</oddHeaderR>
+    <oddHeaderR>Conductor - $:workTitle:</oddHeaderR>
     <showFooter>1</showFooter>
     <footerFirstPage>1</footerFirstPage>
     <footerOddEven>0</footerOddEven>

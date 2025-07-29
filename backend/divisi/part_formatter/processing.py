@@ -618,8 +618,6 @@ def mscz_main(
             mscx_path,
             selected_style,
             measures_per_line=num_measure_per_line,
-            # workNumber=show_number,
-            # movementTitle=show_title,
             **kwargs,
         )
 

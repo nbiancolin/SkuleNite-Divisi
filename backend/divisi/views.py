@@ -52,6 +52,8 @@ class FormatMsczFile(APIView):
         show_number = serializer.validated_data["show_number"]
         session_id = serializer.validated_data.get("session_id")
         num_measure_per_line = serializer.validated_data["measures_per_line"]
+        composer = serializer.validated_data["composer"]
+        arranger = serializer.validated_data["arranger"]
         version_num = serializer.validated_data["version_num"]
 
         #Classical is just broadway minus show text
@@ -63,10 +65,9 @@ class FormatMsczFile(APIView):
                 {"error": "Missing session_id"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         logger.warning("In MSCZ Api View")
         
-        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line, version_num)
+        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line, version_num, composer, arranger)
 
         res = export_mscz_to_pdf(session_id)
         if res["status"] == "success":

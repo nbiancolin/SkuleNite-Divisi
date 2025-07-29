@@ -23,4 +23,6 @@ class FormatMsczFileSerializer(serializers.Serializer):
     show_title = serializers.CharField(required=False, default=None)
     show_number = serializers.CharField(required=False, default=None)
     measures_per_line = serializers.IntegerField(required=False, default=None)
+    composer = serializers.CharField(required=False, default=None)
+    arranger = serializers.CharField(required=False, default=None)
     version_num = serializers.CharField(required=False, default=None)
