@@ -109,7 +109,7 @@ def _add_page_break_to_measure(measure: ET.Element) -> None:
         measure.find("LayoutBreak").find("subtype").text = "page"
         return
 
-    print("added a page break to a bar that did not have a line break!")
+    logger.info("[Processing] added a page break to a bar that did not have a line break!")
     index = 0
     for elem in measure:
         if elem.tag == "voice":
@@ -203,14 +203,14 @@ def add_rehearsal_mark_line_breaks(staff: ET.Element) -> ET.Element:
         if voice.find("RehearsalMark") is not None:
             assert i > 0
             prev_elem = staff[i - 1]
-            print(f"Adding Line Break to rehearsal mark at bar {i - 1}")
+            logger.info(f"Adding Line Break to rehearsal mark at bar {i - 1}")
             _add_line_break_to_measure_opt(prev_elem)
 
             if prev_elem.attrib.get("_mm") is not None:
                 for j in range(i - 1, -1, -1):
                     if staff[j].attrib.get("len") is not None:
-                        print(
-                            f"Adding Line Break to start of multimeasure rest at bar {j}"
+                        logger.info(
+                            f"[Processing] Adding Line Break to start of multimeasure rest at bar {j}"
                         )
                         _add_line_break_to_measure_opt(staff[j])
                         break
@@ -240,7 +240,7 @@ def add_double_bar_line_breaks(staff: ET.Element) -> ET.Element:
         if voice.find("BarLine") is not None:
             assert i > 0
             prev_elem = staff[i]
-            print(f"Adding Line Break to double Bar line at bar {i}")
+            logger.info(f"[Processing] Adding Line Break to double Bar line at bar {i}")
             _add_line_break_to_measure_opt(prev_elem)
 
     return staff
@@ -280,7 +280,7 @@ def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Ele
     i = 0
     for elem in staff:
         if elem.tag != "Measure":
-            print("Non measure tag encountered")
+            logger.info("[Processing] Non measure tag encountered")
             continue
 
         if (
@@ -298,13 +298,13 @@ def add_regular_line_breaks(staff: ET.Element, measures_per_line: int) -> ET.Ele
         if elem.attrib.get("_mm") is not None:
             if i > 0:
                 # TODO: add line break to bar before
-                print(
+                logger.debug(
                     "Could have added a line break"
                 )  # Manual testing indicates otherwise ...
             i = 0
         else:
             if i == (measures_per_line) and elem.find("LayoutBreak") is None:
-                print("Adding Regular Line Break")
+                logger.info("[Processing] Adding Regular Line Break")
                 _add_line_break_to_measure(elem)
                 i = 0
             else:
@@ -348,7 +348,7 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
     def choose_best_break(
         first_elem, second_elem, first_index, second_index, lines_on_page
     ):
-        print(f"Page had {lines_on_page} lines before break.")
+        logger.info(f"[Processing] Page had {lines_on_page} lines before break.")
         next_first = staff[first_index + 1] if first_index + 1 < len(staff) else None
         next_second = staff[second_index + 1] if second_index + 1 < len(staff) else None
 
@@ -382,7 +382,7 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
             return 0
 
         else:
-            print("Oops, couldn't find a good spot, adding a page break to first one")
+            logger.info("[Processing] Oops, couldn't find a good spot, adding a page break to first one")
             _add_page_break_to_measure(first_option[0])
             return 1
 
@@ -393,7 +393,7 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
 
     for i, elem in enumerate(staff):
         if elem.tag != "Measure":
-            print("non-measure tag")
+            logger.info("[processing] non-measure tag encountered")
             continue
 
         cutoff = 7 if first_page else 8
@@ -579,7 +579,7 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             source_style = part_style_path if is_excerpt else score_style_path
             shutil.copyfile(source_style, full_path)
 
-            print(f"Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
+            logger.info(f"[Processing] Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
 
 
 def mscz_main(
@@ -608,12 +608,12 @@ def mscz_main(
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
     ]
     if not mscx_files:
-        print("No .mscx files found in the provided mscz file.")
+        logger.info("[Processing] No .mscx files found in the provided mscz file.")
         shutil.rmtree(work_dir)
         return
 
     for mscx_path in mscx_files:
-        print(f"Processing {mscx_path}...")
+        logger.info(f"Processing {mscx_path}...")
         process_mscx(
             mscx_path,
             selected_style,
@@ -708,5 +708,5 @@ def process_mscx(
             print(f"Output written to {mscx_path}")
 
     except FileNotFoundError:
-        print(f"Error: File '{mscx_path}' not found.")
+        logger.warning(f"Error: File '{mscx_path}' not found.")
         sys.exit(1)
