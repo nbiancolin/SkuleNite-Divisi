@@ -2,10 +2,15 @@ from django.db import models
 
 
 class Ensemble(models.Model):
-    name = models.CharField(max_length=120)
+    name = models.CharField(max_length=30)
+    sanitized_name = models.CharField(max_length=30)
 
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        self.sanitized_name = self.name.strip().replace(" ", "-").lower()
+        super().save(*args, **kwargs)
 
 
 class Arrangement(models.Model):

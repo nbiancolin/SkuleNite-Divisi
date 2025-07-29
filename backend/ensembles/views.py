@@ -6,52 +6,21 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Arrangement, Ensemble, ArrangementVersion
-from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
+from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer
 
 
-class EnsembleViewSet(viewsets.ModelViewSet):
-    serializer_class = EnsembleSerializer
-    queryset = Ensemble.objects.all()
+class CreateEnsembleView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = CreateEnsembleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        ens = Ensemble.objects.create(name=serializer.validated_data["name"])
 
+        return Response(
+            {"message": "Ensemble Created Successfully", "sanitized_name": ens.sanitized_name},
+            status=status.HTTP_200_OK,
+        )
 
-class ArrangementViewSet(viewsets.ModelViewSet):
-    serializer_class = ArrangementSerializer
-
-    def get_queryset(self):
-        queryset = Arrangement.objects.all()
-        ensemble_id = self.request.query_params.get("ensemble")
-        arrangement_id = self.request.query_params.get("id")
-        if arrangement_id:
-            try:
-                queryset = queryset.filter(id=int(arrangement_id))
-            except ValueError:
-                print("Invalid arrangement ID:", ensemble_id)
-
-        if ensemble_id:
-            try:
-                queryset = queryset.filter(ensemble_id=int(ensemble_id))
-            except ValueError:
-                print("Invalid ensemble ID:", ensemble_id)
-
-        return queryset
-
-
-class ArrangementVersionCreateView(CreateAPIView):
-    queryset = ArrangementVersion.objects.all()
-    serializer_class = ArrangementVersionSerializer
-
-
-class UploadArrangementPartsView(APIView):
-    parser_classes = [MultiPartParser]
-
-    def post(self, request):
-        print("HERE123")
-        serializer = UploadPartsSerializer(data=request.data)
-        if serializer.is_valid():
-            parts = serializer.save()
-            return Response({'message': f'{len(parts)} parts uploaded'}, status=status.HTTP_201_CREATED)
-        else:
-            print("PROBLEM")
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+\
     
