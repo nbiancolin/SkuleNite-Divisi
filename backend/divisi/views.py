@@ -67,7 +67,7 @@ class FormatMsczFile(APIView):
             )
         logger.warning("In MSCZ Api View")
         
-        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line, version_num)
+        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line, version_num, composer, arranger)
 
         res = export_mscz_to_pdf(session_id)
         if res["status"] == "success":
