@@ -652,10 +652,29 @@ def process_mscx(
                 if metaTag.attrib.get("name") == "composer":
                     kwargs["arranger"] = metaTag.attrib.get("name")
 
-        for metaTag in score.findall("metaTag"):
-            for k in kwargs.keys():
+        for k, v in kwargs.items():
+            found = False
+            meta_tags = score.findall("metaTag")
+
+            for metaTag in meta_tags:
                 if metaTag.attrib.get("name") == k:
-                    metaTag.text = kwargs[k]
+                    metaTag.text = v
+                    found = True
+                    break
+            
+            if not found:
+                new_meta = ET.Element("metaTag")
+                new_meta.set("name", k)
+                new_meta.text = v
+
+                if meta_tags:
+                    last_meta = meta_tags[-1]
+                    index = list(score).index(last_meta)
+                    score.insert(index + 1, new_meta)
+                else:
+                    # No existing metaTag, just append
+                    logger.warning("[Processing] No metaTags found in score, appending new meta tag")
+                    score.append(new_meta)
 
         show_number = kwargs["workNumber"]
         show_title = kwargs["movementTitle"]
