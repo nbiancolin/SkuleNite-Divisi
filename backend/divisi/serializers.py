@@ -25,3 +25,4 @@ class FormatMsczFileSerializer(serializers.Serializer):
     measures_per_line = serializers.IntegerField(required=False, default=None)
     composer = serializers.CharField(required=False, default=None)
     arranger = serializers.CharField(required=False, default=None)
+    version_num = serializers.CharField(required=False, default=None)

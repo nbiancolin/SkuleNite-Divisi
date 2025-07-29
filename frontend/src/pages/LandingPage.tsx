@@ -5,11 +5,11 @@ import { Link } from 'react-router-dom';
 export default function LandingPage() {
   return (
     <Container>
-      <Stack spacing="lg" align="center">
-        <Title>Welcome to SkuleNite</Title>
-        <Text>This is our awesome landing page!</Text>
-        <Button component={Link} to="/dashboard">
-          Go to Dashboard
+      <Stack gap="lg" ta="center">
+        <Title>Welcome to Divisi App!</Title>
+        <Text>An Ensemble Score Management Site</Text>
+        <Button component={Link} to="/part-formatter">
+          Try our Part Formatter!
         </Button>
       </Stack>
     </Container>

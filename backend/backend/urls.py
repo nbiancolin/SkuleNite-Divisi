@@ -29,9 +29,9 @@ router.register(r'ensembles', EnsembleViewSet, 'ensemble')
 router.register(r'arrangements', ArrangementViewSet, 'arrangement')
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('restricted/admin/', admin.site.urls),
     path('api/upload-parts/', UploadArrangementPartsView.as_view(), name='upload-parts'),
-    path('api/upload-mscz/', UploadMsczFile.as_view(), name='upload'),
-    path('api/format-mscz/', FormatMsczFile.as_view(), name='upload'),
+    path('api/upload-mscz/', UploadMsczFile.as_view(), name='upload-mscz'),
+    path('api/format-mscz/', FormatMsczFile.as_view(), name='format-mscz'),
     path('api/', include(router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

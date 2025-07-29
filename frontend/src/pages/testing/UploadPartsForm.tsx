@@ -13,6 +13,8 @@ interface Arrangements {
   latest_version: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -33,7 +35,7 @@ export function UploadPartsForm() {
       if (!id) return; // skip if no id
 
       try {
-        const response = await axios.get<Arrangements[]>(`http://localhost:8000/api/arrangements/?id=${id}`);
+        const response = await axios.get<Arrangements[]>(`${API_BASE_URL}/arrangements/?id=${id}`);
         setArrangements(response.data);
       } catch (error) {
         console.error('Failed to fetch ensembles:', error);
@@ -62,7 +64,7 @@ export function UploadPartsForm() {
     
     console.log("here1")
     try {
-      const response = await axios.post('http://localhost:8000/api/upload-parts/', formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload-parts/`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMessage(response.data.message || 'Upload successful');
@@ -97,7 +99,7 @@ export function UploadPartsForm() {
       </Radio.Group>
       
 
-      <Group position="right" mt="md">
+      <Group justify="right" mt="md">
         <Button onClick={handleUpload}>Upload</Button>
       </Group>
       {message && <Text mt="md">{message}</Text>}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Container,
   FileInput,
@@ -15,14 +15,18 @@ import {
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
 export default function PartFormatterPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isFormatting, setIsFormatting] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [measuresPerLine, setMeasuresPerLine] = useState<number>(6)
+  const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
+  const [versionNum, setVersionNum] = useState<string>("1.0.0")
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [msczUrl, setMsczUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // New states
@@ -36,6 +40,7 @@ export default function PartFormatterPage() {
     setIsUploading(true);
     setError(null);
     setDownloadUrl(null);
+    setMsczUrl(null);
     setSessionId(null);
     setSelectedStyle(null);
 
@@ -43,7 +48,7 @@ export default function PartFormatterPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/upload-mscz/", formData, {
+      const response = await axios.post(`${API_BASE_URL}/upload-mscz/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -75,9 +80,10 @@ export default function PartFormatterPage() {
     setIsFormatting(true);
     setError(null);
     setDownloadUrl(null);
+    setMsczUrl(null);
 
     try {
-      const response = await axios.post("http://localhost:8000/api/format-mscz/", {
+      const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
         session_id: sessionId,
         style: selectedStyle,
         ...(selectedStyle === "broadway" && {
@@ -86,10 +92,12 @@ export default function PartFormatterPage() {
         }),
         ...(showAdvanced && {
           measures_per_line: measuresPerLine,
+          version_num: versionNum
         })
       });
 
       setDownloadUrl(response.data.score_download_url);
+      setMsczUrl(response.data.mscz_download_url);
     } catch (err: any) {
       console.error("Formatting error:", err);
       setError(err.response?.data?.detail || "Formatting failed.");
@@ -100,14 +108,15 @@ export default function PartFormatterPage() {
 
   return (
     <Container size="sm" py="xl">
-      <Title align="center" mb="xl">
-        Upload and Process File
+      <Title ta="center" mb="xl">
+        Format a Musescore File!
       </Title>
-
+      <Text>Simply upload your .mscz file, and select your style options, and your Musescore File will be formatted!</Text>
+      <Text>If you would like part formatted as well, make sure to "open all" the parts in the Musescore File first!</Text>
       <FileInput
         placeholder="Choose a file"
         label="Select file"
-        icon={<UploadCloud size={18} />}
+        leftSection={<UploadCloud size={18} />}
         value={file}
         onChange={setFile}
         accept="*/*"
@@ -123,15 +132,15 @@ export default function PartFormatterPage() {
         Upload
       </Button>
 
-      Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded
+      <Text>Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded</Text>
 
       {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
         <Center mt="xl">
           <div>
-            <Text mb="sm" align="center">
+            <Text mb="sm" ta="center">
               Choose a style to format your file:
             </Text>
-            <Group position="center">
+            <Group justify="center">
               <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
               <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
               <Button onClick={() => handleStyleSelect("classical")}>Classical</Button>
@@ -162,6 +171,13 @@ export default function PartFormatterPage() {
               type="number"
               mt="md"
             />
+            <TextInput
+              label="Version Number (1.0.0, 2.2.3, etc)"
+              value={versionNum}
+              onChange={(e) => setVersionNum(e.currentTarget.value)}
+              type="number"
+              mt="md"
+            />
           </Collapse>
         </div>
       )}
@@ -169,7 +185,7 @@ export default function PartFormatterPage() {
       {selectedStyle === "broadway" && (
         <Center mt="xl">
           <div style={{ width: "100%" }}>
-            <Text mb="sm" align="center">
+            <Text mb="sm" ta="center">
               Enter show details:
             </Text>
             <TextInput
@@ -221,7 +237,15 @@ export default function PartFormatterPage() {
             rel="noopener noreferrer"
           >
             Click here to download the Score.
-          </a>
+          </a><br/>
+          <a
+            href={msczUrl ?? undefined}
+            download
+            target="_blank"
+            rel="noopener noreferrer"
+            >
+              Click Here to download the Processed Musescore File.
+            </a>
         </Notification>
       )}
 
