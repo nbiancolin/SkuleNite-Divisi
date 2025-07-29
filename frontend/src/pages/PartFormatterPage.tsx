@@ -33,8 +33,8 @@ export default function PartFormatterPage() {
   const [showNumber, setShowNumber] = useState("");
   const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
   const [versionNum, setVersionNum] = useState<string>("1.0.0")
-  const [composer, setComposer] = useState<string | null>(null)
-  const [arranger, setArranger] = useState<string | null>(null)
+  const [composer, setComposer] = useState<string>("")
+  const [arranger, setArranger] = useState<string>("")
 
   const handleUpload = async () => {
     if (!file) return;
