@@ -1,15 +1,17 @@
 from django.db import models
+from django.utils.text import slugify
 
 
 class Ensemble(models.Model):
     name = models.CharField(max_length=30)
-    sanitized_name = models.CharField(max_length=30)
+    slug = models.SlugField(unique=True)
 
     def __str__(self):
         return self.name
     
     def save(self, *args, **kwargs):
-        self.sanitized_name = self.name.strip().replace(" ", "-").lower()
+        if not self.slug:
+            self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
 
@@ -17,28 +19,36 @@ class Arrangement(models.Model):
     ensemble = models.ForeignKey(
         Ensemble, related_name="arrangements", on_delete=models.CASCADE
     )
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=60)
+    slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
-    act_number = models.IntegerField(default=1)
+    act_number = models.IntegerField(default=1, blank=True, null=True)
     piece_number = models.IntegerField(default=1)
 
     def get_mvtno(self):
-        return f"{self.act_number}-{self.piece_number}"
-
-    def __str__(self):
-        return f"{self.act_number}-{self.piece_number}: {self.title}"
+        if self.act_number is not None:
+            return f"{self.act_number}-{self.piece_number}"
+        return f"{self.piece_number}"
 
     @property
     def mvt_no(self):
         return self.get_mvtno()
 
     @property
-    def latest(self):
+    def latest_version(self):
         return self.versions.filter(is_latest=True).first()
     
     @property
-    def latest_version(self):
+    def latest_version_num(self):
         return self.latest.version_label
+    
+    def __str__(self):
+        return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
+    
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["act_number", "piece_number"]
@@ -98,7 +108,7 @@ def _part_upload_path(instance, filename):
     ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
     arrangement = instance.version.arrangement.title.replace(" ", "_")
     version = instance.version.version_label
-    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}"
+    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}" #TODO: Move this to use media/static root
 
 
 class Part(models.Model):
