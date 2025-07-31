@@ -5,8 +5,8 @@ from rest_framework.response import Response
 from rest_framework import status
 
 
-from .models import Arrangement, Ensemble
-from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer, EnsembleSerializer, ArrangementSerializer
+from .models import Arrangement, Ensemble, ArrangementVersion
+from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer, EnsembleSerializer, ArrangementSerializer, ArrangementVersionSerializer
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -28,7 +28,41 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementSerializer
     lookup_field = "slug"
 
+"""
+How arrangement versions should work
+- Arranger opens their ensemble home page
+- Selects the arrangememnt that they are working on
+- On the arrangement page, they select "Upload New Version"
+- Select version type, and style settings, then upload new arrangement version
+BE:
+- Create New Version, FE sends version type (major, minor, hotfix) and arrangement pk
+- BE creates version, sends MSCZ file to be processed, then updates arranementVersion with file paths
+    - if new version, gets prev version and umps it (how?)
+"""
 
+
+"""
+Ideal URL Patterns
+BASE = http://divisi.nbiancolin.ca/divisi
+
+FE URL Patterns
+View (all arrangements in) Ensemble: BASE/ensembles/<name>
+(Alt: BASe/home) (If we restrict users to only be in one ensemble at a time)
+View Arrangement: BAr: BASE/arrangements/<pk> (haven't decided which is best)
+(Alt: BASE/arr/<title> orsion:  BASE/arrangements/<pk>
+Upload New Arrangement <Arr-url>/upload
+
+
+
+BE Url Patterns don't really matter, they're just APIs, so IG model viewsets for all of them
+"""
+
+
+class ArrangementVersionViewSet(viewsets.ModelViewSet):
+    queryset = ArrangementVersion.objects.all()
+    serializer = ArrangementVersionSerializer
+
+    
 
 #OLD: TODO remove
 

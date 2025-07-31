@@ -8,7 +8,7 @@ class EnsembleAdmin(admin.ModelAdmin):
 
 
 class ArrangementAdmin(admin.ModelAdmin):
-    list_display = ("ensemble", "title", "latest")
+    list_display = ("ensemble", "title", "latest_version")
 
 
 class ArrangementVersionAdmin(admin.ModelAdmin):

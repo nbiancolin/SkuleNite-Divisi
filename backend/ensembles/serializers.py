@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from .models import Ensemble, Arrangement, ArrangementVersion, Part
 
+VERSION_TYPES = [
+    ("major", "Major"),
+    ("minor", "Minor"),
+    ("patch", 'Patch')
+]
 
 class ArrangementSerializer(serializers.ModelSerializer):
     mvt_no = serializers.ReadOnlyField()
@@ -9,7 +14,8 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Arrangement
-        fields = ['id', 'title', 'slug', 'subtitle', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        read_only_fields = ['slug', ]
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
@@ -18,7 +24,13 @@ class EnsembleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ensemble
         fields = ['id', 'name', 'slug', 'arrangements']
+        read_only_fields = ['slug']
 
+
+class ArrangementVersionSerializer(serializers.Serializer):
+    
+    arrangement_id = serializers.IntegerField(required=True)
+    version_type = serializers.ChoiceField(choices=VERSION_TYPES)
 
 #OLD for now TODO remove
 class CreateEnsembleSerializer(serializers.Serializer):
@@ -32,9 +44,7 @@ class CreateArrangementSerializer(serializers.Serializer):
     composer = serializers.CharField(required=False, default=None)
     arranger = serializers.CharField(required=False, default=None)
     #Thinking here: If not using broadway formatting settings, use show_number to determine order, otherwise use act_number / show_number combo
-    act_number = serializers.IntegerField(required=False, default=0)
+    act_number = serializers.IntegerField(required=False, default=-1)
     show_number = serializers.IntegerField(required=True)
 
 #TODO: Write MsczUpload Serializer
-
-class Ser

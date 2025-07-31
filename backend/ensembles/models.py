@@ -1,6 +1,24 @@
 from django.db import models
 from django.utils.text import slugify
 
+def generate_unique_slug(model_class, value, instance=None):
+    """
+    Generates a unique slug for a model instance.
+    """
+    base_slug = slugify(value)
+    slug = base_slug
+    counter = 1
+
+    # Exclude current instance if updating
+    queryset = model_class.objects.all()
+    if instance and instance.pk:
+        queryset = queryset.exclude(pk=instance.pk)
+
+    while queryset.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    return slug
 
 class Ensemble(models.Model):
     name = models.CharField(max_length=30)
@@ -8,11 +26,12 @@ class Ensemble(models.Model):
 
     def __str__(self):
         return self.name
-    
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = generate_unique_slug(Ensemble, self.name, instance=self)
         super().save(*args, **kwargs)
+
 
 
 class Arrangement(models.Model):
@@ -37,21 +56,23 @@ class Arrangement(models.Model):
     @property
     def latest_version(self):
         return self.versions.filter(is_latest=True).first()
-    
+
     @property
     def latest_version_num(self):
-        return self.latest.version_label
+        latest = self.latest_version
+        return latest.version_label if latest else "N/A"
     
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
-    
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
         super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["act_number", "piece_number"]
+
 
 
 class ArrangementVersion(models.Model):
