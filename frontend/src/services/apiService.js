@@ -1,5 +1,4 @@
-// apiService.js
-const API_BASE_URL = 'http://localhost:8000/api'; // Adjust as needed
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export const apiService = {
   async getEnsembles() {

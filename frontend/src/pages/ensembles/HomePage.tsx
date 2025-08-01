@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Stack, Title, Text, Button } from '@mantine/core';
 import { IconHome, IconMusic } from '@tabler/icons-react';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -23,10 +23,10 @@ import { apiService } from '../../services/apiService';
 const ArrangementsPage = () => {
   const { slug } = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
-  const [ensemble, setEnsemble] = useState(null);
-  const [arrangements, setArrangements] = useState([]);
+  const [ensemble, setEnsemble] = useState<any>(null);
+  const [arrangements, setArrangements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string|null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,7 +40,9 @@ const ArrangementsPage = () => {
         setEnsemble(ensembleData);
         setArrangements(arrangementsData);
       } catch (err) {
-        setError(err.message);
+        if (err instanceof Error) {
+          setError(err.message);
+        }
       } finally {
         setLoading(false);
       }

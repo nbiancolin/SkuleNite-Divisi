@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Container,
@@ -17,9 +17,9 @@ import { IconMusic, IconEye } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 
 const EnsemblesPage = () => {
-  const [ensembles, setEnsembles] = useState([]);
+  const [ensembles, setEnsembles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<any>(null);
 
   useEffect(() => {
     const fetchEnsembles = async () => {
@@ -28,7 +28,9 @@ const EnsemblesPage = () => {
         const data = await apiService.getEnsembles();
         setEnsembles(data);
       } catch (err) {
-        setError(err.message);
+        if (err instanceof Error) {
+          setError(err.message);
+        }
       } finally {
         setLoading(false);
       }
