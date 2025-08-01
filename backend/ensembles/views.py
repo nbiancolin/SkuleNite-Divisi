@@ -28,6 +28,10 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementSerializer
     lookup_field = "slug"
 
+class ArrangementVersionViewSet(viewsets.ModelViewSet):
+    queryset = ArrangementVersion.objects.all()
+    serializer_class = ArrangementSerializer
+
 """
 How arrangement versions should work
 - Arranger opens their ensemble home page
@@ -56,13 +60,6 @@ Upload New Arrangement <Arr-url>/upload
 
 BE Url Patterns don't really matter, they're just APIs, so IG model viewsets for all of them
 """
-
-
-class ArrangementVersionViewSet(viewsets.ModelViewSet):
-    queryset = ArrangementVersion.objects.all()
-    serializer = ArrangementVersionSerializer
-
-    
 
 #OLD: TODO remove
 

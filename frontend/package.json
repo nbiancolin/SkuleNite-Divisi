@@ -17,6 +17,8 @@
     "@mantine/next": "^6.0.22",
     "@mantine/notifications": "^8.1.2",
     "@mantinex/mantine-logo": "^2.0.0",
+    "@tabler/core": "^1.4.0",
+    "@tabler/icons-react": "^3.34.1",
     "axios": "^1.10.0",
     "lucide-react": "^0.525.0",
     "react": "^19.1.0",

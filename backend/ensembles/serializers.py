@@ -27,10 +27,12 @@ class EnsembleSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug']
 
 
-class ArrangementVersionSerializer(serializers.Serializer):
+class ArrangementVersionSerializer(serializers.ModelSerializer):
     
-    arrangement_id = serializers.IntegerField(required=True)
-    version_type = serializers.ChoiceField(choices=VERSION_TYPES)
+    class Meta:
+        model = ArrangementVersion
+        fields = ["id", "arrangement", "version_label", "timestamp",]
+
 
 #OLD for now TODO remove
 class CreateEnsembleSerializer(serializers.Serializer):

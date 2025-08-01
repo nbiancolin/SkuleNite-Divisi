@@ -21,12 +21,13 @@ from rest_framework import routers
 
 from django.conf import settings
 
-from ensembles.views import EnsembleViewSet, ArrangementViewSet
+from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementVersionViewSet
 from divisi.views import UploadMsczFile, FormatMsczFile
 
 router = routers.DefaultRouter()
 router.register(r'ensembles', EnsembleViewSet, 'ensemble')
 router.register(r'arrangements', ArrangementViewSet, 'arrangement')
+router.register(r'arrangementversions', ArrangementVersionViewSet, 'arrangementversion')
 
 urlpatterns = [
     path('restricted/admin/', admin.site.urls),
