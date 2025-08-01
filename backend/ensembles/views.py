@@ -7,7 +7,6 @@ from rest_framework import status
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer, EnsembleSerializer, ArrangementSerializer, ArrangementVersionSerializer
-from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
 from logging import getLogger
 
 logger = getLogger("EnsembleViews")

@@ -87,7 +87,7 @@ const ArrangementsPage = () => {
   }
 
   const breadcrumbItems = [
-    { title: 'Home', to: '/' },
+    { title: 'Home', to: '/app' },
     { title: 'Ensembles', to: '/app/ensembles' },
     { title: ensemble.name, to: null }
   ].map((item, index) => (
@@ -167,17 +167,17 @@ const ArrangementsPage = () => {
                           variant="subtle"
                           color="blue"
                           component={Link}
-                          to={`/arrangements/${arrangement.slug}`}
+                          to={`/app/arrangements/${arrangement.slug}`}
                         >
                           <IconEye size={16} />
                         </ActionIcon>
                       </Tooltip>
-                      <Tooltip label="Edit">
+                      <Tooltip label="Give Feedback">
                         <ActionIcon
                           variant="subtle"
                           color="gray"
                           component={Link}
-                          to={`/arrangements/${arrangement.slug}/edit`}
+                          to={`/app/arrangements/${arrangement.slug}/feedback`}
                         >
                           <IconEdit size={16} />
                         </ActionIcon>
