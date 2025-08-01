@@ -7,6 +7,10 @@ from rest_framework import status
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer, EnsembleSerializer, ArrangementSerializer, ArrangementVersionSerializer
+from .serializers import ArrangementSerializer, EnsembleSerializer, ArrangementVersionSerializer, UploadPartsSerializer
+from logging import getLogger
+
+logger = getLogger("EnsembleViews")
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -43,6 +47,7 @@ BE:
 - BE creates version, sends MSCZ file to be processed, then updates arranementVersion with file paths
     - if new version, gets prev version and umps it (how?)
 """
+
 
 
 """
@@ -96,13 +101,6 @@ class CreateArrangementView(APIView):
             {"message": "Ensemble Created Successfully", "sanitized_title": arr.sanitized_title},
             status=status.HTTP_200_OK,
         )
-
-class ArrangementListView(APIView):
-    def get(self, request, ensemble_name):
-        try:
-            ens = Ensemble.objects.get(name=ensemble_name)
-        except Ensemble.DoesNotExist:
-            return Response({"detail": "Ensemble not found."}, status=status.HTTP_404_NOT_FOUND)
 
         arrangements = ens.arrangements.all() #TODO: Check if this is a legit error
         serializer = ArrangementSerializer(arrangements, many=True)
