@@ -1,42 +1,78 @@
 from django.db import models
+from django.utils.text import slugify
 
+def generate_unique_slug(model_class, value, instance=None):
+    """
+    Generates a unique slug for a model instance.
+    """
+    base_slug = slugify(value)
+    slug = base_slug
+    counter = 1
+
+    # Exclude current instance if updating
+    queryset = model_class.objects.all()
+    if instance and instance.pk:
+        queryset = queryset.exclude(pk=instance.pk)
+
+    while queryset.filter(slug=slug).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    return slug
 
 class Ensemble(models.Model):
-    name = models.CharField(max_length=120)
+    name = models.CharField(max_length=30)
+    slug = models.SlugField(unique=True)
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = generate_unique_slug(Ensemble, self.name, instance=self)
+        super().save(*args, **kwargs)
+
 
 
 class Arrangement(models.Model):
     ensemble = models.ForeignKey(
         Ensemble, related_name="arrangements", on_delete=models.CASCADE
     )
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=60)
+    slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
-    act_number = models.IntegerField(default=1)
+    act_number = models.IntegerField(default=1, blank=True, null=True)
     piece_number = models.IntegerField(default=1)
 
     def get_mvtno(self):
-        return f"{self.act_number}-{self.piece_number}"
-
-    def __str__(self):
-        return f"{self.act_number}-{self.piece_number}: {self.title}"
+        if self.act_number is not None:
+            return f"{self.act_number}-{self.piece_number}"
+        return f"{self.piece_number}"
 
     @property
     def mvt_no(self):
         return self.get_mvtno()
 
     @property
-    def latest(self):
-        return self.versions.filter(is_latest=True).first()
-    
-    @property
     def latest_version(self):
-        return self.latest.version_label
+        return self.versions.filter(is_latest=True).first()
+
+    @property
+    def latest_version_num(self):
+        latest = self.latest_version
+        return latest.version_label if latest else "N/A"
+    
+    def __str__(self):
+        return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["act_number", "piece_number"]
+
 
 
 class ArrangementVersion(models.Model):
@@ -93,7 +129,7 @@ def _part_upload_path(instance, filename):
     ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
     arrangement = instance.version.arrangement.title.replace(" ", "_")
     version = instance.version.version_label
-    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}"
+    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}" #TODO: Move this to use media/static root
 
 
 class Part(models.Model):

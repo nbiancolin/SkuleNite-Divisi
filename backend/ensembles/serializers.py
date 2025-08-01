@@ -1,13 +1,21 @@
 from rest_framework import serializers
 from .models import Ensemble, Arrangement, ArrangementVersion, Part
 
+VERSION_TYPES = [
+    ("major", "Major"),
+    ("minor", "Minor"),
+    ("patch", 'Patch')
+]
 
 class ArrangementSerializer(serializers.ModelSerializer):
-    ensemble_name = serializers.CharField(source="ensemble.name", read_only=True)
+    mvt_no = serializers.ReadOnlyField()
+    latest_version = serializers.ReadOnlyField()
+    latest_version_num = serializers.ReadOnlyField()
 
     class Meta:
         model = Arrangement
-        fields = ["id", "ensemble_name", "title", "subtitle", "mvt_no", "latest_version",]
+        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        read_only_fields = ['slug', ]
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
@@ -15,55 +23,30 @@ class EnsembleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ensemble
-        fields = ("id", "name", "arrangements")
-
-
-class ArrangementReadSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Arrangement
-        fields = ["id", "title", "subtitle", "act_number", "piece_number"]
-
-
-class EnsembleDetailSerializer(serializers.ModelSerializer):
-    arrangements = ArrangementReadSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Ensemble
-        fields = ["id", "title", "arrangements"]
+        fields = ['id', 'name', 'slug', 'arrangements']
+        read_only_fields = ['slug']
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
+    
     class Meta:
         model = ArrangementVersion
-        fields = '__all__'
+        fields = ["id", "arrangement", "version_label", "timestamp",]
 
-class PartSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Part
-        fields = ['part_name', 'file']
 
-class UploadPartsSerializer(serializers.Serializer):
-    arrangement_id = serializers.IntegerField()
-    version_type = serializers.ChoiceField(choices=["major", "minor", "patch"])
-    files = serializers.ListField(
-        child=serializers.FileField(),
-        allow_empty=False
-    )
+#OLD for now TODO remove
+class CreateEnsembleSerializer(serializers.Serializer):
+    name = serializers.CharField(required=True)
+    #TODO[Eventually]: Add an "owner" field to say who owns the ensemble
 
-    def create(self, validated_data):
-        arrangement = Arrangement.objects.get(id=validated_data['arrangement_id'])
+class CreateArrangementSerializer(serializers.Serializer):
+    ensemble_name = serializers.CharField(required=True)
+    title = serializers.CharField(required=True)
+    subtitle = serializers.CharField(required=False, default=None)
+    composer = serializers.CharField(required=False, default=None)
+    arranger = serializers.CharField(required=False, default=None)
+    #Thinking here: If not using broadway formatting settings, use show_number to determine order, otherwise use act_number / show_number combo
+    act_number = serializers.IntegerField(required=False, default=-1)
+    show_number = serializers.IntegerField(required=True)
 
-        # Create a new ArrangementVersion and bump version label
-        version = ArrangementVersion(arrangement=arrangement)
-        version.save(version_type=validated_data['version_type'])
-
-        parts = []
-        for f in validated_data['files']:
-            part = Part.objects.create(
-                version=version,
-                part_name=f.name.replace('.pdf', ''),
-                file=f
-            )
-            parts.append(part)
-
-        return parts
+#TODO: Write MsczUpload Serializer

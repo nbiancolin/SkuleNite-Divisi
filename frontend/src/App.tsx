@@ -1,22 +1,24 @@
 import { Routes, Route } from 'react-router-dom';
 import Layout from './Layout';
 import LandingPage from './pages/LandingPage';
-import Dashboard from './pages/Dashboard';
 import NotFound from './pages/NotFound';
-import EnsemblesPage from './pages/testing/Ensembles';
-import ArrangementsPage from './pages/testing/Arrangements';
+import EnsemblesPage from './pages/ensembles/EnsemblesPage';
+import ArrangementsPage from './pages/ensembles/ArrangementsPage';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
 import PartFormatterPage from './pages/PartFormatterPage'
+import HomePage from './pages/ensembles/HomePage';
 
 function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/app/dashboard" element={<Dashboard />} />
-        // app/score page eventually (for viewing scores)
-        <Route path="/testing/ensembles" element={<EnsemblesPage />} />
-        <Route path="/testing/arrangements" element={<ArrangementsPage />} />
+        <Route path="/app" element={<HomePage />} />
+        <Route path="/app/ensembles" element={<EnsemblesPage />} />
+        <Route path="/app/ensembles/:slug/arrangements" element={<ArrangementsPage />} />
+        {/* Future routes */}
+        <Route path="/app/arrangements/:slug" element={<div>Arrangement Detail Page (Coming Soon)</div>} />
+        <Route path="/app/arrangements/:slug/edit" element={<div>Edit Arrangement Page (Coming Soon)</div>} />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />
 
         <Route path="/part-formatter" element={<PartFormatterPage/>} />
