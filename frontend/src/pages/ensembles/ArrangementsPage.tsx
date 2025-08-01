@@ -92,16 +92,25 @@ const ArrangementsPage = () => {
     { title: 'Home', to: '/app' },
     { title: 'Ensembles', to: '/app/ensembles' },
     { title: ensemble.name, to: null }
-  ].map((item, index) => (
-    <Anchor
-      key={index}
-      component={item.to ? Link : 'span'}
-      to={item.to}
-      c={item.to ? 'blue' : 'dimmed'}
-    >
-      {item.title}
-    </Anchor>
-  ));
+  ].map((item, index) =>
+    item.to ? (
+      <Anchor
+        key={index}
+        component={Link}
+        to={item.to}
+        c="blue"
+      >
+        {item.title}
+      </Anchor>
+    ) : (
+      <Anchor
+        key={index}
+        c="dimmed"
+      >
+        {item.title}
+      </Anchor>
+    )
+  );
 
   return (
     <Stack gap="lg">

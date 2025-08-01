@@ -7,13 +7,13 @@ export const apiService = {
     return response.json();
   },
 
-  async getEnsemble(slug) {
+  async getEnsemble(slug: any) {
     const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/`);
     if (!response.ok) throw new Error('Failed to fetch ensemble');
     return response.json();
   },
 
-  async getEnsembleArrangements(slug) {
+  async getEnsembleArrangements(slug: any) {
     const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/arrangements/`);
     if (!response.ok) throw new Error('Failed to fetch arrangements');
     return response.json();
