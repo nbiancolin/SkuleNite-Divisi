@@ -104,7 +104,7 @@ export default function PartFormatterPage() {
       setMsczUrl(response.data.mscz_download_url);
     } catch (err: any) {
       console.error("Formatting error:", err);
-      setError(err.response?.data?.detail || "Formatting failed.");
+      setError(err.response?.data?.detail || "Formatting failed.");  //TODO[SC-XX] make this acc display the error at hand
     } finally {
       setIsFormatting(false);
     }
