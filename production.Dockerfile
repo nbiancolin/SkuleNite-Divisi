@@ -112,7 +112,6 @@ RUN apt-get update && \
         nginx \
         curl \
         bash \
-        netcat-traditional \
         wait-for-it \
         fontconfig \
         ca-certificates \
@@ -164,26 +163,48 @@ RUN ln -sf /opt/musescore/AppRun /usr/local/bin/mscore4
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist /var/www/html
 
-# Copy Nginx config and create start script
+# Copy Nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Add this before the CMD instruction
-COPY start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
-
-# # Change the CMD to:
-# CMD ["start.sh"]
-
-# RUN chmod +x /start.sh
+# Install netcat for database health checks
+RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
 
 # Set proper permissions
-RUN chown -R appuser:appuser /app /var/www/html /var/log/nginx /var/lib/nginx /etc/nginx
+RUN chown -R appuser:appuser /app /var/www/html && \
+    # Create nginx directories and set permissions
+    mkdir -p /var/cache/nginx /var/log/nginx /var/lib/nginx /run/nginx && \
+    chown -R appuser:appuser /var/cache/nginx /var/log/nginx /var/lib/nginx /run/nginx && \
+    # Allow nginx to bind to port 80
+    chmod 755 /var/log/nginx
 
 WORKDIR /app/backend
 
-# Switch to non-root user
-USER appuser
+# Don't switch to non-root user yet - nginx needs root privileges
+# USER appuser
 
 EXPOSE 80
 
-CMD ["start.sh"]
+# Create entrypoint script inline and run it
+CMD ["bash", "-c", "\
+    echo '[INFO] Starting application initialization...' && \
+    DB_HOST=${POSTGRES_HOST:-db} && \
+    DB_PORT=${POSTGRES_PORT:-5432} && \
+    echo '[INFO] Waiting for database connection...' && \
+    while ! nc -z $DB_HOST $DB_PORT; do \
+        echo '[WARN] Database unavailable - waiting...' && \
+        sleep 2; \
+    done && \
+    echo '[INFO] Database is ready!' && \
+    echo '[INFO] Running Django migrations...' && \
+    su -c 'python manage.py migrate --noinput' appuser && \
+    echo '[INFO] Collecting static files...' && \
+    su -c 'python manage.py collectstatic --noinput' appuser && \
+    echo '[INFO] Starting Gunicorn...' && \
+    su -c 'gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -' appuser & \
+    echo '[INFO] Starting Celery worker...' && \
+    su -c 'celery -A backend worker --loglevel=info' appuser & \
+    sleep 3 && \
+    echo '[INFO] Starting Nginx...' && \
+    nginx -t && \
+    exec nginx -g 'daemon off;' \
+"]
