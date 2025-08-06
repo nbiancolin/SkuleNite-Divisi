@@ -159,6 +159,9 @@ COPY --from=backend-build /app/backend /app/backend
 COPY --from=backend-build /usr/share/fonts /usr/share/fonts
 COPY --from=backend-build /opt/musescore /opt/musescore
 RUN ln -sf /opt/musescore/AppRun /usr/local/bin/mscore4
+RUN chmod +x /usr/local/bin/mscore4
+RUN mkdir -p /home/appuser/.local/share/MuseScore/MuseScore4/logs && \
+    chown -R appuser:appuser /home/appuser/.local
 
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist /var/www/html

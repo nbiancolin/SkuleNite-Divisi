@@ -52,8 +52,8 @@ class FormatMsczFile(APIView):
         show_number = serializer.validated_data["show_number"]
         session_id = serializer.validated_data.get("session_id")
         num_measure_per_line = serializer.validated_data["measures_per_line"]
-        composer = serializer.validated_data["composer"]
-        arranger = serializer.validated_data["arranger"]
+        composer = serializer.validated_data.get("composer")
+        arranger = serializer.validated_data.get("arranger")
         version_num = serializer.validated_data["version_num"]
 
         #Classical is just broadway minus show text
