@@ -179,7 +179,6 @@ export default function PartFormatterPage() {
               label="Version Number (1.0.0, 2.2.3, etc)"
               value={versionNum}
               onChange={(e) => setVersionNum(e.currentTarget.value)}
-              type="number"
               mt="md"
             />
           </Collapse>
