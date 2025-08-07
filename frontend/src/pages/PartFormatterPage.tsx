@@ -104,7 +104,7 @@ export default function PartFormatterPage() {
       setMsczUrl(response.data.mscz_download_url);
     } catch (err: any) {
       console.error("Formatting error:", err);
-      setError(err.response?.data?.detail || "Formatting failed.");
+      setError(err.response?.data?.detail || "Formatting failed.");  //TODO[SC-XX] make this acc display the error at hand
     } finally {
       setIsFormatting(false);
     }
@@ -179,7 +179,6 @@ export default function PartFormatterPage() {
               label="Version Number (1.0.0, 2.2.3, etc)"
               value={versionNum}
               onChange={(e) => setVersionNum(e.currentTarget.value)}
-              type="number"
               mt="md"
             />
           </Collapse>

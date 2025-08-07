@@ -689,6 +689,7 @@ def process_mscx(
         # add_page_breaks(
         #     staff
         # )  # TODO: Only add page breaks if not working on conductor score
+        #TODO: Line Breaks are bugged up -- has an off by 1 error before a double bar, then it uses the right number after the double bar ... investigate why
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
             add_broadway_header(staff, show_number, show_title)
