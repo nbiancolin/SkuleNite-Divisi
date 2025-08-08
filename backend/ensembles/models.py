@@ -23,6 +23,7 @@ def generate_unique_slug(model_class, value, instance=None):
 class Ensemble(models.Model):
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
+    date_created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name

@@ -76,7 +76,7 @@ class CreateEnsembleView(APIView):
         ens = Ensemble.objects.create(name=serializer.validated_data["name"])
 
         return Response(
-            {"message": "Ensemble Created Successfully", "sanitized_name": ens.sanitized_name},
+            {"message": "Ensemble Created Successfully", "name_slug": ens.slug},
             status=status.HTTP_200_OK,
         )
 
@@ -97,7 +97,7 @@ class CreateArrangementView(APIView):
         )
 
         return Response(
-            {"message": "Ensemble Created Successfully", "sanitized_title": arr.sanitized_title},
+            {"message": "Ensemble Created Successfully", "title_slug": arr.slug},
             status=status.HTTP_200_OK,
         )
 
