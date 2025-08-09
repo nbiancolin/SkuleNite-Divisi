@@ -16,6 +16,7 @@ import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
 import { useParams } from "react-router-dom";
 import '../../fonts.css'
+import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 
 export default function CreateArrangementPage() {
   const [error, setError] = useState<string | null>(null);
@@ -243,7 +244,7 @@ export default function CreateArrangementPage() {
       />
 
       {/* Preview of the header */}
-      <Box
+      {/* <Box
         mt="xl"
         mb="xl"
         p="md"
@@ -304,7 +305,9 @@ export default function CreateArrangementPage() {
             Fill in the fields above to see a preview of your arrangement header
           </Text>
         )}
-      </Box>
+      </Box> */}
+
+      <ScoreTitlePreview selectedStyle setSelectedStyle title subtitle composer mvtNo pieceNumber/>  ## TODO fix
 
       <Button
         onClick={createArrangment}
