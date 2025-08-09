@@ -152,7 +152,7 @@ const ArrangementsPage = () => {
               <Table.Tr>
                 <Table.Th>Movement #</Table.Th>
                 <Table.Th>Title</Table.Th>
-                <Table.Th>Subtitle</Table.Th>
+                <Table.Th>Composer</Table.Th>
                 <Table.Th>Latest Version</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
@@ -170,7 +170,7 @@ const ArrangementsPage = () => {
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
-                      {arrangement.subtitle || '—'}
+                      {arrangement.composer || '—'}
                     </Text>
                   </Table.Td>
                   <Table.Td>

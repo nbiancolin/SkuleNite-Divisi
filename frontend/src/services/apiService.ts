@@ -7,12 +7,12 @@ export const apiService = {
     return response.json();
   },
 
-  async createEnsemble(name: string){
+  async createEnsemble(name: string, selected_style: string){
     const response = await fetch(`${API_BASE_URL}/ensembles/`, 
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"name": name})
+        body: JSON.stringify({"name": name, "default_style": selected_style})
       }
     )
     if (!response.ok) throw new Error('Failed to create ensemble');

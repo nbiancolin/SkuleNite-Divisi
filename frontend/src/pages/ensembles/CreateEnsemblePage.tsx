@@ -6,6 +6,7 @@ import {
   Text,
   Notification,
   TextInput,
+  SegmentedControl,
 } from "@mantine/core";
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
@@ -14,11 +15,12 @@ import { apiService } from '../../services/apiService';
 export default function CreateEnsemblePage() {
   const [error, setError] = useState<string | null>(null);
   const [ensembleName, setEnsebleName] = useState<string>("My First Ensemble")
+  const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
   const createEnsemble = async () => {
 
     try {
-      const data = await apiService.createEnsemble(ensembleName)
+      const data = await apiService.createEnsemble(ensembleName, selectedStyle)
       
       window.location.href = `/app/ensembles/${data.slug}/arrangements`;
       //once finished, redirect to that ensebles page (for testing, use all ensembles page
@@ -42,9 +44,25 @@ export default function CreateEnsemblePage() {
         mt="md"
       />
 
+      <Text mt="md"> Default Style for Arrangements in this ensemble:</Text>
+
+      <SegmentedControl 
+              fullWidth
+              size="md"
+              mt="md"
+              value={selectedStyle}
+              onChange={setSelectedStyle}
+              data={[
+                {label: "Broadway", value: "broadway"},
+                {label: "Jazz", value: "jazz"},
+                {label: "Classical", value: "classical"},
+              ]}
+            />
+
       <Button
         onClick={createEnsemble}
         fullWidth
+        mt="md"
       >
         Create Ensemble
       </Button>
