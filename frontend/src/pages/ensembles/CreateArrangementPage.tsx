@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   Button,
@@ -8,23 +8,55 @@ import {
   TextInput,
   Box,
   SegmentedControl,
+  Group,
+  Alert,
+  Loader,
 } from "@mantine/core";
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
+import { useParams } from "react-router-dom";
 
 
 export default function CreateArrangementPage() {
   const [error, setError] = useState<string | null>(null);
-  const [ensembleSlug, setEnsembleSlug] = useState<string>("")
   const [title, setTitle] = useState<string>("")
   const [subtitle, setSubtitle] = useState<string>("")
+  const [composer, setComposer] = useState<string>("")
   const [actNumber, setActNumber] = useState<number|null>(null)
   const [pieceNumber, setPieceNumber] = useState<number|null>(null)
   const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
+  const [ensemble, setEnsemble] = useState<any>(null);
+  const { slug } = useParams();
+
+  const [loading, setLoading] = useState(true);
+
   // Create mvtNo variable
   const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
+
+  //get ensemble info
+  useEffect(() => {
+      const fetchData = async () => {
+        try {
+          setLoading(true);
+          // Fetch both ensemble details and arrangements
+          const [ensembleData] = await Promise.all([
+            apiService.getEnsemble(slug),
+          ]);
+          setEnsemble(ensembleData);
+        } catch (err) {
+          if (err instanceof Error) {
+            setError(err.message);
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
   
+      if (slug) {
+        fetchData();
+      }
+    }, [slug]);
 
   const createArrangment = async () => {
 
@@ -39,21 +71,51 @@ export default function CreateArrangementPage() {
     } 
   };
 
+    if (loading) {
+      return (
+        <Container>
+          <Group justify="center" py="xl">
+            <Loader size="lg" />
+            <Text>Loading arrangements...</Text>
+          </Group>
+        </Container>
+      );
+    }
+  
+    if (error) {
+      return (
+        <Container>
+          <Alert color="red" title="Error loading arrangements">
+            {error}
+          </Alert>
+        </Container>
+      );
+    }
+  
+    if (!ensemble) {
+      return (
+        <Container>
+          <Alert color="yellow" title="Ensemble not found">
+            The ensemble you're looking for doesn't exist.
+          </Alert>
+        </Container>
+      );
+    }
+
+
   return (
     <Container size="sm" py="xl">
       <Title ta="center" mb="xl">
         Create an Arrangement
       </Title>
-      <Text>Enter the name of your ensemble.</Text>
-      <Text>Note that ensemble names are unique.</Text>
-      {/* <TextInput
+      <TextInput
+        disabled
         label="Ensemble Name"
-        value={ensembleSlug}
-        onChange={(e) => setEnsembleSlug(e.currentTarget.value)}
+        value={slug}
         mt="md"
         //TODO: This should not be editable -- just display it as a field of some kind
         // like, /app/ensembles/<slug>/create -- and get slug from that
-      /> */}
+      />
       <TextInput
         label="Arrangement Title"
         value={title}
@@ -65,6 +127,12 @@ export default function CreateArrangementPage() {
         label="Subtitle"
         value={subtitle}
         onChange={(e) => setSubtitle(e.currentTarget.value)}
+        mt="md"
+      />
+      <TextInput
+        label="Composer"
+        value={composer}
+        onChange={(e) => setComposer(e.currentTarget.value)}
         mt="md"
       />
       <Text> If you're not sure what this means, don't worry about it, you can set it later.</Text>
@@ -86,8 +154,9 @@ export default function CreateArrangementPage() {
       <SegmentedControl 
         fullWidth
         size="md"
+        mt="md"
         value={selectedStyle}
-        onChange={(e) => setSelectedStyle(e.currentTarget.value)}
+        onChange={setSelectedStyle}
         data={[
           {label: "Broadway", value: "broadway"},
           {label: "Jazz", value: "jazz"},
@@ -110,6 +179,10 @@ export default function CreateArrangementPage() {
         <Text size="sm" mb="md" style={{ color: '#666' }}>
           Title Preview:
         </Text>
+        {title && (
+          <h3> Conductor Score</h3>
+        )}
+        
         
         {(mvtNo || pieceNumber) && (
           <Box
@@ -118,7 +191,8 @@ export default function CreateArrangementPage() {
               top: '16px',
               right: '16px'
             }}
-            bd="1px solid red.6"
+            bd="2px solid "
+            p="sm"
           >
             <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
               {mvtNo || pieceNumber}
@@ -128,7 +202,7 @@ export default function CreateArrangementPage() {
         
         <div style={{ textAlign: 'center' }}>
           {title && (
-            <h1 style={{ margin: '0 0 8px 0' }}>
+            <h1 style={{ margin: '0 0 8px 0', textDecoration: 'underline' }}>
               {title}
             </h1>
           )}
@@ -137,6 +211,13 @@ export default function CreateArrangementPage() {
             <h3 style={{ margin: '0', fontWeight: 'normal' }}>
               {subtitle}
             </h3>
+          )}
+        </div>
+        <div style={{textAlign: 'right'}}>
+          {composer && (
+            <h4 style={{ margin: '0', fontWeight: 'normal' }}>
+              {composer}
+            </h4>
           )}
         </div>
         

@@ -129,9 +129,20 @@ const ArrangementsPage = () => {
           </Group>
           <Title order={1}>{ensemble.name} - Arrangements</Title>
         </Stack>
-        <Text c="dimmed">
-          {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
-        </Text>
+        <Group>
+          <Text c="dimmed">
+            {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
+          </Text>
+          <Button
+            component={Link}
+            to={`/app/ensembles/${ensemble.slug}/create-arrangement`}
+            variant="filled"
+            size="sm"
+            rightSection={<ActionIcon size={16} />}
+          >
+            Create Arrangement
+          </Button>
+        </Group>
       </Group>
 
       {arrangements.length > 0 ? (

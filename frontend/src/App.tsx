@@ -19,7 +19,7 @@ function App() {
         <Route path="/app/ensembles" element={<EnsemblesPage />} />
         <Route path="/app/ensembles/create" element={<CreateEnsemblePage />} />
         <Route path="/app/ensembles/:slug/arrangements" element={<ArrangementsPage />} />
-        <Route path="/app/arrangements/create" element={<CreateArrangementPage />} />
+        <Route path="/app/ensembles/:slug/create-arrangement" element={<CreateArrangementPage />} />
         {/* Future routes */}
         <Route path="/app/arrangements/:slug" element={<div>Arrangement Detail Page (Coming Soon)</div>} />
         <Route path="/app/arrangements/:slug/edit" element={<div>Edit Arrangement Page (Coming Soon)</div>} />

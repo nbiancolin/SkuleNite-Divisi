@@ -1,6 +1,12 @@
 from django.db import models
 from django.utils.text import slugify
 
+STYLE_CHOICES = [
+    ("jazz", "Jazz"),
+    ("broadway", "Broadway"),
+    ("classical", 'Classical')
+]
+
 def generate_unique_slug(model_class, value, instance=None):
     """
     Generates a unique slug for a model instance.
@@ -24,6 +30,7 @@ class Ensemble(models.Model):
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
+    default_style = models.CharField(choices=STYLE_CHOICES)
 
     def __str__(self):
         return self.name
@@ -42,8 +49,11 @@ class Arrangement(models.Model):
     title = models.CharField(max_length=60)
     slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
+    composer = models.CharField(max_length=255, blank=True, null=True)
     act_number = models.IntegerField(default=1, blank=True, null=True)
     piece_number = models.IntegerField(default=1)
+
+    default_style = models.CharField(choices=STYLE_CHOICES)
 
     def get_mvtno(self):
         if self.act_number is not None:
