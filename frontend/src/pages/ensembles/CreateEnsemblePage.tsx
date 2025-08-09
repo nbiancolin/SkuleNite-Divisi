@@ -10,6 +10,7 @@ import {
 } from "@mantine/core";
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
+import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 
 
 export default function CreateEnsemblePage() {
@@ -46,18 +47,15 @@ export default function CreateEnsemblePage() {
 
       <Text mt="md"> Default Style for Arrangements in this ensemble:</Text>
 
-      <SegmentedControl 
-              fullWidth
-              size="md"
-              mt="md"
-              value={selectedStyle}
-              onChange={setSelectedStyle}
-              data={[
-                {label: "Broadway", value: "broadway"},
-                {label: "Jazz", value: "jazz"},
-                {label: "Classical", value: "classical"},
-              ]}
-            />
+      <ScoreTitlePreview
+        selectedStyle={selectedStyle}
+        setSelectedStyle={setSelectedStyle}
+        title={"Title"}
+        subtitle={"subtitle"}
+        composer={"composer"}
+        mvtNo={"0-0"}
+        pieceNumber={0}
+      />
 
       <Button
         onClick={createEnsemble}
