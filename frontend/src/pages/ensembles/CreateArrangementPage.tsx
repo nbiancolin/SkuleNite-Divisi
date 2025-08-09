@@ -15,7 +15,7 @@ import {
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
 import { useParams } from "react-router-dom";
-
+import '../../fonts.css'
 
 export default function CreateArrangementPage() {
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +26,88 @@ export default function CreateArrangementPage() {
   const [pieceNumber, setPieceNumber] = useState<number|null>(null)
   const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
-  const [ensemble, setEnsemble] = useState<any>(null);
+  const [ensemble, setEnsemble] = useState<any>("");
   const { slug } = useParams();
 
   const [loading, setLoading] = useState(true);
+
+  const previewStyleOptions = {
+    "broadway": {
+      "title": {
+        margin: '0 0 8px 0',
+        textDecoration: 'underline',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "subtitle": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "composer": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "mvtNo": {
+        margin: 0, 
+        fontSize: '1.5rem',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "partName": {
+        fontFamily: "Palatino, sans-serif",
+      }
+    },
+    "classical": {
+      "title": {
+        margin: '0 0 8px 0',
+        textDecoration: 'underline',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "subtitle": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "composer": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "mvtNo": {
+        margin: 0, 
+        fontSize: '1.5rem',
+        fontFamily: "Palatino, sans-serif",
+      },
+      "partName": {
+        fontFamily: "Palatino, sans-serif",
+      }
+    },
+    "jazz": {
+      "title": {
+        margin: '0 0 8px 0',
+        textDecoration: 'underline',
+        fontFamily: "Inkpen2, sans-serif",
+      },
+      "subtitle": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Inkpen2, sans-serif",
+      },
+      "composer": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Inkpen2, sans-serif",
+      },
+      "mvtNo": {
+        margin: 0, 
+        fontSize: '1.5rem',
+        fontFamily: "Inkpen2, sans-serif",
+      },
+      "partName": {
+        fontFamily: "Inkpen2, sans-serif",
+      }
+    },
+  }
 
   // Create mvtNo variable
   const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
@@ -135,13 +213,12 @@ export default function CreateArrangementPage() {
         onChange={(e) => setComposer(e.currentTarget.value)}
         mt="md"
       />
-      <Text> If you're not sure what this means, don't worry about it, you can set it later.</Text>
+      <Text mt="md"> If you're not sure what this means, don't worry about it, you can set it later.</Text>
       <TextInput
         label="Act Number"
         value={actNumber}
         onChange={(e) => setActNumber(e.currentTarget.value)}
         type="number"
-        mt="md"
       />
       <TextInput
         label="Piece Number"
@@ -180,11 +257,11 @@ export default function CreateArrangementPage() {
           Title Preview:
         </Text>
         {title && (
-          <h3> Conductor Score</h3>
+          <h3 style={previewStyleOptions[selectedStyle].partName}> Conductor Score</h3>
         )}
         
         
-        {(mvtNo || pieceNumber) && (
+        {(mvtNo || pieceNumber) && (selectedStyle == "broadway") && (
           <Box
             style={{
               position: 'absolute',
@@ -194,7 +271,7 @@ export default function CreateArrangementPage() {
             bd="2px solid "
             p="sm"
           >
-            <h1 style={{ margin: 0, fontSize: '1.5rem' }}>
+            <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
               {mvtNo || pieceNumber}
             </h1>
           </Box>
@@ -202,20 +279,20 @@ export default function CreateArrangementPage() {
         
         <div style={{ textAlign: 'center' }}>
           {title && (
-            <h1 style={{ margin: '0 0 8px 0', textDecoration: 'underline' }}>
+            <h1 style={previewStyleOptions[selectedStyle].title}>
               {title}
             </h1>
           )}
           
           {subtitle && (
-            <h3 style={{ margin: '0', fontWeight: 'normal' }}>
+            <h3 style={previewStyleOptions[selectedStyle].subtitle}>
               {subtitle}
             </h3>
           )}
         </div>
         <div style={{textAlign: 'right'}}>
           {composer && (
-            <h4 style={{ margin: '0', fontWeight: 'normal' }}>
+            <h4 style={previewStyleOptions[selectedStyle].composer}>
               {composer}
             </h4>
           )}
