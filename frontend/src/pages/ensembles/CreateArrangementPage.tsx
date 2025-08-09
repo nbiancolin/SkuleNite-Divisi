@@ -26,11 +26,12 @@ export default function CreateArrangementPage() {
   const [pieceNumber, setPieceNumber] = useState<number|null>(null)
   const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
-  const [ensemble, setEnsemble] = useState<any>("");
+  const [ensemble, setEnsemble] = useState<any>(null);
   const { slug } = useParams();
 
   const [loading, setLoading] = useState(true);
 
+  const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
   const previewStyleOptions = {
     "broadway": {
       "title": {
@@ -110,7 +111,7 @@ export default function CreateArrangementPage() {
   }
 
   // Create mvtNo variable
-  const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
+  
 
   //get ensemble info
   useEffect(() => {
@@ -139,9 +140,9 @@ export default function CreateArrangementPage() {
   const createArrangment = async () => {
 
     try {
-      const data = await apiService.createArrangement(ensembleName)
+      const data = await apiService.createArrangement(ensemble.id, title, subtitle, composer, actNumber, pieceNumber, selectedStyle)
       
-      window.location.href = `/app/ensembles/${data.ensembleSlug}/arrangements`;
+      window.location.href = `/app/ensembles/${ensemble.slug}/arrangements`;
       //once finished, redirect to that ensebles page (for testing, use all ensembles page
     } catch (err: any) {
       console.error("Error when creating arrangement:", err);

@@ -31,15 +31,15 @@ export const apiService = {
     return response.json();
   },
 
-  async createArrangement(ensembleSlug: string, title: string, subtitle: string, actNumber: number, pieceNumber: number){
+  async createArrangement(ensembleSlug: string, title: string, subtitle: string, composer: string, actNumber: number|null, pieceNumber: number|null, style: string){
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"ensemble": ensembleSlug, "title": title, "subtitle": subtitle, "act_number": actNumber, "piece_number": pieceNumber})
+        body: JSON.stringify({"ensemble": ensembleSlug, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "default_style": style})
       }
     )
-    if (!response.ok) throw new Error('Failed to fetch ensembles');
+    if (!response.ok) throw new Error('Failed to create arrangement');
     return response.json();
   },
 };
