@@ -18,6 +18,8 @@ interface ScoreTitlePreviewProps {
   title: string;
   subtitle: string;
   composer: string;
+  arranger: string|null;
+  showTitle: string|null;
   mvtNo: string;
   pieceNumber: number|null;
 }
@@ -28,7 +30,9 @@ export function ScoreTitlePreview({
   title,
   subtitle,
   composer,
+  arranger, 
   mvtNo,
+  showTitle,
   pieceNumber
 }: ScoreTitlePreviewProps) {
   const previewStyleOptions = {
@@ -48,10 +52,23 @@ export function ScoreTitlePreview({
         fontWeight: 'normal',
         fontFamily: "Palatino, sans-serif",
       },
+      "arranger": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+        fontStyle: "italic",
+      },
       "mvtNo": {
         margin: 0, 
         fontSize: '1.5rem',
         fontFamily: "Palatino, sans-serif",
+      },
+      "showTitle": {
+        margin: '0', 
+        fontWeight: 'normal',
+        fontFamily: "Palatino, sans-serif",
+        textDecoration: 'underline',
+        whiteSpace: "nowrap",
       },
       "partName": {
         fontFamily: "Palatino, sans-serif",
@@ -73,10 +90,11 @@ export function ScoreTitlePreview({
         fontWeight: 'normal',
         fontFamily: "Palatino, sans-serif",
       },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
+      "arranger": {
+        margin: '0', 
+        fontWeight: 'normal',
         fontFamily: "Palatino, sans-serif",
+        fontStyle: "italic",
       },
       "partName": {
         fontFamily: "Palatino, sans-serif",
@@ -98,9 +116,9 @@ export function ScoreTitlePreview({
         fontWeight: 'normal',
         fontFamily: "Inkpen2, sans-serif",
       },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
+      "arranger": {
+        margin: '0', 
+        fontWeight: 'normal',
         fontFamily: "Inkpen2, sans-serif",
       },
       "partName": {
@@ -142,20 +160,35 @@ export function ScoreTitlePreview({
         )}
         
         
-        {(mvtNo || pieceNumber) && (selectedStyle == "broadway") && (
-            <Box
+        {(mvtNo || pieceNumber || showTitle) && selectedStyle === "broadway" && (
+          <Box
             style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px'
+              display: "flex",
+              alignItems: "center",
+              position: "absolute",
+              top: "16px",
+              right: "16px",
+              gap: "0.5rem", // space between showTitle and mvtNo box
             }}
-            bd="2px solid "
-            p="sm"
+          >
+            {showTitle && (
+              <span
+                style={previewStyleOptions[selectedStyle].showTitle}
+              >
+                {showTitle}
+              </span>
+            )}
+            <Box
+              style={{
+                border: "1px solid black",
+                padding: "0.25rem 0.75rem",
+              }}
             >
-            <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
+              <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
                 {mvtNo || pieceNumber}
-            </h1>
+              </h1>
             </Box>
+          </Box>
         )}
         
         <div style={{ textAlign: 'center' }}>
@@ -176,6 +209,11 @@ export function ScoreTitlePreview({
             <h4 style={previewStyleOptions[selectedStyle].composer}>
                 {composer}
             </h4>
+            )}
+            {arranger && (
+              <h4 style={previewStyleOptions[selectedStyle].arranger}> 
+                arr. {arranger}  
+              </h4>
             )}
         </div>
         

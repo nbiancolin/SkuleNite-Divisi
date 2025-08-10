@@ -10,10 +10,12 @@ import {
   Notification,
   Group,
   TextInput,
-  Collapse, 
+  Collapse,
+  Stack, 
 } from "@mantine/core";
-import { Check, X, UploadCloud } from "lucide-react";
+import { Check, X, UploadCloud, StepBack } from "lucide-react";
 import axios from "axios";
+import { ScoreTitlePreview } from "../components/ScoreTitlePreview";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -28,7 +30,7 @@ export default function PartFormatterPage() {
   const [error, setError] = useState<string | null>(null);
 
   // New states
-  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical" | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical">("broadway");
   const [showTitle, setShowTitle] = useState("");
   const [showNumber, setShowNumber] = useState("");
   const [measuresPerLine, setMeasuresPerLine] = useState<string>("6")
@@ -44,7 +46,7 @@ export default function PartFormatterPage() {
     setDownloadUrl(null);
     setMsczUrl(null);
     setSessionId(null);
-    setSelectedStyle(null);
+    setSelectedStyle("broadway");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -65,10 +67,6 @@ export default function PartFormatterPage() {
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const handleStyleSelect = (style: "jazz" | "broadway" | "classical") => {
-    setSelectedStyle(style);
   };
 
   const handleFormatRequest = async () => {
@@ -116,7 +114,7 @@ export default function PartFormatterPage() {
         Format a Musescore File!
       </Title>
       <Text>Simply upload your .mscz file, and select your style options, and your Musescore File will be formatted!</Text>
-      <Text>If you would like part formatted as well, make sure to "open all" the parts in the Musescore File first!</Text>
+      <Text>If you would like the parts formatted as well, make sure to "open all" the parts in the Musescore File first!</Text>
       <FileInput
         placeholder="Choose a file"
         label="Select file"
@@ -138,24 +136,9 @@ export default function PartFormatterPage() {
 
       <Text>Note: Your files are only stored on our site while processing. You will retain full ownership of any music uploaded</Text>
 
-      {sessionId && !isFormatting && !downloadUrl && !selectedStyle && (
-        <Center mt="xl">
-          <div>
-            <Text mb="sm" ta="center">
-              Choose a style to format your file:
-            </Text>
-            <Group justify="center">
-              <Button onClick={() => handleStyleSelect("jazz")}>Jazz</Button>
-              <Button onClick={() => handleStyleSelect("broadway")}>Broadway</Button>
-              <Button onClick={() => handleStyleSelect("classical")}>Classical</Button>
-            </Group>
-          </div>
-        </Center>
-      )}
-
-      {selectedStyle && (
-        <div>
-        <Center mt="md">
+      {sessionId && (
+        <>
+          <Center>
             <Text
               onClick={() => setShowAdvanced((o) => !o)}
               style={{ cursor: "pointer", textDecoration: "underline" }}
@@ -165,7 +148,7 @@ export default function PartFormatterPage() {
               {showAdvanced ? "Hide advanced style options" : "Advanced style options"}
             </Text>
           </Center>
-
+            
           <Collapse in={showAdvanced}>
           {/*TODO[SC-42]: Make this value dynamic, and remove manual override */}
             <TextInput
@@ -182,68 +165,63 @@ export default function PartFormatterPage() {
               mt="md"
             />
           </Collapse>
-        </div>
-      )}
-
-      {selectedStyle === "broadway" && (
-        <Center mt="xl">
-          <div style={{ width: "100%" }}>
-            <Text mb="sm" ta="center">
-              Enter show details:
-            </Text>
+          <ScoreTitlePreview
+            selectedStyle={selectedStyle}
+            setSelectedStyle={setSelectedStyle}
+            title={"Title"}
+            subtitle={"subtitle"}
+            composer={composer}
+            arranger={arranger}
+            showTitle={showTitle}
+            mvtNo={showNumber}
+          />
+          {/* <Button onClick={handleFormatRequest}>Format Musescore File</Button> */}
+          <Stack mt="xl">
             <TextInput
-              label="Show Title"
-              value={showTitle}
-              onChange={(e) => setShowTitle(e.currentTarget.value)}
-              mb="md"
-              required
+              label="Title"
+              value={"Coming Soon!!"}
+              disabled
             />
             <TextInput
-              label="Show Number"
-              value={showNumber}
-              onChange={(e) => setShowNumber(e.currentTarget.value)}
-              mb="md"
-              required
+              label="Subtitle"
+              value={"Coming Soon!!"}
+              disabled
             />
+            {selectedStyle === "broadway" && (
+              <>
+                <TextInput
+                  label="Show Title"
+                  value={showTitle}
+                  onChange={(e) => setShowTitle(e.currentTarget.value)}
+                  required
+                />
+                <TextInput
+                  label="Show Number"
+                  value={showNumber}
+                  onChange={(e) => setShowNumber(e.currentTarget.value)}
+                  required
+                />
+              </>
+            )}
             <TextInput
               label="Composer"
               value={composer}
               onChange={(e) => setComposer(e.currentTarget.value)}
-              mb="md"
             />
             <TextInput
               label="Arranger"
               value={arranger}
               onChange={(e) => setArranger(e.currentTarget.value)}
-              mb="md"
             />
-            {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
-            <Button onClick={handleFormatRequest} fullWidth>
-              Format Musescore File
-            </Button>
-          </div>
-        </Center>
-      )}
-
-      {(selectedStyle === "jazz" || selectedStyle === "classical") && (
-        <Center mt="xl">
-          <div style={{ width: "100%" }}>
-            <TextInput
-              label="Composer"
-              value={composer}
-              onChange={(e) => setComposer(e.currentTarget.value)}
-              mb="md"
-            />
-            <TextInput
-              label="Arranger"
-              value={arranger}
-              onChange={(e) => setArranger(e.currentTarget.value)}
-              mb="md"
-            />
-            {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
-            <Button onClick={handleFormatRequest}>Format Musescore File</Button>
-          </div>
-        </Center>
+          </Stack>
+          {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
+          <Button onClick={handleFormatRequest} fullWidth mt="md">
+            Format Musescore File
+          </Button>
+              
+          
+          
+        </>
       )}
 
       {isFormatting && (
