@@ -156,38 +156,37 @@ export function ScoreTitlePreview({
             Title Preview:
         </Text>
         {title && (
-            <h3 style={previewStyleOptions[selectedStyle].partName}> Conductor Score</h3>
-        )}
-        
-        
-        {(mvtNo || pieceNumber || showTitle) && selectedStyle === "broadway" && (
           <Box
             style={{
               display: "flex",
-              alignItems: "center",
-              position: "absolute",
-              top: "16px",
-              right: "16px",
-              gap: "0.5rem", // space between showTitle and mvtNo box
+              alignItems: "center", // vertical alignment
+              justifyContent: "space-between", // push left/right
+              marginBottom: "1rem"
             }}
           >
-            {showTitle && (
-              <span
-                style={previewStyleOptions[selectedStyle].showTitle}
-              >
-                {showTitle}
-              </span>
+            <h3 style={previewStyleOptions[selectedStyle].partName}>
+              Conductor Score
+            </h3>
+
+            {(mvtNo || pieceNumber || showTitle) && selectedStyle === "broadway" && (
+              <Box style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {showTitle && (
+                  <span style={previewStyleOptions[selectedStyle].showTitle}>
+                    {showTitle}
+                  </span>
+                )}
+                <Box
+                  style={{
+                    border: "1px solid black",
+                    padding: "0.25rem 0.75rem",
+                  }}
+                >
+                  <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
+                    {mvtNo || pieceNumber}
+                  </h1>
+                </Box>
+              </Box>
             )}
-            <Box
-              style={{
-                border: "1px solid black",
-                padding: "0.25rem 0.75rem",
-              }}
-            >
-              <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
-                {mvtNo || pieceNumber}
-              </h1>
-            </Box>
           </Box>
         )}
         
