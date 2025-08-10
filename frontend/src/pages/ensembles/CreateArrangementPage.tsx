@@ -144,10 +144,9 @@ export default function CreateArrangementPage() {
       const data = await apiService.createArrangement(ensemble.id, title, subtitle, composer, actNumber, pieceNumber, selectedStyle)
       
       window.location.href = `/app/ensembles/${ensemble.slug}/arrangements`;
-      //once finished, redirect to that ensebles page (for testing, use all ensembles page
     } catch (err: any) {
-      console.error("Error when creating arrangement:", err);
-      setError(err.response?.data?.detail || "Formatting failed.");  //TODO[SC-XX] make this acc display the error at hand
+      console.error("Error when creating arrangement:", err.message);
+      setError(err.message || "Unknown Error."); 
     } 
   };
 
