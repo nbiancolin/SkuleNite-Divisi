@@ -33,6 +33,11 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
         model = ArrangementVersion
         fields = ["id", "arrangement", "version_label", "timestamp",]
 
+class CreateArrangementVersionMsczSerializer(serializers.Serializer):
+    file = serializers.FileField(allow_empty_file=False)
+    arrangement_id = serializers.IntegerField(required=True)
+    version_type = serializers.CharField(required=True)  #TODO: Make this a choice field
+
 
 #OLD for now TODO remove
 class CreateEnsembleSerializer(serializers.Serializer):
@@ -48,5 +53,3 @@ class CreateArrangementSerializer(serializers.Serializer):
     #Thinking here: If not using broadway formatting settings, use show_number to determine order, otherwise use act_number / show_number combo
     act_number = serializers.IntegerField(required=False, default=-1)
     show_number = serializers.IntegerField(required=True)
-
-#TODO: Write MsczUpload Serializer

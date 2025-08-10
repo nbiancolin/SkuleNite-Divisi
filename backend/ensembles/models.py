@@ -1,11 +1,11 @@
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
-STYLE_CHOICES = [
-    ("jazz", "Jazz"),
-    ("broadway", "Broadway"),
-    ("classical", 'Classical')
-]
+import uuid
+
+STYLE_CHOICES = [("jazz", "Jazz"), ("broadway", "Broadway"), ("classical", "Classical")]
+
 
 def generate_unique_slug(model_class, value, instance=None):
     """
@@ -26,6 +26,7 @@ def generate_unique_slug(model_class, value, instance=None):
 
     return slug
 
+
 class Ensemble(models.Model):
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
@@ -41,7 +42,6 @@ class Ensemble(models.Model):
         super().save(*args, **kwargs)
 
 
-
 class Arrangement(models.Model):
     ensemble = models.ForeignKey(
         Ensemble, related_name="arrangements", on_delete=models.CASCADE
@@ -51,13 +51,14 @@ class Arrangement(models.Model):
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
     act_number = models.IntegerField(default=1, blank=True, null=True)
-    piece_number = models.IntegerField(default=1, blank=True, null=True) #NOTE: This field is auto-populated on save... should never actually be blank
+    piece_number = models.IntegerField(
+        default=1, blank=True, null=True
+    )  # NOTE: This field is auto-populated on save... should never actually be blank
 
     default_style = models.CharField(choices=STYLE_CHOICES)
 
-    #TODO: Make this a little cleaner, might not be optimal
+    # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
-        
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
 
@@ -88,7 +89,7 @@ class Arrangement(models.Model):
     def latest_version_num(self):
         latest = self.latest_version
         return latest.version_label if latest else "N/A"
-    
+
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
 
@@ -96,11 +97,13 @@ class Arrangement(models.Model):
         ordering = ["act_number", "piece_number"]
 
 
-
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file_name = models.CharField()
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
@@ -139,6 +142,22 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
+    @property
+    def mscz_file_location(self) -> str:
+        return f"{settings.MEDIA_ROOT}/uploads/{self.id}"
+
+    @property
+    def mscz_file_path(self) -> str:
+        return f"{settings.MEDIA_ROOT}/uploads/{self.id}/{self.file_name}"
+
+    @property
+    def output_file_location(self) -> str:
+        return f"{settings.MEDIA_ROOT}/processed/{self.id}"
+
+    @property
+    def output_file_path(self) -> str:
+        return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
+
     def __str__(self):
         return f"{self.arrangement.__str__} (v{self.version_label})"
 
@@ -151,7 +170,7 @@ def _part_upload_path(instance, filename):
     ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
     arrangement = instance.version.arrangement.title.replace(" ", "_")
     version = instance.version.version_label
-    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}" #TODO: Move this to use media/static root
+    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}"  # TODO: Move this to use media/static root
 
 
 class Part(models.Model):
