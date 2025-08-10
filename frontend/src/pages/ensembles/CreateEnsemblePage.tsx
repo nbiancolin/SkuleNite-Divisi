@@ -13,12 +13,13 @@ import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
+import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
 
 
 export default function CreateEnsemblePage() {
   const [error, setError] = useState<string | null>(null);
   const [ensembleName, setEnsebleName] = useState<string>("My First Ensemble")
-  const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
+  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   const navigate = useNavigate();
   const createEnsemble = async () => {

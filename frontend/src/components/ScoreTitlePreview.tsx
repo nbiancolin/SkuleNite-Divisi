@@ -1,28 +1,52 @@
-import { useState, useEffect } from "react";
 import {
   Text,
-  Notification,
-  TextInput,
   Box,
   SegmentedControl,
-  Group,
-  Alert,
-  Loader,
 } from "@mantine/core";
 import '../fonts.css'
 
-// Define the props interface
+// Define allowed preview style names
+export type PreviewStyleName = "broadway" | "classical" | "jazz";
+
+// Define allowed text style keys
+type TextStyleKey =
+  | "title"
+  | "subtitle"
+  | "composer"
+  | "arranger"
+  | "mvtNo"
+  | "showTitle"
+  | "partName"
+  | "ensemble";
+
+// Allowed CSS properties for styles
+type TextStyle = Partial<{
+  margin: string | number;
+  textDecoration: string;
+  fontFamily: string;
+  fontWeight: string | number;
+  fontStyle: string;
+  fontSize: string | number;
+  whiteSpace: string;
+}>;
+
+// The shape of previewStyleOptions
+type PreviewStyleOptions = {
+  [K in PreviewStyleName]: Partial<Record<TextStyleKey, TextStyle>>;
+};
+
+// Props interface
 interface ScoreTitlePreviewProps {
-  selectedStyle: string;
-  setSelectedStyle: (style: string) => void;
-  title: string;
-  subtitle: string;
-  ensemble: string|null;
-  composer: string|null;
-  arranger: string|null;
-  showTitle: string|null;
-  mvtNo: string;
-  pieceNumber: number|null;
+  selectedStyle: PreviewStyleName;
+  setSelectedStyle: (style: PreviewStyleName) => void;
+  title: string | null;
+  subtitle: string | null;
+  ensemble: string | null;
+  composer: string | null;
+  arranger: string | null;
+  showTitle: string | null;
+  mvtNo: string | null;
+  pieceNumber: number | null | undefined;
 }
 
 export function ScoreTitlePreview({
@@ -37,107 +61,113 @@ export function ScoreTitlePreview({
   showTitle,
   pieceNumber
 }: ScoreTitlePreviewProps) {
-  const previewStyleOptions = {
-    "broadway": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
+
+  const previewStyleOptions: PreviewStyleOptions = {
+    broadway: {
+      title: {
+        margin: "0 0 8px 0",
+        textDecoration: "underline",
         fontFamily: "Palatino, sans-serif",
       },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
+      subtitle: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
       },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
+      ensemble: {},
+      composer: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
       },
-      "arranger": {
-        margin: '0', 
-        fontWeight: 'normal',
+      arranger: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
         fontStyle: "italic",
       },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
+      mvtNo: {
+        margin: 0,
+        fontSize: "1.5rem",
         fontFamily: "Palatino, sans-serif",
       },
-      "showTitle": {
-        margin: '0', 
-        fontWeight: 'normal',
+      showTitle: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
-        textDecoration: 'underline',
+        textDecoration: "underline",
         whiteSpace: "nowrap",
       },
-      "partName": {
+      partName: {
         fontFamily: "Palatino, sans-serif",
-      }
+      },
     },
-    "classical": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
+    classical: {
+      title: {
+        margin: "0 0 8px 0",
+        textDecoration: "underline",
         fontFamily: "Palatino, sans-serif",
       },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
+      subtitle: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
       },
-      "ensemble": {
-        margin: '0', 
-        fontWeight: 'bold',
+      ensemble: {
+        margin: "0",
+        fontWeight: "bold",
         fontFamily: "Palatino, sans-serif",
       },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
+      composer: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
       },
-      "arranger": {
-        margin: '0', 
-        fontWeight: 'normal',
+      arranger: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
         fontStyle: "italic",
       },
-      "partName": {
+      mvtNo: {},
+      showTitle: {},
+      partName: {
         fontFamily: "Palatino, sans-serif",
-      }
+      },
     },
-    "jazz": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
+    jazz: {
+      title: {
+        margin: "0 0 8px 0",
+        textDecoration: "underline",
         fontFamily: "Inkpen2, sans-serif",
       },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
+      subtitle: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Inkpen2, sans-serif",
       },
-      "ensemble": {
-        margin: '0', 
-        fontWeight: 'bold',
+      ensemble: {
+        margin: "0",
+        fontWeight: "bold",
         fontFamily: "Inkpen2, sans-serif",
       },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
+      composer: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Inkpen2, sans-serif",
       },
-      "arranger": {
-        margin: '0', 
-        fontWeight: 'normal',
+      arranger: {
+        margin: "0",
+        fontWeight: "normal",
         fontFamily: "Inkpen2, sans-serif",
       },
-      "partName": {
+      mvtNo: {},
+      showTitle: {},
+      partName: {
         fontFamily: "Inkpen2, sans-serif",
-      }
+      },
     },
-  }
+  };
 
   return (
     <>
@@ -146,7 +176,7 @@ export function ScoreTitlePreview({
         size="md"
         mt="md"
         value={selectedStyle}
-        onChange={setSelectedStyle}
+        onChange={(val) => setSelectedStyle(val as PreviewStyleName)}
         data={[
           {label: "Broadway", value: "broadway"},
           {label: "Jazz", value: "jazz"},
@@ -171,19 +201,19 @@ export function ScoreTitlePreview({
           <Box
             style={{
               display: "flex",
-              alignItems: "center", // vertical alignment
-              justifyContent: "space-between", // push left/right
+              alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: "1rem"
             }}
           >
-            <h3 style={previewStyleOptions[selectedStyle].partName}>
+            <h3 style={previewStyleOptions[selectedStyle].partName ?? {}}>
               Conductor Score
             </h3>
 
             {(mvtNo || pieceNumber || showTitle) && selectedStyle === "broadway" && (
               <Box style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 {showTitle && (
-                  <span style={previewStyleOptions[selectedStyle].showTitle}>
+                  <span style={previewStyleOptions[selectedStyle].showTitle ?? {}}>
                     {showTitle}
                   </span>
                 )}
@@ -193,7 +223,7 @@ export function ScoreTitlePreview({
                     padding: "0.25rem 0.75rem",
                   }}
                 >
-                  <h1 style={previewStyleOptions[selectedStyle].mvtNo}>
+                  <h1 style={previewStyleOptions[selectedStyle].mvtNo ?? {}}>
                     {mvtNo || pieceNumber}
                   </h1>
                 </Box>
@@ -204,30 +234,30 @@ export function ScoreTitlePreview({
         
         <div style={{ textAlign: 'center' }}>
             {title && (
-            <h1 style={previewStyleOptions[selectedStyle].title}>
+            <h1 style={previewStyleOptions[selectedStyle].title ?? {}}>
                 {title}
             </h1>
             )}
             
             {subtitle && (
-            <h3 style={previewStyleOptions[selectedStyle].subtitle}>
+            <h3 style={previewStyleOptions[selectedStyle].subtitle ?? {}}>
                 {subtitle}
             </h3>
             )}
         </div>
         <div style={{textAlign: 'right'}}>
           {ensemble && (selectedStyle === "jazz" || selectedStyle === "classical" ) && (
-            <h4 style={previewStyleOptions[selectedStyle].ensemble}>
+            <h4 style={previewStyleOptions[selectedStyle].ensemble ?? {}}>
                 {ensemble}
             </h4>
             )}
             {composer && (
-            <h4 style={previewStyleOptions[selectedStyle].composer}>
+            <h4 style={previewStyleOptions[selectedStyle].composer ?? {}}>
                 {composer}
             </h4>
             )}
             {arranger && (
-              <h4 style={previewStyleOptions[selectedStyle].arranger}> 
+              <h4 style={previewStyleOptions[selectedStyle].arranger ?? {}}> 
                 arr. {arranger}  
               </h4>
             )}

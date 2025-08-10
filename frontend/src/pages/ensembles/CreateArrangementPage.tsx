@@ -6,115 +6,57 @@ import {
   Text,
   Notification,
   TextInput,
-  Box,
-  SegmentedControl,
   Group,
   Alert,
   Loader,
 } from "@mantine/core";
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
-import { useParams } from "react-router-dom";
+import type { Ensemble, Arrangement } from "../../services/apiService";
+import { useNavigate, useParams } from "react-router-dom";
 import '../../fonts.css'
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
+import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
 
 export default function CreateArrangementPage() {
+
+  const emptyArrangement = (): Arrangement => ({
+  id: 0,
+  ensemble: 0,
+  title: "",
+  slug: "",
+  composer: "",
+  actNumber: 0,
+  pieceNumber: 0,
+  mvt_no: "",
+  latestVersion: 0,
+  latestVersionNum: "N/A",
+})
+
+const emptyEnsemble = (): Ensemble => ({
+  id: 0,
+  name: '',
+  slug: '',
+  arrangements: [emptyArrangement()],
+})
+
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState<string>("")
   const [subtitle, setSubtitle] = useState<string>("")
   const [composer, setComposer] = useState<string>("")
-  const [actNumber, setActNumber] = useState<number|null>(null)
-  const [pieceNumber, setPieceNumber] = useState<number|null>(null)
-  const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
+  const [actNumber, setActNumber] = useState<number|undefined>(undefined)
+  const [pieceNumber, setPieceNumber] = useState<number|undefined>(undefined)
+  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
-  const [ensemble, setEnsemble] = useState<any>(null);
-  const { slug } = useParams();
+  const [ensemble, setEnsemble] = useState<Ensemble>(emptyEnsemble());
+  const { slug = "NA" } = useParams();
 
   const [loading, setLoading] = useState(true);
 
+  const navigate = useNavigate()
+
   const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
-  const previewStyleOptions = {
-    "broadway": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "partName": {
-        fontFamily: "Palatino, sans-serif",
-      }
-    },
-    "classical": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
-        fontFamily: "Palatino, sans-serif",
-      },
-      "partName": {
-        fontFamily: "Palatino, sans-serif",
-      }
-    },
-    "jazz": {
-      "title": {
-        margin: '0 0 8px 0',
-        textDecoration: 'underline',
-        fontFamily: "Inkpen2, sans-serif",
-      },
-      "subtitle": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Inkpen2, sans-serif",
-      },
-      "composer": {
-        margin: '0', 
-        fontWeight: 'normal',
-        fontFamily: "Inkpen2, sans-serif",
-      },
-      "mvtNo": {
-        margin: 0, 
-        fontSize: '1.5rem',
-        fontFamily: "Inkpen2, sans-serif",
-      },
-      "partName": {
-        fontFamily: "Inkpen2, sans-serif",
-      }
-    },
-  }
 
-  // Create mvtNo variable
-  
-
-  //get ensemble info
   useEffect(() => {
       const fetchData = async () => {
         try {
@@ -141,12 +83,14 @@ export default function CreateArrangementPage() {
   const createArrangment = async () => {
 
     try {
-      const data = await apiService.createArrangement(ensemble.id, title, subtitle, composer, actNumber, pieceNumber, selectedStyle)
-      
-      window.location.href = `/app/ensembles/${ensemble.slug}/arrangements`;
-    } catch (err: any) {
-      console.error("Error when creating arrangement:", err.message);
-      setError(err.message || "Unknown Error."); 
+      await apiService.createArrangement(ensemble.id, title, subtitle, composer, actNumber, pieceNumber, selectedStyle)
+
+      navigate(`/app/ensembles/${ensemble.slug}/arrangements`)
+    } catch (err) {
+      if (err instanceof Error){
+        console.error("Error when creating arrangement:", err.message);
+        setError(err.message || "Unknown Error."); 
+      }
     } 
   };
 
@@ -218,13 +162,13 @@ export default function CreateArrangementPage() {
       <TextInput
         label="Act Number"
         value={actNumber}
-        onChange={(e) => setActNumber(e.currentTarget.value)}
         type="number"
+        onChange={(e) => setActNumber(+(e.currentTarget.value))}  //+ Operator converts from string to number (so stupid but wtv)
       />
       <TextInput
         label="Piece Number"
         value={pieceNumber}
-        onChange={(e) => setPieceNumber(e.currentTarget.value)}
+        onChange={(e) => setPieceNumber(+(e.currentTarget.value))}
         type="number"
         mt="md"
       />
@@ -233,9 +177,12 @@ export default function CreateArrangementPage() {
         selectedStyle={selectedStyle}
         setSelectedStyle={setSelectedStyle}
         title={title}
+        ensemble={null}
         subtitle={subtitle}
         composer={composer}
+        arranger={null}
         mvtNo={mvtNo}
+        showTitle={null}
         pieceNumber={pieceNumber}
       />
 

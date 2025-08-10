@@ -8,7 +8,6 @@ import {
   Center,
   Text,
   Notification,
-  Group,
   TextInput,
   Collapse,
   Stack,
@@ -171,10 +170,12 @@ export default function PartFormatterPage() {
             setSelectedStyle={setSelectedStyle}
             title={"Title"}
             subtitle={"subtitle"}
+            ensemble={null}
             composer={composer}
             arranger={arranger}
             showTitle={showTitle}
             mvtNo={showNumber}
+            pieceNumber={null}
           />
           {/* <Button onClick={handleFormatRequest}>Format Musescore File</Button> */}
           <Stack mt="xl">

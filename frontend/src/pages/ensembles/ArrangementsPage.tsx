@@ -21,7 +21,7 @@ import { IconMusic, IconArrowLeft, IconEye, IconEdit } from '@tabler/icons-react
 import { apiService } from '../../services/apiService';
 
 const ArrangementsPage = () => {
-  const { slug } = useParams(); // Get ensemble slug from URL
+  const { slug = "NA"} = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
   const [ensemble, setEnsemble] = useState<any>(null);
   const [arrangements, setArrangements] = useState<any[]>([]);

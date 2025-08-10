@@ -1,5 +1,25 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+export interface Arrangement {
+  id: number,
+  ensemble: number
+  title: string,
+  slug: string,
+  composer: string|null,
+  actNumber: number|null,
+  pieceNumber: number,
+  mvt_no: string,
+  latestVersion: number|null,
+  latestVersionNum: string,
+}
+
+export interface Ensemble {
+  id: number,
+  name: string,
+  slug: string,
+  arrangements: [Arrangement]
+}
+
 export const apiService = {
   async getEnsembles() {
     const response = await fetch(`${API_BASE_URL}/ensembles/`);
@@ -76,12 +96,12 @@ export const apiService = {
   return response.json();
   },
 
-  async createArrangement(ensembleSlug: string, title: string, subtitle: string, composer: string, actNumber: number|null, pieceNumber: number|null, style: string){
+  async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: number|undefined, pieceNumber: number|undefined, style: string){
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"ensemble": ensembleSlug, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "default_style": style})
+        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "default_style": style})
       }
     )
     if (!response.ok) {
