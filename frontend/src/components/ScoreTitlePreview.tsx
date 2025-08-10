@@ -17,7 +17,8 @@ interface ScoreTitlePreviewProps {
   setSelectedStyle: (style: string) => void;
   title: string;
   subtitle: string;
-  composer: string;
+  ensemble: string|null;
+  composer: string|null;
   arranger: string|null;
   showTitle: string|null;
   mvtNo: string;
@@ -29,6 +30,7 @@ export function ScoreTitlePreview({
   setSelectedStyle,
   title,
   subtitle,
+  ensemble,
   composer,
   arranger, 
   mvtNo,
@@ -85,6 +87,11 @@ export function ScoreTitlePreview({
         fontWeight: 'normal',
         fontFamily: "Palatino, sans-serif",
       },
+      "ensemble": {
+        margin: '0', 
+        fontWeight: 'bold',
+        fontFamily: "Palatino, sans-serif",
+      },
       "composer": {
         margin: '0', 
         fontWeight: 'normal',
@@ -109,6 +116,11 @@ export function ScoreTitlePreview({
       "subtitle": {
         margin: '0', 
         fontWeight: 'normal',
+        fontFamily: "Inkpen2, sans-serif",
+      },
+      "ensemble": {
+        margin: '0', 
+        fontWeight: 'bold',
         fontFamily: "Inkpen2, sans-serif",
       },
       "composer": {
@@ -204,6 +216,11 @@ export function ScoreTitlePreview({
             )}
         </div>
         <div style={{textAlign: 'right'}}>
+          {ensemble && (selectedStyle === "jazz" || selectedStyle === "classical" ) && (
+            <h4 style={previewStyleOptions[selectedStyle].ensemble}>
+                {ensemble}
+            </h4>
+            )}
             {composer && (
             <h4 style={previewStyleOptions[selectedStyle].composer}>
                 {composer}

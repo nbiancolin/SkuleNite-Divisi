@@ -14,7 +14,7 @@ import {
   Stack,
   Checkbox, 
 } from "@mantine/core";
-import { Check, X, UploadCloud, StepBack } from "lucide-react";
+import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 import { ScoreTitlePreview } from "../components/ScoreTitlePreview";
 

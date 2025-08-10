@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from 'react-router-dom';
 import {
   Container,
   Button,
@@ -6,10 +7,11 @@ import {
   Text,
   Notification,
   TextInput,
-  SegmentedControl,
+  
 } from "@mantine/core";
 import { X, } from "lucide-react";
 import { apiService } from '../../services/apiService';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 
 
@@ -18,6 +20,7 @@ export default function CreateEnsemblePage() {
   const [ensembleName, setEnsebleName] = useState<string>("My First Ensemble")
   const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
+  const navigate = useNavigate();
   const createEnsemble = async () => {
 
     try {
@@ -32,6 +35,14 @@ export default function CreateEnsemblePage() {
 
   return (
     <Container size="sm" py="xl">
+      {/* TODO: Remove this when adding users */}
+      <Button
+        variant="subtle"
+        leftSection={<IconArrowLeft size={16} />}
+        onClick={() => { navigate('/app/ensembles'); }}
+      >
+        Back to Ensembles
+      </Button>
       <Title ta="center" mb="xl">
         Get started with Divisi
       </Title>
@@ -51,7 +62,10 @@ export default function CreateEnsemblePage() {
         setSelectedStyle={setSelectedStyle}
         title={"Title"}
         subtitle={"subtitle"}
+        ensemble={ensembleName}
         composer={"composer"}
+        showTitle={"My Broadway Show"}
+        arranger={"arranger"}
         mvtNo={"0-0"}
         pieceNumber={0}
       />
