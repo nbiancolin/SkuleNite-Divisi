@@ -11,7 +11,8 @@ import {
   Group,
   Stack,
   Loader,
-  Alert
+  Alert,
+  ActionIcon,
 } from '@mantine/core';
 import { IconMusic, IconEye } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
@@ -64,7 +65,18 @@ const EnsemblesPage = () => {
     <Stack gap="lg">
       <Group justify="space-between" align="flex-end">
         <Title order={1}>Ensembles</Title>
-        <Text c="dimmed">{ensembles.length} ensemble{ensembles.length !== 1 ? 's' : ''}</Text>
+        <Group>
+          <Text c="dimmed">{ensembles.length} ensemble{ensembles.length !== 1 ? 's' : ''}</Text>
+          <Button
+              component={Link}
+              to={`/app/ensembles/create`}
+              variant="filled"
+              size="sm"
+              rightSection={<ActionIcon size={16} />}
+            >
+              Create Ensemble
+            </Button>
+          </Group>
       </Group>
 
       <Grid>

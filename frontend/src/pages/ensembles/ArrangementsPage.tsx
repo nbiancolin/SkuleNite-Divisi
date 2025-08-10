@@ -21,7 +21,7 @@ import { IconMusic, IconArrowLeft, IconEye, IconEdit } from '@tabler/icons-react
 import { apiService } from '../../services/apiService';
 
 const ArrangementsPage = () => {
-  const { slug } = useParams(); // Get ensemble slug from URL
+  const { slug = "NA"} = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
   const [ensemble, setEnsemble] = useState<any>(null);
   const [arrangements, setArrangements] = useState<any[]>([]);
@@ -33,12 +33,11 @@ const ArrangementsPage = () => {
       try {
         setLoading(true);
         // Fetch both ensemble details and arrangements
-        const [ensembleData, arrangementsData] = await Promise.all([
+        const [ensembleData] = await Promise.all([
           apiService.getEnsemble(slug),
-          apiService.getEnsembleArrangements(slug)
         ]);
         setEnsemble(ensembleData);
-        setArrangements(arrangementsData);
+        setArrangements(ensembleData.arrangements);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -129,9 +128,20 @@ const ArrangementsPage = () => {
           </Group>
           <Title order={1}>{ensemble.name} - Arrangements</Title>
         </Stack>
-        <Text c="dimmed">
-          {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
-        </Text>
+        <Group>
+          <Text c="dimmed">
+            {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
+          </Text>
+          <Button
+            component={Link}
+            to={`/app/ensembles/${ensemble.slug}/create-arrangement`}
+            variant="filled"
+            size="sm"
+            rightSection={<ActionIcon size={16} />}
+          >
+            Create Arrangement
+          </Button>
+        </Group>
       </Group>
 
       {arrangements.length > 0 ? (
@@ -141,7 +151,7 @@ const ArrangementsPage = () => {
               <Table.Tr>
                 <Table.Th>Movement #</Table.Th>
                 <Table.Th>Title</Table.Th>
-                <Table.Th>Subtitle</Table.Th>
+                <Table.Th>Composer</Table.Th>
                 <Table.Th>Latest Version</Table.Th>
                 <Table.Th>Actions</Table.Th>
               </Table.Tr>
@@ -159,7 +169,7 @@ const ArrangementsPage = () => {
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
-                      {arrangement.subtitle || '—'}
+                      {arrangement.composer || '—'}
                     </Text>
                   </Table.Td>
                   <Table.Td>
