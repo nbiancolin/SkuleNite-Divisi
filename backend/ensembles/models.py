@@ -51,9 +51,25 @@ class Arrangement(models.Model):
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
     act_number = models.IntegerField(default=1, blank=True, null=True)
-    piece_number = models.IntegerField(default=1)
+    piece_number = models.IntegerField(default=1, blank=True, null=True) #NOTE: This field is auto-populated on save... should never actually be blank
 
     default_style = models.CharField(choices=STYLE_CHOICES)
+
+    #TODO: Make this a little cleaner, might not be optimal
+    def save(self, *args, **kwargs):
+        
+        if not self.slug:
+            self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
+
+        if self.pk is None:
+            super().save(*args, **kwargs)
+            if self.piece_number is None:
+                self.piece_number = self.pk
+                super().save(update_fields=["piece_number"])
+        else:
+            if self.piece_number is None:
+                self.piece_number = self.pk
+            super().save(*args, **kwargs)
 
     def get_mvtno(self):
         if self.act_number is not None:
@@ -75,11 +91,6 @@ class Arrangement(models.Model):
     
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
-        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["act_number", "piece_number"]
