@@ -11,7 +11,8 @@ import {
   Group,
   TextInput,
   Collapse,
-  Stack, 
+  Stack,
+  Checkbox, 
 } from "@mantine/core";
 import { Check, X, UploadCloud, StepBack } from "lucide-react";
 import axios from "axios";
@@ -212,6 +213,11 @@ export default function PartFormatterPage() {
               label="Arranger"
               value={arranger}
               onChange={(e) => setArranger(e.currentTarget.value)}
+            />
+            <Checkbox
+              disabled
+              label="Overwrite above info in title box (Coming soon !!)"  
+              // TODO[SC-62]: Do this
             />
           </Stack>
           {/* TODO[SC-XX] add ticky box to re-format composer text with above info  */}
