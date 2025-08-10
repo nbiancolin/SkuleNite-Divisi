@@ -15,6 +15,7 @@ export const apiService = {
       `Failed to fetch ensembles (status: ${response.status}) - ${errorDetails}`
     );
   }
+  return response.json();
   },
 
   async createEnsemble(name: string, selected_style: string){
@@ -37,6 +38,7 @@ export const apiService = {
       `Failed to create ensemble (status: ${response.status}) - ${errorDetails}`
     );
   }
+  return response.json();
   },
 
   async getEnsemble(slug: string) {
@@ -71,6 +73,7 @@ export const apiService = {
       `Failed to fetch arrangements (status: ${response.status}) - ${errorDetails}`
     );
   }
+  return response.json();
   },
 
   async createArrangement(ensembleSlug: string, title: string, subtitle: string, composer: string, actNumber: number|null, pieceNumber: number|null, style: string){
