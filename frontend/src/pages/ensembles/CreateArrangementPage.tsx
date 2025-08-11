@@ -177,7 +177,7 @@ const emptyEnsemble = (): Ensemble => ({
         selectedStyle={selectedStyle}
         setSelectedStyle={setSelectedStyle}
         title={title}
-        ensemble={null}
+        ensemble={slug}
         subtitle={subtitle}
         composer={composer}
         arranger={null}

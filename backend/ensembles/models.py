@@ -33,6 +33,10 @@ class Ensemble(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(choices=STYLE_CHOICES)
 
+    @property
+    def num_arrangements(self):
+        return Arrangement.objects.filter(ensemble__id=self.pk).count()
+
     def __str__(self):
         return self.name
 
@@ -126,7 +130,7 @@ class ArrangementVersion(models.Model):
     def save(self, *args, **kwargs):
         version_type = kwargs.pop("version_type", None)
 
-        if not self.pk and version_type:
+        if version_type:
             # This is a new version, and caller wants to bump the version
             latest = ArrangementVersion.objects.filter(
                 arrangement=self.arrangement, is_latest=True

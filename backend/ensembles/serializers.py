@@ -9,12 +9,11 @@ VERSION_TYPES = [
 
 class ArrangementSerializer(serializers.ModelSerializer):
     mvt_no = serializers.ReadOnlyField()
-    latest_version = serializers.ReadOnlyField()
     latest_version_num = serializers.ReadOnlyField()
 
     class Meta:
         model = Arrangement
-        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version_num']
         read_only_fields = ['slug', ]
 
 
