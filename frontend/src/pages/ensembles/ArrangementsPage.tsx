@@ -165,7 +165,7 @@ const ArrangementsPage = () => {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Text fw={500}><a href={`/app/arrangements/${arrangement.id}/new-version`}>{arrangement.title}</a></Text>
+                    <Text fw={500}><a href={`/app/arrangements/${arrangement.id}/`}>{arrangement.title}</a></Text>
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
@@ -175,7 +175,13 @@ const ArrangementsPage = () => {
                   <Table.Td>
                     <Badge
                       variant="light"
-                      color={arrangement.latest_version_num !== 'N/A' ? 'green' : 'gray'}
+                      color={
+                      arrangement.latest_version_num !== 'N/A'
+                        ? arrangement.latest_version_num.startsWith('0')
+                        ? 'yellow'
+                        : 'green'
+                        : 'gray'
+                      }
                       size="sm"
                     >
                       v{arrangement.latest_version_num}

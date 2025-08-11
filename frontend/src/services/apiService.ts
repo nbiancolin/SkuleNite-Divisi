@@ -1,5 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+export interface ArrangementVersion {
+  id: number,
+  uuid: string,
+  arrangement: number,
+  version_label: string,
+  timestamp: string,
+}
+
 export interface Arrangement {
   id: number,
   ensemble: number
@@ -9,7 +17,7 @@ export interface Arrangement {
   actNumber: number|null,
   pieceNumber: number,
   mvt_no: string,
-  latestVersion: number|null,
+  latestVersion: ArrangementVersion,
   latestVersionNum: string,
 }
 

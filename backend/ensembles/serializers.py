@@ -7,13 +7,21 @@ VERSION_TYPES = [
     ("patch", 'Patch')
 ]
 
+class ArrangementVersionSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ArrangementVersion
+        fields = ["id", "uuid", "arrangement", "version_label", "timestamp",]
+
+
 class ArrangementSerializer(serializers.ModelSerializer):
     mvt_no = serializers.ReadOnlyField()
+    latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
 
     class Meta:
         model = Arrangement
-        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version_num']
+        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
         read_only_fields = ['slug', ]
 
 
@@ -26,11 +34,6 @@ class EnsembleSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug']
 
 
-class ArrangementVersionSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = ArrangementVersion
-        fields = ["id", "arrangement", "version_label", "timestamp",]
 
 class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
