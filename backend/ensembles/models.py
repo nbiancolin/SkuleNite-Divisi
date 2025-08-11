@@ -121,6 +121,8 @@ class ArrangementVersion(models.Model):
             patch += 1
         return f"{major}.{minor}.{patch}"
 
+
+#TODO: This isnt working igure out why
     def save(self, *args, **kwargs):
         version_type = kwargs.pop("version_type", None)
 
@@ -144,26 +146,25 @@ class ArrangementVersion(models.Model):
 
     @property
     def mscz_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}"
+        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/raw/"
 
     @property
     def mscz_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}/{self.file_name}"
+        return self.mscz_file_location + f"{self.file_name}"
 
     @property
     def output_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}"
+        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/processed/"
 
     @property
     def output_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
+        return self.output_file_location + f"{self.file_name}"
 
     def __str__(self):
         return f"{self.arrangement.__str__} (v{self.version_label})"
 
     class Meta:
         ordering = ["-timestamp"]
-        unique_together = ("arrangement", "version_label")
 
 
 def _part_upload_path(instance, filename):

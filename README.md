@@ -40,8 +40,8 @@ Backend:
 
 ### Score Management (Ensembles)
 
-- raw uploaded files are stored in `/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/_raw/`
-- Once processed, moved out of raw folder (`/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>`)
+- raw uploaded files are stored in `/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/raw/`
+- Once processed, moved out of raw folder (`/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/processed/`)
 - Files Exported:
   - Formatted Mscz (same file name, in root uuid folder)
   - Formatted Score (same file name, extension.pdf)

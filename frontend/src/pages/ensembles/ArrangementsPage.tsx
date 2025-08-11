@@ -165,7 +165,7 @@ const ArrangementsPage = () => {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Text fw={500}><a href={`/app/arrangements/${arrangement.slug}`}>{arrangement.title}</a></Text>
+                    <Text fw={500}><a href={`/app/arrangements/${arrangement.id}/new-version`}>{arrangement.title}</a></Text>
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
@@ -188,7 +188,7 @@ const ArrangementsPage = () => {
                           variant="subtle"
                           color="blue"
                           component={Link}
-                          to={`/app/arrangements/${arrangement.slug}`} //TODO: Have this link to the right spot
+                          to={`/app/arrangements/${arrangement.id}/new-version`} //TODO: Have this link to the right spot
                         >
                           <IconUpload size={16} />
                         </ActionIcon>

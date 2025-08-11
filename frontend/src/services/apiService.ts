@@ -75,7 +75,6 @@ export const apiService = {
       `Failed to fetch ensemble (status: ${response.status}) - ${errorDetails}`
     );
   }
-
   return response.json();
   },
 
@@ -91,6 +90,40 @@ export const apiService = {
     }
     throw new Error(
       `Failed to fetch arrangements (status: ${response.status}) - ${errorDetails}`
+    );
+  }
+  return response.json();
+  },
+
+  async getArrangement(slug: string) {
+    const response = await fetch(`${API_BASE_URL}/arrangements/${slug}/`);
+    if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to fetch arrangement (status: ${response.status}) - ${errorDetails}`
+    );
+  }
+  return response.json();
+  },
+
+  async getArrangementById(id: number) {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`);
+    if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to fetch arrangement (status: ${response.status}) - ${errorDetails}`
     );
   }
   return response.json();

@@ -21,12 +21,13 @@ from rest_framework import routers
 
 from django.conf import settings
 
-from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementVersionViewSet, UploadArrangementVersionMsczView
+from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementByIdViewSet, ArrangementVersionViewSet, UploadArrangementVersionMsczView
 from divisi.views import UploadMsczFile, FormatMsczFile
 
 router = routers.DefaultRouter()
 router.register(r'ensembles', EnsembleViewSet, 'ensemble')
 router.register(r'arrangements', ArrangementViewSet, 'arrangement')
+router.register(r'arrangements-by-id', ArrangementByIdViewSet, 'arrangement-by-id')
 router.register(r'arrangementversions', ArrangementVersionViewSet, 'arrangementversion')
 
 urlpatterns = [

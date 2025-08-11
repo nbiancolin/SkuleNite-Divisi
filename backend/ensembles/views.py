@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from django.db import transaction
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
@@ -14,6 +15,8 @@ from .serializers import (
     CreateArrangementVersionMsczSerializer,
 )
 from logging import getLogger
+
+import os
 
 logger = getLogger("EnsembleViews")
 
@@ -36,6 +39,11 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     queryset = Arrangement.objects.all()
     serializer_class = ArrangementSerializer
     lookup_field = "slug"
+
+class ArrangementByIdViewSet(viewsets.ModelViewSet):
+    queryset = Arrangement.objects.all()
+    serializer_class = ArrangementSerializer
+    lookup_field = "id"
 
 
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
@@ -63,21 +71,28 @@ class UploadArrangementVersionMsczView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         arrangement_id = serializer.validated_data["arrangement_id"]
-
-        if not Arrangement.objects.filter(id=arrangement_id).exists():
+        try:
+            arr = Arrangement.objects.get(id=arrangement_id)
+        except Arrangement.DoesNotExist:
             return Response({"message": "Provided arrangement ID does not exist", "arrangement_id": arrangement_id}, status=status.HTTP_400_BAD_REQUEST)
 
-        version = ArrangementVersion.objects.create(
-            arrangement=arrangement_id,
-            file_name=serializer.validated_data["file"].name,
-            version_type=serializer.validated_data["version_type"],
-        )
+        # TODO wrap in transaction
+        with transaction.atomic():
+            version = ArrangementVersion.objects.create(
+                arrangement=arr,
+                file_name=serializer.validated_data["file"].name,
+            )
+
+            version.save(version_type=serializer.validated_data["version_type"],)
 
         uploaded_file = serializer.validated_data["file"]
         if not uploaded_file:
             return Response(
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
+
+        if not os.path.exists(version.mscz_file_location):
+            os.makedirs(version.mscz_file_location)
 
         with open(version.mscz_file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
