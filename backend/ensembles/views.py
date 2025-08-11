@@ -61,9 +61,14 @@ class UploadArrangementVersionMsczView(APIView):
         serializer = CreateArrangementVersionMsczSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        arrangement_id = serializer.validated_data["arrangement_id"]
+
+        if not Arrangement.objects.filter(id=arrangement_id).exists():
+            return Response({"message": "Provided arrangement ID does not exist", "arrangement_id": arrangement_id}, status=status.HTTP_400_BAD_REQUEST)
 
         version = ArrangementVersion.objects.create(
-            arrangement=serializer.validated_data["arrangement_id"],
+            arrangement=arrangement_id,
             file_name=serializer.validated_data["file"].name,
             version_type=serializer.validated_data["version_type"],
         )
