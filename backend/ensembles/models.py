@@ -102,7 +102,7 @@ class ArrangementVersion(models.Model):
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     file_name = models.CharField()
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
