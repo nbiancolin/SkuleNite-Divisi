@@ -41,6 +41,9 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     version_type = serializers.CharField(required=True)  #TODO: Make this a choice field
 
 
+class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
+    version_id = serializers.IntegerField(required=True)
+
 #OLD for now TODO remove
 class CreateEnsembleSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)

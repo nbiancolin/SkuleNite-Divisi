@@ -22,29 +22,6 @@ import { useParams, Link } from 'react-router-dom';
 
 import type { Arrangement } from '../../services/apiService';
 
-// // Import your API service types and functions
-// interface ArrangementVersion {
-//   id: number;
-//   uuid: string;
-//   arrangementId: number;
-//   versionNum: string;
-//   timestamp: string;
-// }
-
-// interface Arrangement {
-//   id: number;
-//   ensemble_name: string;
-//   ensemble_slug: string;
-//   title: string;
-//   slug: string;
-//   composer: string | null;
-//   actNumber: number | null;
-//   pieceNumber: number;
-//   mvt_no: string;
-//   latest_version: ArrangementVersion;
-//   latest_version_num: string;
-// }
-
 export default function ArrangementDisplay() {
   const {arrangementId = 1} = useParams()
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);

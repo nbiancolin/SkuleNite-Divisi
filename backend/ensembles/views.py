@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.db import transaction
+from django.conf import settings
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
@@ -13,6 +14,7 @@ from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     CreateArrangementVersionMsczSerializer,
+    ArrangementVersionDownloadLinksSeiializer,
 )
 from logging import getLogger
 
@@ -39,6 +41,7 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     queryset = Arrangement.objects.all()
     serializer_class = ArrangementSerializer
     lookup_field = "slug"
+
 
 class ArrangementByIdViewSet(viewsets.ModelViewSet):
     queryset = Arrangement.objects.all()
@@ -69,12 +72,18 @@ class UploadArrangementVersionMsczView(APIView):
         serializer = CreateArrangementVersionMsczSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         arrangement_id = serializer.validated_data["arrangement_id"]
         try:
             arr = Arrangement.objects.get(id=arrangement_id)
         except Arrangement.DoesNotExist:
-            return Response({"message": "Provided arrangement ID does not exist", "arrangement_id": arrangement_id}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    "message": "Provided arrangement ID does not exist",
+                    "arrangement_id": arrangement_id,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # TODO wrap in transaction
         with transaction.atomic():
@@ -83,7 +92,9 @@ class UploadArrangementVersionMsczView(APIView):
                 file_name=serializer.validated_data["file"].name,
             )
 
-            version.save(version_type=serializer.validated_data["version_type"],)
+            version.save(
+                version_type=serializer.validated_data["version_type"],
+            )
 
         uploaded_file = serializer.validated_data["file"]
         if not uploaded_file:
@@ -101,6 +112,42 @@ class UploadArrangementVersionMsczView(APIView):
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.id},
             status=status.HTTP_200_OK,
+        )
+
+
+class ArrangementVersionDownloadLinks(APIView):
+    def get(self, request, *args, **kwargs):
+        serializer = ArrangementVersionDownloadLinksSeiializer(data=request.GET)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            version = ArrangementVersion.objects.get(
+                id=serializer.validated_data["version_id"]
+            )
+        except ArrangementVersion.DoesNotExist:
+            return Response(
+                {"message": "Provided version ID does not exist"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        relative_raw_path = os.path.relpath(version.mscz_file_path, settings.MEDIA_ROOT)
+        relative_output_path = os.path.relpath(
+            version.output_file_path, settings.MEDIA_ROOT
+        )
+        raw_mscz_url = request.build_absolute_uri(
+            settings.MEDIA_URL + relative_raw_path.replace("\\", "/")
+        )
+        score_pdf_url = request.build_absolute_uri(
+            settings.MEDIA_URL + relative_output_path.replace("\\", "/")
+        )
+
+        return Response(
+            {
+                "message": "Successfully created download links",
+                "raw_mscz_url": raw_mscz_url,
+                "score_pdf_url": score_pdf_url,
+            }
         )
 
 
