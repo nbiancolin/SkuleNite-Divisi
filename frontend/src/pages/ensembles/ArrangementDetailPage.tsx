@@ -16,9 +16,9 @@ import {
   ActionIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconUpload } from '@tabler/icons-react';
+import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconUpload, IconArrowLeft } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import type { Arrangement } from '../../services/apiService';
 
@@ -28,13 +28,35 @@ export default function ArrangementDisplay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
+  const [msczUrl, setMsczUrl] = useState<string>("");
+
+  const navigate = useNavigate()
+
+  const getDownloadLinks = async (arrangementVersionId: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
+      setRawMsczUrl(data.raw_mscz_url);
+      setMsczUrl(data.processed_mscz_url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch version download links');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const fetchArrangement = async (id: number) => {
     try {
       setLoading(true);
       setError(null);
-      // In real implementation, use: apiService.getArrangementById(id)
       const data = await apiService.getArrangementById(id);
       setArrangement(data);
+
+      if (data?.latest_version?.id) {
+        await getDownloadLinks(data.latest_version.id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch arrangement');
     } finally {
@@ -48,6 +70,10 @@ export default function ArrangementDisplay() {
 
   const handleRefresh = () => {
     fetchArrangement(+arrangementId);
+  };
+
+   const handleBackClick = () => {
+    navigate(`/app/ensembles/${arrangement?.ensemble_slug}/arrangements`);
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -103,6 +129,17 @@ export default function ArrangementDisplay() {
       <Paper shadow="sm" p="xl" radius="md">
         <Group justify="space-between" mb="lg">
           <div>
+            <Stack gap="xs">
+              <Group gap="sm">
+                <Button
+                  variant="subtle"
+                  leftSection={<IconArrowLeft size={16} />}
+                  onClick={handleBackClick}
+                >
+                  Back to Arrangements
+                </Button>
+              </Group>
+            </Stack>
             <Title order={1} mb="xs">
               {arrangement.mvt_no}: {arrangement.title}
             </Title>
@@ -167,6 +204,7 @@ export default function ArrangementDisplay() {
                   <Badge variant="filled" color="teal" size="lg">
                     v{arrangement.latest_version_num || 'N/A'}
                   </Badge>
+                  {/* Fix spacing of these buttons */}
                   <Button
                     component={Link}
                     to={`/app/arrangements/${arrangement.id}/new-version`}
@@ -176,17 +214,28 @@ export default function ArrangementDisplay() {
                   >
                     Upload new Version
                   </Button>
+                  <Button
+                    component={Link}
+                    to={msczUrl}
+                    variant="filled"
+                    size="sm"
+                    rightSection={<IconUpload size={16} />}  //TOOD Fix icon here
+                  >
+                    Download Formatted MSCZ file
+                  </Button>
+                  <Button
+                    component={Link}
+                    to={rawMsczUrl}
+                    variant="filled"
+                    size="sm"
+                    rightSection={<IconUpload size={16} />}  //TOOD Fix icon here
+                  >
+                    Download Raw MSCZ file
+                  </Button>
                 </Group>
 
                 {arrangement.latest_version ? (
                   <>
-                    <div>
-                      <Text size="sm" c="dimmed">Version UUID</Text>
-                      <Text fw={500} size="sm" style={{ fontFamily: 'monospace' }}>
-                        {arrangement.latest_version.uuid}
-                      </Text>
-                    </div>
-
                     <Group>
                       <IconCalendar size={20} color="gray" />
                       <div>
@@ -207,19 +256,6 @@ export default function ArrangementDisplay() {
           </Grid.Col>
         </Grid>
 
-        <Divider my="lg" />
-
-        {/* <Card shadow="xs" padding="lg" radius="md" withBorder>
-          <Title order={3} mb="md">Technical Details</Title>
-          <Group>
-            <div>
-              <Text size="sm" c="dimmed">Slug</Text>
-              <Text fw={500} size="sm" style={{ fontFamily: 'monospace' }}>
-                {arrangement.slug}
-              </Text>
-            </div>
-          </Group>
-        </Card> */}
         <Card shadow="xs" padding="lg" radius="md" withBorder>
           <Title order={3} mb="md">Download Parts</Title>
           <Text> Coming soon !</Text>

@@ -161,4 +161,21 @@ export const apiService = {
 
   return response.json();
   },
+  async getDownloadLinksForVersion(versionId: number) {
+    const response = await fetch(`${API_BASE_URL}/get-download-links/?version_id=${versionId}`);
+    if (!response.ok){
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to get download links (status: ${response.status}) - ${errorDetails}`
+    );
+    }
+
+    return response.json()
+  }
 };
