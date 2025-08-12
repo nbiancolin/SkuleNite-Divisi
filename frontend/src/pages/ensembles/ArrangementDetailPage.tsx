@@ -20,27 +20,30 @@ import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefre
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 
-// Import your API service types and functions
-interface ArrangementVersion {
-  id: number;
-  uuid: string;
-  arrangementId: number;
-  versionNum: string;
-  timestamp: string;
-}
+import type { ArrangementVersion, Arrangement } from '../../services/apiService';
 
-interface Arrangement {
-  id: number;
-  ensemble: number;
-  title: string;
-  slug: string;
-  composer: string | null;
-  actNumber: number | null;
-  pieceNumber: number;
-  mvt_no: string;
-  latestVersion: ArrangementVersion;
-  latestVersionNum: string;
-}
+// // Import your API service types and functions
+// interface ArrangementVersion {
+//   id: number;
+//   uuid: string;
+//   arrangementId: number;
+//   versionNum: string;
+//   timestamp: string;
+// }
+
+// interface Arrangement {
+//   id: number;
+//   ensemble_name: string;
+//   ensemble_slug: string;
+//   title: string;
+//   slug: string;
+//   composer: string | null;
+//   actNumber: number | null;
+//   pieceNumber: number;
+//   mvt_no: string;
+//   latest_version: ArrangementVersion;
+//   latest_version_num: string;
+// }
 
 export default function ArrangementDisplay() {
   const {arrangementId = 1} = useParams()
@@ -120,19 +123,19 @@ export default function ArrangementDisplay() {
   }
 
   return (
-    <Container size="md" py="xl">
+    <Container size="lg" py="xl">
       <Paper shadow="sm" p="xl" radius="md">
         <Group justify="space-between" mb="lg">
           <div>
             <Title order={1} mb="xs">
-              {arrangement.title}
+              {arrangement.mvt_no}: {arrangement.title}
             </Title>
             <Group gap="xs">
               <Badge variant="light" color="blue">
                 ID: {arrangement.id}
               </Badge>
               <Badge variant="light" color="green">
-                Ensemble: {arrangement.ensemble}
+                Ensemble: {arrangement.ensemble_name}
               </Badge>
             </Group>
           </div>
@@ -176,14 +179,6 @@ export default function ArrangementDisplay() {
                     </div>
                   </Group>
                 )}
-
-                <Group>
-                  <IconHash size={20} color="gray" />
-                  <div>
-                    <Text size="sm" c="dimmed">Piece Number</Text>
-                    <Text fw={500}>{arrangement.pieceNumber}</Text>
-                  </div>
-                </Group>
               </Stack>
             </Card>
           </Grid.Col>
@@ -194,25 +189,25 @@ export default function ArrangementDisplay() {
               <Stack gap="md">
                 <Group>
                   <Badge variant="filled" color="teal" size="lg">
-                    v{arrangement.latestVersionNum || 'N/A'}
+                    v{arrangement.latest_version_num || 'N/A'}
                   </Badge>
                   <Button
                     component={Link}
-                    to={`/app/ensembles/${arrangement.ensemble}/create-arrangement`}
+                    to={`/app/arrangements/${arrangement.id}/new-version`}
                     variant="filled"
                     size="sm"
                     rightSection={<IconUpload size={16} />}
                   >
-                    Create Arrangement
+                    Upload new Version
                   </Button>
                 </Group>
 
-                {arrangement.latestVersion ? (
+                {arrangement.latest_version ? (
                   <>
                     <div>
                       <Text size="sm" c="dimmed">Version UUID</Text>
                       <Text fw={500} size="sm" style={{ fontFamily: 'monospace' }}>
-                        {arrangement.latestVersion.uuid}
+                        {arrangement.latest_version.uuid}
                       </Text>
                     </div>
 
@@ -221,15 +216,10 @@ export default function ArrangementDisplay() {
                       <div>
                         <Text size="sm" c="dimmed">Last Updated</Text>
                         <Text fw={500} size="sm">
-                          {formatTimestamp(arrangement.latestVersion.timestamp)}
+                          {formatTimestamp(arrangement.latest_version.timestamp)}
                         </Text>
                       </div>
                     </Group>
-
-                    <div>
-                      <Text size="sm" c="dimmed">Version ID</Text>
-                      <Text fw={500}>{arrangement.latestVersion.id}</Text>
-                    </div>
                   </>
                 ) : (
                   <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
@@ -243,7 +233,7 @@ export default function ArrangementDisplay() {
 
         <Divider my="lg" />
 
-        <Card shadow="xs" padding="lg" radius="md" withBorder>
+        {/* <Card shadow="xs" padding="lg" radius="md" withBorder>
           <Title order={3} mb="md">Technical Details</Title>
           <Group>
             <div>
@@ -253,6 +243,10 @@ export default function ArrangementDisplay() {
               </Text>
             </div>
           </Group>
+        </Card> */}
+        <Card shadow="xs" padding="lg" radius="md" withBorder>
+          <Title order={3} mb="md">Download Parts</Title>
+          <Text> Coming soon !</Text>
         </Card>
       </Paper>
     </Container>

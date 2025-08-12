@@ -1,24 +1,25 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export interface ArrangementVersion {
-  id: number,
-  uuid: string,
-  arrangement: number,
-  version_label: string,
-  timestamp: string,
+  id: number;
+  uuid: string;
+  arrangementId: number;
+  versionNum: string;
+  timestamp: string;
 }
 
 export interface Arrangement {
-  id: number,
-  ensemble: number
-  title: string,
-  slug: string,
-  composer: string|null,
-  actNumber: number|null,
-  pieceNumber: number,
-  mvt_no: string,
-  latestVersion: ArrangementVersion,
-  latestVersionNum: string,
+  id: number;
+  ensemble_name: string;
+  ensemble_slug: string;
+  title: string;
+  slug: string;
+  composer: string | null;
+  actNumber: number | null;
+  pieceNumber: number;
+  mvt_no: string;
+  latest_version: ArrangementVersion;
+  latest_version_num: string;
 }
 
 export interface Ensemble {

@@ -93,6 +93,14 @@ class Arrangement(models.Model):
     def latest_version_num(self):
         latest = self.latest_version
         return latest.version_label if latest else "N/A"
+    
+    @property
+    def ensemble_name(self):
+        return self.ensemble.name
+    
+    @property
+    def ensemble_slug(self):
+        return self.ensemble.slug
 
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
