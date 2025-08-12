@@ -20,7 +20,7 @@ import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefre
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 
-import type { ArrangementVersion, Arrangement } from '../../services/apiService';
+import type { Arrangement } from '../../services/apiService';
 
 // // Import your API service types and functions
 // interface ArrangementVersion {
@@ -50,7 +50,6 @@ export default function ArrangementDisplay() {
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentId, setCurrentId] = useState(arrangementId);
 
   const fetchArrangement = async (id: number) => {
     try {
@@ -67,11 +66,11 @@ export default function ArrangementDisplay() {
   };
 
   useEffect(() => {
-    fetchArrangement(currentId);
-  }, [currentId]);
+    fetchArrangement(+arrangementId);
+  }, [arrangementId]);
 
   const handleRefresh = () => {
-    fetchArrangement(currentId);
+    fetchArrangement(+arrangementId);
   };
 
   const formatTimestamp = (timestamp: string) => {

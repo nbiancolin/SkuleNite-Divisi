@@ -5,13 +5,9 @@ import {
   FileInput,
   Button,
   Title,
-  Loader,
   Center,
   Text,
   Notification,
-  TextInput,
-  Collapse,
-  Stack,
   Checkbox,
   SegmentedControl,
 } from "@mantine/core";
