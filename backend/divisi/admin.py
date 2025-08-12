@@ -10,6 +10,12 @@ class UploadSessionAdmin(admin.ModelAdmin):
 
     actions = ["remove_older_scores",]
 
+    # Override to allow for delete method to actualy clean up old stuff
+    # There is a performance impact, but its ncessary to save space
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
+
     @admin.action(description="Delete Scores >=2 days old")
     def remove_older_scores(self, request, queryset):
         two_days_ago = datetime.datetime.now() - datetime.timedelta(days=2)

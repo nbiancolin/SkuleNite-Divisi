@@ -22,15 +22,22 @@ export default function CreateArrangementPage() {
 
   const emptyArrangement = (): Arrangement => ({
   id: 0,
-  ensemble: 0,
+  ensemble_name: "ens",
+  ensemble_slug: "ens-slug",
   title: "",
   slug: "",
   composer: "",
   actNumber: 0,
   pieceNumber: 0,
   mvt_no: "",
-  latestVersion: 0,
-  latestVersionNum: "N/A",
+  latest_version: {
+    id: 0,
+    uuid: "",
+    arrangementId: 0,
+    versionNum: "0.0.0",
+    timestamp: ""
+  },
+  latest_version_num: "N/A",
 })
 
 const emptyEnsemble = (): Ensemble => ({
@@ -177,7 +184,7 @@ const emptyEnsemble = (): Ensemble => ({
         selectedStyle={selectedStyle}
         setSelectedStyle={setSelectedStyle}
         title={title}
-        ensemble={null}
+        ensemble={slug}
         subtitle={subtitle}
         composer={composer}
         arranger={null}

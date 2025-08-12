@@ -1,11 +1,16 @@
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 
-STYLE_CHOICES = [
-    ("jazz", "Jazz"),
-    ("broadway", "Broadway"),
-    ("classical", 'Classical')
-]
+import uuid
+import os
+import shutil
+from logging import getLogger
+
+logger = getLogger("app")
+
+STYLE_CHOICES = [("jazz", "Jazz"), ("broadway", "Broadway"), ("classical", "Classical")]
+
 
 def generate_unique_slug(model_class, value, instance=None):
     """
@@ -26,11 +31,16 @@ def generate_unique_slug(model_class, value, instance=None):
 
     return slug
 
+
 class Ensemble(models.Model):
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(choices=STYLE_CHOICES)
+
+    @property
+    def num_arrangements(self):
+        return Arrangement.objects.filter(ensemble__id=self.pk).count()
 
     def __str__(self):
         return self.name
@@ -39,7 +49,6 @@ class Ensemble(models.Model):
         if not self.slug:
             self.slug = generate_unique_slug(Ensemble, self.name, instance=self)
         super().save(*args, **kwargs)
-
 
 
 class Arrangement(models.Model):
@@ -51,13 +60,14 @@ class Arrangement(models.Model):
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
     act_number = models.IntegerField(default=1, blank=True, null=True)
-    piece_number = models.IntegerField(default=1, blank=True, null=True) #NOTE: This field is auto-populated on save... should never actually be blank
+    piece_number = models.IntegerField(
+        default=1, blank=True, null=True
+    )  # NOTE: This field is auto-populated on save... should never actually be blank
 
     default_style = models.CharField(choices=STYLE_CHOICES)
 
-    #TODO: Make this a little cleaner, might not be optimal
+    # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
-        
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
 
@@ -89,6 +99,14 @@ class Arrangement(models.Model):
         latest = self.latest_version
         return latest.version_label if latest else "N/A"
     
+    @property
+    def ensemble_name(self):
+        return self.ensemble.name
+    
+    @property
+    def ensemble_slug(self):
+        return self.ensemble.slug
+
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
 
@@ -96,11 +114,13 @@ class Arrangement(models.Model):
         ordering = ["act_number", "piece_number"]
 
 
-
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
+
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
+    file_name = models.CharField()
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
@@ -118,10 +138,11 @@ class ArrangementVersion(models.Model):
             patch += 1
         return f"{major}.{minor}.{patch}"
 
+
     def save(self, *args, **kwargs):
         version_type = kwargs.pop("version_type", None)
 
-        if not self.pk and version_type:
+        if version_type:
             # This is a new version, and caller wants to bump the version
             latest = ArrangementVersion.objects.filter(
                 arrangement=self.arrangement, is_latest=True
@@ -139,19 +160,69 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
+    def delete(self, **kwargs):
+        #delete files when session is deleted
+        paths_to_delete = [self.mscz_file_location, self.output_file_location]
+        logger.warning("Deleting ArrangementVersion")
+
+        for rel_path in paths_to_delete:
+            abs_path = os.path.abspath(rel_path) 
+
+            if os.path.exists(abs_path):
+                try:
+                    shutil.rmtree(abs_path)
+                    logger.info(f"Deleted folder: {abs_path}")
+                except Exception as e:
+                    logger.error(f"Failed to delete {abs_path}: {e}")
+            else:
+                logger.warning(f"Path does not exist, skipping: {abs_path}")
+
+        super().delete(**kwargs)
+
+    @property
+    def mscz_file_location(self) -> str:
+        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/raw/"
+
+    @property
+    def mscz_file_path(self) -> str:
+        return self.mscz_file_location + f"{self.file_name}"
+
+    @property
+    def output_file_location(self) -> str:
+        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/processed/"
+
+    @property
+    def output_file_path(self) -> str:
+        return self.output_file_location + f"{self.file_name}"
+
+    @property
+    def arrangement_title(self):
+        return self.arrangement.title
+    
+    @property
+    def arrangement_slug(self):
+        return self.arrangement.slug
+    
+    @property
+    def ensemble_name(self):
+        return self.arrangement.ensemble_name
+    
+    @property
+    def ensemble_slug(self):
+        return self.arrangement.ensemble_slug
+
     def __str__(self):
         return f"{self.arrangement.__str__} (v{self.version_label})"
 
     class Meta:
         ordering = ["-timestamp"]
-        unique_together = ("arrangement", "version_label")
 
 
 def _part_upload_path(instance, filename):
     ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
     arrangement = instance.version.arrangement.title.replace(" ", "_")
     version = instance.version.version_label
-    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}" #TODO: Move this to use media/static root
+    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}"  # TODO: Move this to use media/static root
 
 
 class Part(models.Model):

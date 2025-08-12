@@ -1,16 +1,25 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
+export interface ArrangementVersion {
+  id: number;
+  uuid: string;
+  arrangementId: number;
+  versionNum: string;
+  timestamp: string;
+}
+
 export interface Arrangement {
-  id: number,
-  ensemble: number
-  title: string,
-  slug: string,
-  composer: string|null,
-  actNumber: number|null,
-  pieceNumber: number,
-  mvt_no: string,
-  latestVersion: number|null,
-  latestVersionNum: string,
+  id: number;
+  ensemble_name: string;
+  ensemble_slug: string;
+  title: string;
+  slug: string;
+  composer: string | null;
+  actNumber: number | null;
+  pieceNumber: number;
+  mvt_no: string;
+  latest_version: ArrangementVersion;
+  latest_version_num: string;
 }
 
 export interface Ensemble {
@@ -75,7 +84,6 @@ export const apiService = {
       `Failed to fetch ensemble (status: ${response.status}) - ${errorDetails}`
     );
   }
-
   return response.json();
   },
 
@@ -91,6 +99,40 @@ export const apiService = {
     }
     throw new Error(
       `Failed to fetch arrangements (status: ${response.status}) - ${errorDetails}`
+    );
+  }
+  return response.json();
+  },
+
+  async getArrangement(slug: string) {
+    const response = await fetch(`${API_BASE_URL}/arrangements/${slug}/`);
+    if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to fetch arrangement (status: ${response.status}) - ${errorDetails}`
+    );
+  }
+  return response.json();
+  },
+
+  async getArrangementById(id: number) {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`);
+    if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to fetch arrangement (status: ${response.status}) - ${errorDetails}`
     );
   }
   return response.json();

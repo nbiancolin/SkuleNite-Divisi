@@ -23,6 +23,7 @@ jobs:
         ssh -o ServerAliveInterval=60 -o StrictHostKeyChecking=no ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }} \
         "set -e;
          cd /app;
+         docker compoose down --remove-orphans;
          git fetch origin main;
          git reset --hard origin/main;
          docker compose -f docker-compose.prod.yml up -d --build --quiet-pull"

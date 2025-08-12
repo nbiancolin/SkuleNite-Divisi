@@ -17,7 +17,7 @@ import {
   ActionIcon,
   Tooltip
 } from '@mantine/core';
-import { IconMusic, IconArrowLeft, IconEye, IconEdit } from '@tabler/icons-react';
+import { IconMusic, IconArrowLeft, IconEdit, IconUpload } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 
 const ArrangementsPage = () => {
@@ -123,7 +123,7 @@ const ArrangementsPage = () => {
               leftSection={<IconArrowLeft size={16} />}
               onClick={handleBackClick}
             >
-              Back to Ensembles
+              Back to Arrangements
             </Button>
           </Group>
           <Title order={1}>{ensemble.name} - Arrangements</Title>
@@ -165,7 +165,7 @@ const ArrangementsPage = () => {
                     </Badge>
                   </Table.Td>
                   <Table.Td>
-                    <Text fw={500}>{arrangement.title}</Text>
+                    <Text fw={500}><a href={`/app/arrangements/${arrangement.id}/`}>{arrangement.title}</a></Text>
                   </Table.Td>
                   <Table.Td>
                     <Text c="dimmed" size="sm">
@@ -175,7 +175,13 @@ const ArrangementsPage = () => {
                   <Table.Td>
                     <Badge
                       variant="light"
-                      color={arrangement.latest_version_num !== 'N/A' ? 'green' : 'gray'}
+                      color={
+                      arrangement.latest_version_num !== 'N/A'
+                        ? arrangement.latest_version_num.startsWith('0')
+                        ? 'yellow'
+                        : 'green'
+                        : 'gray'
+                      }
                       size="sm"
                     >
                       v{arrangement.latest_version_num}
@@ -183,14 +189,14 @@ const ArrangementsPage = () => {
                   </Table.Td>
                   <Table.Td>
                     <Group gap="xs">
-                      <Tooltip label="View Details">
+                      <Tooltip label="Upload New Version">
                         <ActionIcon
                           variant="subtle"
                           color="blue"
                           component={Link}
-                          to={`/app/arrangements/${arrangement.slug}`}
+                          to={`/app/arrangements/${arrangement.id}/new-version`} //TODO: Have this link to the right spot
                         >
-                          <IconEye size={16} />
+                          <IconUpload size={16} />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Give Feedback">
@@ -218,7 +224,7 @@ const ArrangementsPage = () => {
             <Text size="sm" c="dimmed" ta="center">
               This ensemble doesn't have any arrangements yet. Add your first arrangement to get started.
             </Text>
-            <Button variant="light">Add New Arrangement</Button>
+            <Button variant="light" component={Link} to={`/app/ensembles/${ensemble.slug}/create-arrangement`}>Add New Arrangement</Button>
           </Stack>
         </Card>
       )}

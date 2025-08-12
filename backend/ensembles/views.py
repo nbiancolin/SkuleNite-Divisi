@@ -4,10 +4,19 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
+from django.db import transaction
 
 from .models import Arrangement, Ensemble, ArrangementVersion
-from .serializers import CreateEnsembleSerializer, CreateArrangementSerializer, EnsembleSerializer, ArrangementSerializer, ArrangementVersionSerializer
+from .serializers import (
+    CreateEnsembleSerializer,
+    CreateArrangementSerializer,
+    EnsembleSerializer,
+    ArrangementSerializer,
+    CreateArrangementVersionMsczSerializer,
+)
 from logging import getLogger
+
+import os
 
 logger = getLogger("EnsembleViews")
 
@@ -17,7 +26,7 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     serializer_class = EnsembleSerializer
     lookup_field = "slug"  # use slug instead of pk
 
-    @action(detail=True, methods=['get'], url_path='arrangements')
+    @action(detail=True, methods=["get"], url_path="arrangements")
     def arrangements(self, request, slug=None):
         """Return all arrangements for a specific ensemble."""
         ensemble = self.get_object()
@@ -31,9 +40,16 @@ class ArrangementViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementSerializer
     lookup_field = "slug"
 
+class ArrangementByIdViewSet(viewsets.ModelViewSet):
+    queryset = Arrangement.objects.all()
+    serializer_class = ArrangementSerializer
+    lookup_field = "id"
+
+
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
     queryset = ArrangementVersion.objects.all()
     serializer_class = ArrangementSerializer
+
 
 """
 How arrangement versions should work
@@ -47,6 +63,45 @@ BE:
     - if new version, gets prev version and umps it (how?)
 """
 
+
+class UploadArrangementVersionMsczView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = CreateArrangementVersionMsczSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        arrangement_id = serializer.validated_data["arrangement_id"]
+        try:
+            arr = Arrangement.objects.get(id=arrangement_id)
+        except Arrangement.DoesNotExist:
+            return Response({"message": "Provided arrangement ID does not exist", "arrangement_id": arrangement_id}, status=status.HTTP_400_BAD_REQUEST)
+
+        # TODO wrap in transaction
+        with transaction.atomic():
+            version = ArrangementVersion.objects.create(
+                arrangement=arr,
+                file_name=serializer.validated_data["file"].name,
+            )
+
+            version.save(version_type=serializer.validated_data["version_type"],)
+
+        uploaded_file = serializer.validated_data["file"]
+        if not uploaded_file:
+            return Response(
+                {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not os.path.exists(version.mscz_file_location):
+            os.makedirs(version.mscz_file_location)
+
+        with open(version.mscz_file_path, "wb+") as f:
+            for chunk in uploaded_file.chunks():
+                f.write(chunk)
+
+        return Response(
+            {"message": "File Uploaded Successfully", "version_id": version.id},
+            status=status.HTTP_200_OK,
+        )
 
 
 """
@@ -65,14 +120,15 @@ Upload New Arrangement <Arr-url>/upload
 BE Url Patterns don't really matter, they're just APIs, so IG model viewsets for all of them
 """
 
-#OLD: TODO remove
+# OLD: TODO remove
+
 
 class CreateEnsembleView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CreateEnsembleSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         ens = Ensemble.objects.create(name=serializer.validated_data["name"])
 
         return Response(
@@ -80,12 +136,13 @@ class CreateEnsembleView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class CreateArrangementView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CreateArrangementSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+
         ens = Ensemble.objects.get(name=serializer.validated_data["ensemble_name"])
 
         arr = Arrangement.objects.create(
@@ -101,6 +158,6 @@ class CreateArrangementView(APIView):
             status=status.HTTP_200_OK,
         )
 
-        arrangements = ens.arrangements.all() #TODO: Check if this is a legit error
+        arrangements = ens.arrangements.all()  # TODO: Check if this is a legit error
         serializer = ArrangementSerializer(arrangements, many=True)
         return Response(serializer.data)

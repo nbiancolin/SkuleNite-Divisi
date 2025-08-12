@@ -7,14 +7,21 @@ VERSION_TYPES = [
     ("patch", 'Patch')
 ]
 
+class ArrangementVersionSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = ArrangementVersion
+        fields = ["id", "uuid", "arrangement", "version_label", "timestamp",]
+
+
 class ArrangementSerializer(serializers.ModelSerializer):
     mvt_no = serializers.ReadOnlyField()
-    latest_version = serializers.ReadOnlyField()
+    latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
 
     class Meta:
         model = Arrangement
-        fields = ['id', 'ensemble', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        fields = ['id', 'ensemble_name', 'ensemble_slug', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
         read_only_fields = ['slug', ]
 
 
@@ -27,11 +34,11 @@ class EnsembleSerializer(serializers.ModelSerializer):
         read_only_fields = ['slug']
 
 
-class ArrangementVersionSerializer(serializers.ModelSerializer):
-    
-    class Meta:
-        model = ArrangementVersion
-        fields = ["id", "arrangement", "version_label", "timestamp",]
+
+class CreateArrangementVersionMsczSerializer(serializers.Serializer):
+    file = serializers.FileField(allow_empty_file=False)
+    arrangement_id = serializers.IntegerField(required=True)
+    version_type = serializers.CharField(required=True)  #TODO: Make this a choice field
 
 
 #OLD for now TODO remove
@@ -48,5 +55,3 @@ class CreateArrangementSerializer(serializers.Serializer):
     #Thinking here: If not using broadway formatting settings, use show_number to determine order, otherwise use act_number / show_number combo
     act_number = serializers.IntegerField(required=False, default=-1)
     show_number = serializers.IntegerField(required=True)
-
-#TODO: Write MsczUpload Serializer
