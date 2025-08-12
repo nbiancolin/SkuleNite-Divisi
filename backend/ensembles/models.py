@@ -3,6 +3,11 @@ from django.utils.text import slugify
 from django.conf import settings
 
 import uuid
+import os
+import shutil
+from logging import getLogger
+
+logger = getLogger("app")
 
 STYLE_CHOICES = [("jazz", "Jazz"), ("broadway", "Broadway"), ("classical", "Classical")]
 
@@ -134,7 +139,6 @@ class ArrangementVersion(models.Model):
         return f"{major}.{minor}.{patch}"
 
 
-#TODO: This isnt working igure out why
     def save(self, *args, **kwargs):
         version_type = kwargs.pop("version_type", None)
 
@@ -156,6 +160,25 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
+    def delete(self, **kwargs):
+        #delete files when session is deleted
+        paths_to_delete = [self.mscz_file_location, self.output_file_location]
+        logger.warning("Deleting ArrangementVersion")
+
+        for rel_path in paths_to_delete:
+            abs_path = os.path.abspath(rel_path) 
+
+            if os.path.exists(abs_path):
+                try:
+                    shutil.rmtree(abs_path)
+                    logger.info(f"Deleted folder: {abs_path}")
+                except Exception as e:
+                    logger.error(f"Failed to delete {abs_path}: {e}")
+            else:
+                logger.warning(f"Path does not exist, skipping: {abs_path}")
+
+        super().delete(**kwargs)
+
     @property
     def mscz_file_location(self) -> str:
         return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/raw/"
@@ -171,6 +194,22 @@ class ArrangementVersion(models.Model):
     @property
     def output_file_path(self) -> str:
         return self.output_file_location + f"{self.file_name}"
+
+    @property
+    def arrangement_title(self):
+        return self.arrangement.title
+    
+    @property
+    def arrangement_slug(self):
+        return self.arrangement.slug
+    
+    @property
+    def ensemble_name(self):
+        return self.arrangement.ensemble_name
+    
+    @property
+    def ensemble_slug(self):
+        return self.arrangement.ensemble_slug
 
     def __str__(self):
         return f"{self.arrangement.__str__} (v{self.version_label})"

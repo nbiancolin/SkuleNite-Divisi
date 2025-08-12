@@ -32,7 +32,7 @@ export default function UploadArrangementVersionPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Function to calculate the new version number based on current version and type
-  const getNewVersionNumber = (): string => {
+  const getNewVersionNumber = (type?: string): string => {
     if (!arrangement?.latest_version_num) return "1.0.0";
     
     const currentVersion = arrangement.latest_version_num;
@@ -44,10 +44,16 @@ export default function UploadArrangementVersionPage() {
     }
     
     let [major, minor, patch] = versionParts;
+
+    if (isNaN(major)){
+      major = 0
+    }
+
+    const targetType = type || versionType;
     
-    switch (versionType) {
+    switch (targetType) {
       case "major":
-        major += 1;
+        major = major + 1;
         minor = 0;
         patch = 0;
         break;
@@ -131,9 +137,9 @@ export default function UploadArrangementVersionPage() {
         value={versionType}
         onChange={setVersionType}
         data={[
-          {label: 'Major (1.0.0)', value: "major"},
-          {label: 'Minor (0.1.0)', value: "minor"},
-          {label: 'Patch (0.0.1)', value: "patch"},
+          {label: `Major (${getNewVersionNumber("major")})`, value: "major"},
+          {label: `Minor (${getNewVersionNumber("minor")})`, value: "minor"},
+          {label: `Patch (${getNewVersionNumber("patch")})`, value: "patch"},
         ]}
       />
       <Center>

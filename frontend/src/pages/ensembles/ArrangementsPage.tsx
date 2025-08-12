@@ -123,7 +123,7 @@ const ArrangementsPage = () => {
               leftSection={<IconArrowLeft size={16} />}
               onClick={handleBackClick}
             >
-              Back to Ensembles
+              Back to Arrangements
             </Button>
           </Group>
           <Title order={1}>{ensemble.name} - Arrangements</Title>
