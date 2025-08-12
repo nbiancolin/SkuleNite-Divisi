@@ -7,6 +7,8 @@ from rest_framework import status
 from django.db import transaction
 from django.conf import settings
 
+from .tasks import export_arrangement_version, format_arrangement_version
+
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
     CreateEnsembleSerializer,
@@ -105,9 +107,16 @@ class UploadArrangementVersionMsczView(APIView):
         if not os.path.exists(version.mscz_file_location):
             os.makedirs(version.mscz_file_location)
 
+        
+
         with open(version.mscz_file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
+
+        #format mscz
+        format_arrangement_version(version.pk)
+
+        export_arrangement_version.delay(version.pk)
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.id},
