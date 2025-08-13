@@ -2,7 +2,7 @@ from celery import shared_task
 import subprocess
 
 from divisi.part_formatter.processing import mscz_main
-from divisi.part_formatter.export import export_mscz_to_pdf_score
+from divisi.part_formatter.export import export_mscz_to_pdf_score, export_mscz_to_pdf_score_and_parts
 from divisi.models import UploadSession
 
 
