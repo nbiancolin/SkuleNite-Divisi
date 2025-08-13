@@ -144,6 +144,9 @@ class ArrangementVersionDownloadLinks(APIView):
         relative_output_path = os.path.relpath(
             version.output_file_path, settings.MEDIA_ROOT
         )
+        relative_score_path = os.path.relpath(
+            version.score_pdf_path, settings.MEDIA_ROOT
+        )
         raw_mscz_url = request.build_absolute_uri(
             settings.MEDIA_URL + relative_raw_path.replace("\\", "/")
         )
@@ -151,11 +154,16 @@ class ArrangementVersionDownloadLinks(APIView):
             settings.MEDIA_URL + relative_output_path.replace("\\", "/")
         )
 
+        output_score_url = request.build_absolute_uri(
+            settings.MEDIA_URL + relative_score_path.replace("\\", "/")
+        )
+
         return Response(
             {
                 "message": "Successfully created download links",
                 "raw_mscz_url": raw_mscz_url,
                 "processed_mscz_url": processed_mscz_url,
+                "score_pdf_link": output_score_url
                 #TODO: Add links to processed parts here
             }
         )

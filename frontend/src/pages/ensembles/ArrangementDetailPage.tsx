@@ -16,7 +16,7 @@ import {
   ActionIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconUpload, IconArrowLeft } from '@tabler/icons-react';
+import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconUpload, IconArrowLeft, IconDownload } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -30,6 +30,7 @@ export default function ArrangementDisplay() {
 
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
+  const [scoreUrl, setScoreUrl] = useState<string>("");
 
   const navigate = useNavigate()
 
@@ -40,6 +41,7 @@ export default function ArrangementDisplay() {
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
+      setScoreUrl(data.score_pdf_link);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch version download links');
     } finally {
@@ -208,27 +210,36 @@ export default function ArrangementDisplay() {
                   <Button
                     component={Link}
                     to={`/app/arrangements/${arrangement.id}/new-version`}
-                    variant="filled"
+                    variant="subtle"
                     size="sm"
-                    rightSection={<IconUpload size={16} />}
+                    rightSection={<IconDownload size={16} />}
                   >
                     Upload new Version
+                  </Button>
+                  <Button
+                    component={Link}
+                    to={scoreUrl}
+                    variant="filled"
+                    size="sm"
+                    rightSection={<IconDownload size={16} />} 
+                  >
+                    Download score
                   </Button>
                   <Button
                     component={Link}
                     to={msczUrl}
                     variant="filled"
                     size="sm"
-                    rightSection={<IconUpload size={16} />}  //TOOD Fix icon here
+                    rightSection={<IconDownload size={16} />} 
                   >
                     Download Formatted MSCZ file
                   </Button>
                   <Button
                     component={Link}
                     to={rawMsczUrl}
-                    variant="filled"
+                    variant="subtle"
                     size="sm"
-                    rightSection={<IconUpload size={16} />}  //TOOD Fix icon here
+                    rightSection={<IconDownload size={16} />}  //TOOD Fix icon here
                   >
                     Download Raw MSCZ file
                   </Button>

@@ -36,6 +36,5 @@ def format_arrangement_version(version_id: int):
 @shared_task
 def export_arrangement_version(version_id: int, action:str = "score"):
     version = ArrangementVersion.objects.get(id=version_id)
-    pdf_path = version.output_file_path[:-4] + "pdf"
-    return export_mscz_to_pdf_score(version.output_file_path, pdf_path)
+    return export_mscz_to_pdf_score(version.output_file_path, version.score_pdf_path)
 
