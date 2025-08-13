@@ -1,6 +1,7 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from .models import Ensemble, Arrangement, ArrangementVersion, Part
+from .tasks import export_arrangement_version
 
 from django.http import HttpRequest
 
@@ -21,6 +22,17 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
             obj.delete()
     
     list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp")
+
+    actions = ("re_export_version", )
+
+    @admin.action(description="Re-trigger export of version")
+    def re_export_version(self, request, queryset):
+        if len(queryset) > 5:
+            messages.warning(request, "Please don't do this to more than 5 versions at a time. Cloud computing is expensive :sob:")
+        for version in queryset:
+            export_arrangement_version.delay(version.pk)
+            messages.success(request, f"Successfully retriggered export for \"{version.arrangement.title}\" v{version.version_label}")
+
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
