@@ -63,6 +63,7 @@ RUN apt-get update && \
         libxkbcommon-x11-0 \
         libxcb1 \
         qt5dxcb-plugin \
+        libgpg-error0 \ 
         p7zip-full && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
@@ -143,6 +144,7 @@ RUN apt-get update && \
         libxkbcommon-x11-0 \
         libxcb1 \
         qt5dxcb-plugin \
+        libgpg-error0 \ 
         p7zip-full && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
