@@ -22,6 +22,7 @@ export default function CreateArrangementPage() {
 
   const emptyArrangement = (): Arrangement => ({
   id: 0,
+  ensemble: 0, 
   ensemble_name: "ens",
   ensemble_slug: "ens-slug",
   title: "",

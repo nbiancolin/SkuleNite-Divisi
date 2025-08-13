@@ -16,7 +16,7 @@ import {
   ActionIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconUpload, IconArrowLeft, IconDownload } from '@tabler/icons-react';
+import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -210,13 +210,15 @@ export default function ArrangementDisplay() {
                   <Button
                     component={Link}
                     to={`/app/arrangements/${arrangement.id}/new-version`}
-                    variant="subtle"
+                    variant={arrangement.latest_version ? "subtle" : "filled"}
                     size="sm"
                     rightSection={<IconDownload size={16} />}
                   >
                     Upload new Version
                   </Button>
-                  <Button
+                  {arrangement.latest_version && (
+                    <>
+                    <Button
                     component={Link}
                     to={scoreUrl}
                     variant="filled"
@@ -243,6 +245,9 @@ export default function ArrangementDisplay() {
                   >
                     Download Raw MSCZ file
                   </Button>
+                  </>
+                  )}
+                  
                 </Group>
 
                 {arrangement.latest_version ? (

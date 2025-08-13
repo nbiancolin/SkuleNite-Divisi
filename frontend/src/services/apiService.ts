@@ -10,6 +10,7 @@ export interface ArrangementVersion {
 
 export interface Arrangement {
   id: number;
+  ensemble: number;
   ensemble_name: string;
   ensemble_slug: string;
   title: string;
