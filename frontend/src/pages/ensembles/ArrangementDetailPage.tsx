@@ -16,7 +16,7 @@ import {
   ActionIcon,
   Tooltip,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload } from '@tabler/icons-react';
+import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -41,7 +41,7 @@ export default function ArrangementDisplay() {
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
-      setScoreUrl(data.score_pdf_link);
+      setScoreUrl(data.score_parts_pdf_link);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch version download links');
     } finally {
@@ -212,7 +212,7 @@ export default function ArrangementDisplay() {
                     to={`/app/arrangements/${arrangement.id}/new-version`}
                     variant={arrangement.latest_version ? "subtle" : "filled"}
                     size="sm"
-                    rightSection={<IconDownload size={16} />}
+                    rightSection={<IconUpload size={16} />}
                   >
                     Upload new Version
                   </Button>
@@ -225,7 +225,7 @@ export default function ArrangementDisplay() {
                     size="sm"
                     rightSection={<IconDownload size={16} />} 
                   >
-                    Download score
+                    Download Score & Parts
                   </Button>
                   <Button
                     component={Link}

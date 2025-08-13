@@ -204,6 +204,10 @@ class ArrangementVersion(models.Model):
         return self.output_file_path[:-4] + "pdf"
 
     @property
+    def score_parts_pdf_path(self) -> str:
+        return self.output_file_path[:-5] + "-Score+Parts.pdf"
+
+    @property
     def arrangement_title(self):
         return self.arrangement.title
     

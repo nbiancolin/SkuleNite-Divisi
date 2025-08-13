@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from divisi.part_formatter.processing import mscz_main
-from divisi.part_formatter.export import export_mscz_to_pdf_score, export_mscz_to_pdf_score_and_parts
+from divisi.part_formatter.export import export_mscz_to_pdf_score, export_score_and_parts_ms4
 from .models import ArrangementVersion
 
 @shared_task
@@ -36,5 +36,10 @@ def format_arrangement_version(version_id: int):
 @shared_task
 def export_arrangement_version(version_id: int, action:str = "score"):
     version = ArrangementVersion.objects.get(id=version_id)
-    return export_mscz_to_pdf_score_and_parts(version.output_file_path, version.output_file_location)
+    return export_score_and_parts_ms4(version.output_file_path, version.output_file_location)
 
+
+@shared_task
+def prep_and_export_mscz(version_id):
+    format_arrangement_version(version_id)
+    return export_arrangement_version(version_id)

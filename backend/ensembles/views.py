@@ -7,7 +7,7 @@ from rest_framework import status
 from django.db import transaction
 from django.conf import settings
 
-from .tasks import export_arrangement_version, format_arrangement_version
+from .tasks import prep_and_export_mscz
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
@@ -114,12 +114,10 @@ class UploadArrangementVersionMsczView(APIView):
                 f.write(chunk)
 
         #format mscz
-        format_arrangement_version(version.pk)
-
-        export_arrangement_version.delay(version.pk)
+        prep_and_export_mscz.delay(version.pk)
 
         return Response(
-            {"message": "File Uploaded Successfully", "version_id": version.id},
+            {"message": "File Uploaded Successfully", "version_id": version.pk},
             status=status.HTTP_200_OK,
         )
 
@@ -144,8 +142,8 @@ class ArrangementVersionDownloadLinks(APIView):
         relative_output_path = os.path.relpath(
             version.output_file_path, settings.MEDIA_ROOT
         )
-        relative_score_path = os.path.relpath(
-            version.score_pdf_path, settings.MEDIA_ROOT
+        relative_score_parts_path = os.path.relpath(
+            version.score_parts_pdf_path, settings.MEDIA_ROOT
         )
         raw_mscz_url = request.build_absolute_uri(
             settings.MEDIA_URL + relative_raw_path.replace("\\", "/")
@@ -155,7 +153,7 @@ class ArrangementVersionDownloadLinks(APIView):
         )
 
         output_score_url = request.build_absolute_uri(
-            settings.MEDIA_URL + relative_score_path.replace("\\", "/")
+            settings.MEDIA_URL + relative_score_parts_path.replace("\\", "/")
         )
 
         return Response(
@@ -163,7 +161,7 @@ class ArrangementVersionDownloadLinks(APIView):
                 "message": "Successfully created download links",
                 "raw_mscz_url": raw_mscz_url,
                 "processed_mscz_url": processed_mscz_url,
-                "score_pdf_link": output_score_url
+                "score_parts_pdf_link": output_score_url
                 #TODO: Add links to processed parts here
             }
         )
