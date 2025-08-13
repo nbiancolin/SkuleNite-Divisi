@@ -57,7 +57,7 @@ services:
       - ./backend:/app
     command: celery -A backend worker --loglevel=info
     environment:
-      - DJANGO_SETTINGS_MODULE=backend.settings
+      - DJANGO_SETTINGS_MODULE=backend.settings.development
       - POSTGRES_DB=mydb
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=pass

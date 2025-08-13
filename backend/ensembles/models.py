@@ -64,12 +64,15 @@ class Arrangement(models.Model):
         default=1, blank=True, null=True
     )  # NOTE: This field is auto-populated on save... should never actually be blank
 
-    default_style = models.CharField(choices=STYLE_CHOICES)
+    style = models.CharField(choices=STYLE_CHOICES) #TODO: This should be called "style" not default_style
 
     # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
+        
+        if not self.style:
+            self.style = self.ensemble.default_style
 
         if self.pk is None:
             super().save(*args, **kwargs)
@@ -160,6 +163,10 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
+        #create directories
+        os.makedirs(self.mscz_file_location, exist_ok=True)
+        os.makedirs(self.output_file_location, exist_ok=True)
+
     def delete(self, **kwargs):
         #delete files when session is deleted
         paths_to_delete = [self.mscz_file_location, self.output_file_location]
@@ -194,6 +201,14 @@ class ArrangementVersion(models.Model):
     @property
     def output_file_path(self) -> str:
         return self.output_file_location + f"{self.file_name}"
+    
+    @property
+    def score_pdf_path(self) -> str:
+        return self.output_file_path[:-4] + "pdf"
+
+    @property
+    def score_parts_pdf_path(self) -> str:
+        return self.output_file_path[:-5] + "-Score+Parts.pdf"
 
     @property
     def arrangement_title(self):

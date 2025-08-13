@@ -10,6 +10,7 @@ export interface ArrangementVersion {
 
 export interface Arrangement {
   id: number;
+  ensemble: number;
   ensemble_name: string;
   ensemble_slug: string;
   title: string;
@@ -143,7 +144,7 @@ export const apiService = {
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "default_style": style})
+        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "style": style})
       }
     )
     if (!response.ok) {
@@ -161,4 +162,21 @@ export const apiService = {
 
   return response.json();
   },
+  async getDownloadLinksForVersion(versionId: number) {
+    const response = await fetch(`${API_BASE_URL}/get-download-links/?version_id=${versionId}`);
+    if (!response.ok){
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to get download links (status: ${response.status}) - ${errorDetails}`
+    );
+    }
+
+    return response.json()
+  }
 };
