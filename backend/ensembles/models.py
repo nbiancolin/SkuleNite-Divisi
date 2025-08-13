@@ -64,12 +64,15 @@ class Arrangement(models.Model):
         default=1, blank=True, null=True
     )  # NOTE: This field is auto-populated on save... should never actually be blank
 
-    default_style = models.CharField(choices=STYLE_CHOICES) #TODO: This should be called "style" not default_style
+    style = models.CharField(choices=STYLE_CHOICES) #TODO: This should be called "style" not default_style
 
     # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
+        
+        if not self.style:
+            self.style = self.ensemble.default_style
 
         if self.pk is None:
             super().save(*args, **kwargs)

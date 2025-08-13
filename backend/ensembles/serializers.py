@@ -21,7 +21,7 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Arrangement
-        fields = ['id', 'ensemble', 'ensemble_name', 'ensemble_slug', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'latest_version', 'latest_version_num']
+        fields = ['id', 'ensemble', 'ensemble_name', 'ensemble_slug', 'title', 'slug', 'subtitle', 'composer', 'act_number', 'piece_number', 'mvt_no', 'style', 'latest_version', 'latest_version_num',]
         read_only_fields = ['slug', ]
 
 

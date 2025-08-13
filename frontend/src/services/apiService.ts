@@ -144,7 +144,7 @@ export const apiService = {
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "default_style": style})
+        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "style": style})
       }
     )
     if (!response.ok) {

@@ -12,7 +12,7 @@ def format_arrangement_version(version_id: int):
     kwargs = {
         "input_path": version.mscz_file_path,
         "output_path": version.output_file_path,
-        "style_name": arr.default_style,
+        "style_name": arr.style,
         "versionNum": version.version_label,
     }
 
