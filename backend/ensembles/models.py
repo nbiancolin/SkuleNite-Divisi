@@ -127,6 +127,8 @@ class ArrangementVersion(models.Model):
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
+    is_processing = models.BooleanField(default=True)
+    error_on_export = models.BooleanField(default=False)
 
     def _bump_version_label(self, version_type, old_version_label):
         major, minor, patch = map(int, old_version_label.split("."))

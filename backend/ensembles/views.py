@@ -159,10 +159,11 @@ class ArrangementVersionDownloadLinks(APIView):
         return Response(
             {
                 "message": "Successfully created download links",
+                "is_processing": version.is_processing,
+                "error": version.error_on_export,
                 "raw_mscz_url": raw_mscz_url,
                 "processed_mscz_url": processed_mscz_url,
                 "score_parts_pdf_link": output_score_url
-                #TODO: Add links to processed parts here
             }
         )
 

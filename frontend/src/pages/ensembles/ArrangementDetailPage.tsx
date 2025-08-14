@@ -31,6 +31,8 @@ export default function ArrangementDisplay() {
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [exportLoading, setExportLoading] = useState<boolean>(true);
+  const [exportError, setExportError] = useState<boolean>(false);
 
   const navigate = useNavigate()
 
@@ -42,6 +44,8 @@ export default function ArrangementDisplay() {
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
+      setExportLoading(data.is_processing)
+      setExportError(data.error);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch version download links');
     } finally {
@@ -216,10 +220,13 @@ export default function ArrangementDisplay() {
                   >
                     Upload new Version
                   </Button>
-                  {arrangement.latest_version && (
+
+
+                  {arrangement.latest_version && !exportLoading && !exportError && (
                     <>
                     <Button
                     component={Link}
+                    target="_blank"
                     to={scoreUrl}
                     variant="filled"
                     size="sm"
@@ -229,6 +236,7 @@ export default function ArrangementDisplay() {
                   </Button>
                   <Button
                     component={Link}
+                    target="_blank"
                     to={msczUrl}
                     variant="filled"
                     size="sm"
@@ -238,6 +246,7 @@ export default function ArrangementDisplay() {
                   </Button>
                   <Button
                     component={Link}
+                    target="_blank"
                     to={rawMsczUrl}
                     variant="subtle"
                     size="sm"
@@ -246,6 +255,23 @@ export default function ArrangementDisplay() {
                     Download Raw MSCZ file
                   </Button>
                   </>
+                  )}
+
+                  {exportLoading && (
+                    <Container>
+                      <Group justify="center" py="xl">
+                        <Loader size="md" />
+                        <Text>Score Exporting...</Text>
+                      </Group>
+                    </Container>
+                  )}
+
+                  {exportError && (
+                    <Container>
+                      <Group justify="center" py="xl">
+                        <Text>Error with Formatting. Tell Nick</Text>
+                      </Group>
+                    </Container>
                   )}
                   
                 </Group>
