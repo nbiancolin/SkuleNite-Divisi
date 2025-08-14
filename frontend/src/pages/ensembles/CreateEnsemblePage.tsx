@@ -65,7 +65,7 @@ export default function CreateEnsemblePage() {
         subtitle={"subtitle"}
         ensemble={ensembleName}
         composer={"composer"}
-        showTitle={"My Broadway Show"}
+        showTitle={ensembleName}
         arranger={"arranger"}
         mvtNo={"0-0"}
         pieceNumber={0}

@@ -33,11 +33,14 @@ def export_score_and_parts_ms4(input_file, out_dir):
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")  # safer in containers
 
-    proc = subprocess.run(
-        ["mscore4", "--score-parts-pdf", input_file],
-        check=True, capture_output=True, env=env
-    )
-    data = json.loads(proc.stdout.decode("utf-8"))
+    try:
+        proc = subprocess.run(
+            ["mscore4", "--score-parts-pdf", input_file],
+            check=True, capture_output=True, env=env
+        )
+        data = json.loads(proc.stdout.decode("utf-8"))
+    except subprocess.CalledProcessError as e:
+        return {"status": "error", "details": str(e)}
 
     stem = os.path.splitext(os.path.basename(input_file))[0]
     written = []
@@ -82,4 +85,4 @@ def export_score_and_parts_ms4(input_file, out_dir):
             f.write(pdf)
         written.append(p)
 
-    return written
+    return {"status": "success", "written": written}

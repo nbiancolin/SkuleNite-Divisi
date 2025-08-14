@@ -42,4 +42,11 @@ def export_arrangement_version(version_id: int, action:str = "score"):
 @shared_task
 def prep_and_export_mscz(version_id):
     format_arrangement_version(version_id)
-    return export_arrangement_version(version_id)
+    res = export_arrangement_version(version_id)
+    v = ArrangementVersion.objects.get(id=version_id)
+    if not res["status"] == "success":
+        v.error_on_export = True
+    v.is_processing = False
+    v.save(update_fields=["is_processing", "error_on_export"])
+
+    return res
