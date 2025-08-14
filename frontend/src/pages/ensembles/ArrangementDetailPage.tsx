@@ -226,6 +226,7 @@ export default function ArrangementDisplay() {
                     <>
                     <Button
                     component={Link}
+                    target="_blank"
                     to={scoreUrl}
                     variant="filled"
                     size="sm"
@@ -235,6 +236,7 @@ export default function ArrangementDisplay() {
                   </Button>
                   <Button
                     component={Link}
+                    target="_blank"
                     to={msczUrl}
                     variant="filled"
                     size="sm"
@@ -244,6 +246,7 @@ export default function ArrangementDisplay() {
                   </Button>
                   <Button
                     component={Link}
+                    target="_blank"
                     to={rawMsczUrl}
                     variant="subtle"
                     size="sm"
