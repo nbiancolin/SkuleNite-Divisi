@@ -24,40 +24,26 @@ class UploadSession(models.Model):
     deleted = models.BooleanField(default=False)
 
     @property
-    def mscz_file_location(self) -> str:
-        key = f"part-formatter/uploads/{self.id}"
-        return default_storage.url(key)
+    def mscz_file_key(self) -> str:
+        return f"part-formatter/uploads/{self.id}/{self.file_name}"
 
     @property
     def mscz_file_path(self) -> str:
-        key = f"{self.mscz_file_location}/{self.file_name}"
-        return default_storage.url(key)
+        return default_storage.url(self.mscz_file_key)
 
     @property
-    def output_file_location(self) -> str:
-        key = f"part-formatter/processed/{self.id}"
-        return default_storage.url(key)
+    def output_file_key(self) -> str:
+        return f"part-formatter/processed/{self.id}/{self.file_name}"
 
     @property
     def output_file_path(self) -> str:
-        key = f"{self.output_file_location}/{self.file_name}"
-        return default_storage.url(key)
+        return default_storage.url(self.output_file_key)
     
     def delete(self, **kwargs):
         #delete files when session is deleted
-        paths_to_delete = [self.mscz_file_location, self.output_file_location]
-
-        for rel_path in paths_to_delete:
-            abs_path = os.path.abspath(rel_path) 
-
-            if os.path.exists(abs_path):
-                try:
-                    shutil.rmtree(abs_path)
-                    logger.info(f"Deleted folder: {abs_path}")
-                except Exception as e:
-                    logger.error(f"Failed to delete {abs_path}: {e}")
-            else:
-                logger.warning(f"Path does not exist, skipping: {abs_path}")
+        paths_to_delete = [self.mscz_file_key, self.output_file_key]
+        for path in paths_to_delete:
+            default_storage.delete(path)
 
         super().delete(**kwargs)
 

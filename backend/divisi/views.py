@@ -30,7 +30,7 @@ class UploadMsczFile(APIView):
             file_name=uploaded_file.name,
         )
     
-        key = session.mscz_file_path
+        key = session.mscz_file_key
 
         # Save the uploaded file to the storage backend
         default_storage.save(key, uploaded_file)
