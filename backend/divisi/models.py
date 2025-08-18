@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.files.storage import default_storage
 
 import os
 import shutil
@@ -24,25 +25,23 @@ class UploadSession(models.Model):
 
     @property
     def mscz_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}"
+        key = f"part-formatter/uploads/{self.id}"
+        return default_storage.url(key)
 
     @property
     def mscz_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}/{self.file_name}"
+        key = f"{self.mscz_file_location}/{self.file_name}"
+        return default_storage.url(key)
 
     @property
     def output_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}"
+        key = f"part-formatter/processed/{self.id}"
+        return default_storage.url(key)
 
     @property
     def output_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
-    
-    def save(self, **kwargs):
-        super(UploadSession, self).save(**kwargs)
-        #create directories if they don't exist yet
-        os.makedirs(self.mscz_file_location, exist_ok=True)
-        os.makedirs(self.output_file_location, exist_ok=True)
+        key = f"{self.output_file_location}/{self.file_name}"
+        return default_storage.url(key)
     
     def delete(self, **kwargs):
         #delete files when session is deleted

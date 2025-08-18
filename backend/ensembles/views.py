@@ -104,8 +104,8 @@ class UploadArrangementVersionMsczView(APIView):
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not os.path.exists(version.mscz_file_location):
-            os.makedirs(version.mscz_file_location)
+        # if not os.path.exists(version.mscz_file_location):
+        #     os.makedirs(version.mscz_file_location)
 
         
 

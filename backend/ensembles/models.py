@@ -165,9 +165,6 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
-        #create directories
-        os.makedirs(self.mscz_file_location, exist_ok=True)
-        os.makedirs(self.output_file_location, exist_ok=True)
 
     def delete(self, **kwargs):
         #delete files when session is deleted

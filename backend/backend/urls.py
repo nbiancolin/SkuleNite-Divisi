@@ -37,4 +37,6 @@ urlpatterns = [
     path('api/upload-arrangement-version/', UploadArrangementVersionMsczView.as_view(), name="upload-arrangement-version"),
     path('api/get-download-links/', ArrangementVersionDownloadLinks.as_view(), name="get arrangement version download links"),
     path('api/', include(router.urls)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
