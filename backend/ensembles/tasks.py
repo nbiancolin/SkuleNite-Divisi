@@ -14,8 +14,11 @@ def format_arrangement_version(version_id: int):
         "output_path": version.output_file_path,
         "style_name": arr.style,
         "versionNum": version.version_label,
+        "num_measures_per_line_score": version.num_measures_per_line_score,
+        "num_measures_per_line_part": version.num_measures_per_line_part,
     }
 
+    #TODO: Arranger info
     # if arranger is not None:
     #     kwargs["arranger"] = arranger
     # else:
@@ -28,9 +31,6 @@ def format_arrangement_version(version_id: int):
         kwargs["movementTitle"] = arr.ensemble_name
     if arr.mvt_no is not None:
         kwargs["workNumber"] = arr.mvt_no
-    #TODO: Add formatting options to uploadArrangementVersion page
-    # if num_measure_per_line is not None:
-    #     kwargs["num_measure_per_line"] = num_measure_per_line
     mscz_main(**kwargs)  #noqa -- no idea why this error is here but it shouldn't be
 
 @shared_task

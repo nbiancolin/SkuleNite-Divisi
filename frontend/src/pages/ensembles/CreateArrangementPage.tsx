@@ -52,8 +52,8 @@ const emptyEnsemble = (): Ensemble => ({
   const [title, setTitle] = useState<string>("")
   const [subtitle, setSubtitle] = useState<string>("")
   const [composer, setComposer] = useState<string>("")
-  const [actNumber, setActNumber] = useState<number|undefined>(undefined)
-  const [pieceNumber, setPieceNumber] = useState<number|undefined>(undefined)
+  const [actNumber, setActNumber] = useState<string>("")
+  const [pieceNumber, setPieceNumber] = useState<string>("")
   const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   const [ensemble, setEnsemble] = useState<Ensemble>(emptyEnsemble());
@@ -171,12 +171,12 @@ const emptyEnsemble = (): Ensemble => ({
         label="Act Number"
         value={actNumber}
         type="number"
-        onChange={(e) => setActNumber(+(e.currentTarget.value))}  //+ Operator converts from string to number (so stupid but wtv)
+        onChange={(e) => setActNumber(e.currentTarget.value)}  //+ Operator converts from string to number (so stupid but wtv)
       />
       <TextInput
         label="Piece Number"
         value={pieceNumber}
-        onChange={(e) => setPieceNumber(+(e.currentTarget.value))}
+        onChange={(e) => setPieceNumber(e.currentTarget.value)}
         type="number"
         mt="md"
       />
@@ -191,7 +191,7 @@ const emptyEnsemble = (): Ensemble => ({
         arranger={null}
         mvtNo={mvtNo}
         showTitle={null}
-        pieceNumber={pieceNumber}
+        pieceNumber={+pieceNumber}
       />
 
       <Button

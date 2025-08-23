@@ -7,7 +7,7 @@ from rest_framework import status
 from django.db import transaction
 from django.conf import settings
 
-from .tasks import prep_and_export_mscz
+from .tasks import prep_and_export_mscz, export_arrangement_version
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
@@ -92,6 +92,8 @@ class UploadArrangementVersionMsczView(APIView):
             version = ArrangementVersion.objects.create(
                 arrangement=arr,
                 file_name=serializer.validated_data["file"].name,
+                num_measures_per_line_score=serializer.validated_data["num_measures_per_line_score"],
+                num_measures_per_line_part=serializer.validated_data["num_measures_per_line_part"],
             )
 
             version.save(
@@ -114,7 +116,11 @@ class UploadArrangementVersionMsczView(APIView):
                 f.write(chunk)
 
         #format mscz
-        prep_and_export_mscz.delay(version.pk)
+        if serializer.validated_data["format_parts"]:
+            prep_and_export_mscz.delay(version.pk)
+        else:
+            #just export
+            export_arrangement_version.delay(version.pk)
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},

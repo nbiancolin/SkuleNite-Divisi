@@ -59,12 +59,12 @@ class Arrangement(models.Model):
     slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
-    act_number = models.IntegerField(default=1, blank=True, null=True)
+    act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(
         default=1, blank=True, null=True
-    )  # NOTE: This field is auto-populated on save... should never actually be blank
+    )  
 
-    style = models.CharField(choices=STYLE_CHOICES) #TODO: This should be called "style" not default_style
+    style = models.CharField(choices=STYLE_CHOICES) 
 
     # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
@@ -129,6 +129,9 @@ class ArrangementVersion(models.Model):
     is_latest = models.BooleanField(default=False)
     is_processing = models.BooleanField(default=True)
     error_on_export = models.BooleanField(default=False)
+
+    num_measures_per_line_score = models.IntegerField()
+    num_measures_per_line_part = models.IntegerField()
 
     def _bump_version_label(self, version_type, old_version_label):
         major, minor, patch = map(int, old_version_label.split("."))
