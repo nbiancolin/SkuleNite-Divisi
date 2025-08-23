@@ -103,7 +103,7 @@ export default function UploadArrangementVersionPage() {
     formData.append("version_type", versionType);
     formData.append("num_measures_per_line_score", measuresPerLineScore);
     formData.append("num_measures_per_line_part", measuresPerLinePart);
-    formData.append("format_parts", enableDivisiFormatting)
+    formData.append("format_parts", enableDivisiFormatting.toString())
     try {
       const response = await axios.post(`${API_BASE_URL}/upload-arrangement-version/`, formData, {
         headers: {

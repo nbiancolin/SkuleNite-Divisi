@@ -191,7 +191,7 @@ const emptyEnsemble = (): Ensemble => ({
         arranger={null}
         mvtNo={mvtNo}
         showTitle={null}
-        pieceNumber={pieceNumber}
+        pieceNumber={+pieceNumber}
       />
 
       <Button

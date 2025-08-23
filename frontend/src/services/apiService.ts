@@ -140,9 +140,17 @@ export const apiService = {
   },
 
   async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: string, pieceNumber: string, style: string){
-    const body = {"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "piece_number": pieceNumber, "style": style}
+    const body: Record<string, any> = {
+      ensemble: ensembleId,
+      title,
+      subtitle,
+      composer,
+      piece_number: pieceNumber,
+      style,
+    };
+
     if (actNumber !== "") {
-      body["act_number"] = actNumber
+      body["act_number"] = actNumber;
     }
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
