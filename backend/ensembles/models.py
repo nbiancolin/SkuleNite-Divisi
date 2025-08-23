@@ -59,7 +59,7 @@ class Arrangement(models.Model):
     slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
-    act_number = models.IntegerField(default=1, blank=True, null=True)
+    act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(
         default=1, blank=True, null=True
     )  # NOTE: This field is auto-populated on save... should never actually be blank
