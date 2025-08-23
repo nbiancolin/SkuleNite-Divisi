@@ -62,9 +62,9 @@ class Arrangement(models.Model):
     act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(
         default=1, blank=True, null=True
-    )  # NOTE: This field is auto-populated on save... should never actually be blank
+    )  
 
-    style = models.CharField(choices=STYLE_CHOICES) #TODO: This should be called "style" not default_style
+    style = models.CharField(choices=STYLE_CHOICES) 
 
     # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
