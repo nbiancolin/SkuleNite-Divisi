@@ -139,12 +139,16 @@ export const apiService = {
   return response.json();
   },
 
-  async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: number|undefined, pieceNumber: number|undefined, style: string){
+  async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: string, pieceNumber: string, style: string){
+    const body = {"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "piece_number": pieceNumber, "style": style}
+    if (actNumber !== "") {
+      body["act_number"] = actNumber
+    }
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
         method: 'POST', 
         headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"ensemble": ensembleId, "title": title, "subtitle": subtitle, "composer": composer, "act_number": actNumber, "piece_number": pieceNumber, "style": style})
+        body: JSON.stringify(body)
       }
     )
     if (!response.ok) {
