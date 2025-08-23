@@ -39,6 +39,10 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
     arrangement_id = serializers.IntegerField(required=True)
     version_type = serializers.CharField(required=True)  #TODO: Make this a choice field
+    num_measures_per_line_score = serializers.IntegerField(default=8)
+    num_measures_per_line_part = serializers.IntegerField(default=6)
+
+    format_parts = serializers.BooleanField(default=True)
 
 
 class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
