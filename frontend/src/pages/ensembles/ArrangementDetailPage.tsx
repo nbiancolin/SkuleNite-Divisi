@@ -18,7 +18,7 @@ import {
   TextInput,
   NumberInput,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX } from '@tabler/icons-react';
+import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX, IconPilcrow } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
@@ -83,11 +83,12 @@ export default function ArrangementDisplay() {
         ensemble: data.ensemble || 0,
         title: data.title || '',
         subtitle: data.subtitle || '',
-        style: data.style || 'broadway',
+        style: data.style,
         composer: data.composer || '',
         mvt_no: data.mvt_no || '',
         actNumber: data.actNumber,
       });
+      setSelectedStyle(data.style)
 
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
@@ -386,6 +387,13 @@ export default function ArrangementDisplay() {
                       <Text fw={500}>{arrangement.actNumber || 'Not specified'}</Text>
                     )}
                   </div>
+                </Group>
+                <Group>
+                  <IconPilcrow size={20} color="gray" />
+                    <div style={{ flex: 1 }}>
+                      <Text size="sm" c="dimmed">Style</Text>
+                      <Text fw="500">{arrangement.style}</Text>
+                    </div>
                 </Group>
               </Stack>
             </Card>
