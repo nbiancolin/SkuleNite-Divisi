@@ -14,9 +14,10 @@ export interface Arrangement {
   ensemble_name: string;
   ensemble_slug: string;
   title: string;
+  subtitle: string;
   slug: string;
   composer: string | null;
-  actNumber: number | null;
+  actNumber?: number;
   pieceNumber: number;
   mvt_no: string;
   latest_version: ArrangementVersion;
@@ -28,6 +29,14 @@ export interface Ensemble {
   name: string,
   slug: string,
   arrangements: [Arrangement]
+}
+
+export interface EditableArrangementData {
+  title: string;
+  subtitle: string;
+  composer: string;
+  mvt_no: string;
+  actNumber?: number;
 }
 
 export const apiService = {
@@ -137,6 +146,16 @@ export const apiService = {
     );
   }
   return response.json();
+  },
+
+  updateArrangement: async (id: number, data: EditableArrangementData) => {
+    // Make API call to update arrangement
+    const response = await fetch(`/api/arrangements/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return response.json();
   },
 
   async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: string, pieceNumber: string, style: string){
