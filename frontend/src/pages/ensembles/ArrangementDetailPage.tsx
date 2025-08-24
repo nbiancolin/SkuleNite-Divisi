@@ -22,6 +22,7 @@ import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefre
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
+import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 import type { Arrangement, EditableArrangementData } from '../../services/apiService';
 
 export default function ArrangementDisplay() {
@@ -30,11 +31,15 @@ export default function ArrangementDisplay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
+
   // Edit mode states
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<EditableArrangementData>({
+    ensemble: 0,
     title: '',
     subtitle: '',
+    style: "broadway",
     composer: '',
     mvt_no: '',
     actNumber: undefined,
@@ -75,8 +80,10 @@ export default function ArrangementDisplay() {
 
       // Initialize edit data
       setEditData({
+        ensemble: data.ensemble || 0,
         title: data.title || '',
         subtitle: data.subtitle || '',
+        style: data.style || 'broadway',
         composer: data.composer || '',
         mvt_no: data.mvt_no || '',
         actNumber: data.actNumber,
@@ -115,8 +122,10 @@ export default function ArrangementDisplay() {
     if (arrangement) {
       // Reset edit data to original values
       setEditData({
+        ensemble: arrangement.ensemble || 0,
         title: arrangement.title || '',
         subtitle: arrangement.subtitle || '',
+        style: arrangement.style || '',
         composer: arrangement.composer || '',
         mvt_no: arrangement.mvt_no || '',
         actNumber: arrangement.actNumber,
@@ -384,95 +393,113 @@ export default function ArrangementDisplay() {
 
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="xs" padding="lg" radius="md" withBorder>
-              <Title order={3} mb="md">Latest Version</Title>
-              <Stack gap="md">
-                <Group>
-                  <Badge variant="filled" color="teal" size="lg">
-                    v{arrangement.latest_version_num || 'N/A'}
-                  </Badge>
-                  {/* Fix spacing of these buttons */}
-                  <Button
-                    component={Link}
-                    to={`/app/arrangements/${arrangement.id}/new-version`}
-                    variant={arrangement.latest_version ? "subtle" : "filled"}
-                    size="sm"
-                    rightSection={<IconUpload size={16} />}
-                  >
-                    Upload new Version
-                  </Button>
 
-                  {arrangement.latest_version && !exportLoading && !exportError && (
-                    <>
+              {isEditing ? (
+                <ScoreTitlePreview
+                  selectedStyle={selectedStyle}
+                  setSelectedStyle={setSelectedStyle}
+                  title={editData.title}
+                  ensemble={arrangement.ensemble_slug}
+                  subtitle={editData.subtitle}
+                  composer={editData.composer}
+                  arranger={null}
+                  mvtNo={editData.mvt_no}
+                  showTitle={null}
+                  pieceNumber={null}
+                  />
+              ) : (
+                <div id="nickId"> 
+                <Title order={3} mb="md">Latest Version</Title>
+                <Stack gap="md">
+                  <Group>
+                    <Badge variant="filled" color="teal" size="lg">
+                      v{arrangement.latest_version_num || 'N/A'}
+                    </Badge>
+                    {/* Fix spacing of these buttons */}
                     <Button
-                    component={Link}
-                    target="_blank"
-                    to={scoreUrl}
-                    variant="filled"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />} 
-                  >
-                    Download Score & Parts
-                  </Button>
-                  <Button
-                    component={Link}
-                    target="_blank"
-                    to={msczUrl}
-                    variant="filled"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />} 
-                  >
-                    Download Formatted MSCZ file
-                  </Button>
-                  <Button
-                    component={Link}
-                    target="_blank"
-                    to={rawMsczUrl}
-                    variant="subtle"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />}
-                  >
-                    Download Raw MSCZ file
-                  </Button>
-                  </>
-                  )}
+                      component={Link}
+                      to={`/app/arrangements/${arrangement.id}/new-version`}
+                      variant={arrangement.latest_version ? "subtle" : "filled"}
+                      size="sm"
+                      rightSection={<IconUpload size={16} />}
+                    >
+                      Upload new Version
+                    </Button>
 
-                  {exportLoading && (
-                    <Container>
-                      <Group justify="center" py="xl">
-                        <Loader size="md" />
-                        <Text>Score Exporting...</Text>
+                    {arrangement.latest_version && !exportLoading && !exportError && (
+                      <>
+                      <Button
+                      component={Link}
+                      target="_blank"
+                      to={scoreUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Score & Parts
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={msczUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Formatted MSCZ file
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={rawMsczUrl}
+                      variant="subtle"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />}
+                    >
+                      Download Raw MSCZ file
+                    </Button>
+                    </>
+                    )}
+
+                    {exportLoading && (
+                      <Container>
+                        <Group justify="center" py="xl">
+                          <Loader size="md" />
+                          <Text>Score Exporting...</Text>
+                        </Group>
+                      </Container>
+                    )}
+
+                    {exportError && (
+                      <Container>
+                        <Group justify="center" py="xl">
+                          <Text>Error with Formatting. Tell Nick</Text>
+                        </Group>
+                      </Container>
+                    )}
+                  </Group>
+
+                  {arrangement.latest_version ? (
+                    <>
+                      <Group>
+                        <IconCalendar size={20} color="gray" />
+                        <div>
+                          <Text size="sm" c="dimmed">Last Updated</Text>
+                          <Text fw={500} size="sm">
+                            {formatTimestamp(arrangement.latest_version.timestamp)}
+                          </Text>
+                        </div>
                       </Group>
-                    </Container>
+                    </>
+                  ) : (
+                    <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
+                      No version information available
+                    </Alert>
                   )}
-
-                  {exportError && (
-                    <Container>
-                      <Group justify="center" py="xl">
-                        <Text>Error with Formatting. Tell Nick</Text>
-                      </Group>
-                    </Container>
-                  )}
-                  
-                </Group>
-
-                {arrangement.latest_version ? (
-                  <>
-                    <Group>
-                      <IconCalendar size={20} color="gray" />
-                      <div>
-                        <Text size="sm" c="dimmed">Last Updated</Text>
-                        <Text fw={500} size="sm">
-                          {formatTimestamp(arrangement.latest_version.timestamp)}
-                        </Text>
-                      </div>
-                    </Group>
-                  </>
-                ) : (
-                  <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
-                    No version information available
-                  </Alert>
-                )}
-              </Stack>
+                </Stack>
+              </div>
+              )}
+              
             </Card>
           </Grid.Col>
         </Grid>

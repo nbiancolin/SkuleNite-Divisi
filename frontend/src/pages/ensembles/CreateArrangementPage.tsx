@@ -26,6 +26,8 @@ export default function CreateArrangementPage() {
   ensemble_name: "ens",
   ensemble_slug: "ens-slug",
   title: "",
+  subtitle: "",
+  style: "broadway",
   slug: "",
   composer: "",
   actNumber: 0,

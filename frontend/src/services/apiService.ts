@@ -22,6 +22,7 @@ export interface Arrangement {
   mvt_no: string;
   latest_version: ArrangementVersion;
   latest_version_num: string;
+  style: string;
 }
 
 export interface Ensemble {
@@ -32,11 +33,13 @@ export interface Ensemble {
 }
 
 export interface EditableArrangementData {
+  ensemble: number,
   title: string;
   subtitle: string;
   composer: string;
   mvt_no: string;
   actNumber?: number;
+  style: string;
 }
 
 export const apiService = {
@@ -150,7 +153,7 @@ export const apiService = {
 
   updateArrangement: async (id: number, data: EditableArrangementData) => {
     // Make API call to update arrangement
-    const response = await fetch(`/api/arrangements/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
