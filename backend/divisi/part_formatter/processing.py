@@ -597,13 +597,13 @@ def mscz_main(
     input_path,
     output_path,
     style_name,
-    num_measure_per_line=NUM_MEASURES_PER_LINE,
     **kwargs,
 ):
     if not kwargs.get("movementTitle"):
         kwargs["movementTitle"] = ""
     if not kwargs.get("workNumber"):
         kwargs["workNumber"] = ""
+    
 
     work_dir = TEMP_DIR + input_path.split("/")[-1]
 
@@ -626,17 +626,26 @@ def mscz_main(
     mscx_files = [
         os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
     ]
+
+    nmpl_part = kwargs.pop("num_measures_per_line_part")
+    nmpl_score = kwargs.pop("num_measures_per_line_score")
+    num_measures_per_line = [
+        nmpl_part if "Excerpts" in name else nmpl_score for name in mscx_files
+    ]
+    for f in zip_ref.namelist():
+        logger.info(f"Filename: {f}")
     if not mscx_files:
         logger.info("[Processing] No .mscx files found in the provided mscz file.")
         shutil.rmtree(work_dir)
         return
 
-    for mscx_path in mscx_files:
+    
+    for mscx_path, nmpl in zip(mscx_files, num_measures_per_line):
         logger.info(f"Processing {mscx_path}...")
         process_mscx(
             mscx_path,
             selected_style,
-            measures_per_line=num_measure_per_line,
+            measures_per_line=nmpl,
             **kwargs,
         )
 
