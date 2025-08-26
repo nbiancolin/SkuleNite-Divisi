@@ -38,7 +38,7 @@ export interface EditableArrangementData {
   subtitle: string;
   composer: string;
   piece_number?: number;
-  act_number?: number;
+  act_number?: number | null;
   style: string;
 }
 

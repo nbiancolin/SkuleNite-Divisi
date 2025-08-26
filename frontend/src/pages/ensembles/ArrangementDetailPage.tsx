@@ -73,7 +73,7 @@ export default function ArrangementDisplay() {
     else {
       //wrap in trycatch
       editData.piece_number = +mvt_no
-      editData.act_number = undefined
+      editData.act_number = null
     }
   }
 
@@ -100,6 +100,7 @@ export default function ArrangementDisplay() {
       setError(null);
       const data = await apiService.getArrangementById(id);
       setArrangement(data);
+      setMvtNo(data.mvt_no)
 
       // Initialize edit data
       setEditData({
@@ -129,7 +130,6 @@ export default function ArrangementDisplay() {
       setSaveLoading(true);
       editData.style = selectedStyle
       processMvtNo(mvtNo)
-
       await apiService.updateArrangement(arrangement.id, editData);
       
       // Refresh the arrangement data
@@ -151,8 +151,8 @@ export default function ArrangementDisplay() {
         subtitle: arrangement.subtitle || '',
         style: arrangement.style,
         composer: arrangement.composer || '',
-        piece_number: arrangement.piece_number || '',
-        act_number: arrangement.act_number,
+        piece_number: arrangement.pieceNumber,
+        act_number: arrangement.actNumber,
       });
     }
     setIsEditing(false);
