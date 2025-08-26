@@ -1,8 +1,13 @@
 from celery import shared_task
 
 from divisi.part_formatter.processing import mscz_main
-from divisi.part_formatter.export import export_mscz_to_pdf_score, export_score_and_parts_ms4
+from divisi.part_formatter.export import export_score_and_parts_ms4_storage
 from .models import ArrangementVersion
+from logging import getLogger
+from django.core.files.storage import default_storage
+import os
+
+logger = getLogger("export_tasks")
 
 @shared_task
 def format_arrangement_version(version_id: int):
@@ -10,8 +15,8 @@ def format_arrangement_version(version_id: int):
     arr = version.arrangement
 
     kwargs = {
-        "input_path": version.mscz_file_path,
-        "output_path": version.output_file_path,
+        "input_key": version.mscz_file_key,
+        "output_key": version.output_file_key,
         "style_name": arr.style,
         "versionNum": version.version_label,
         "num_measures_per_line_score": version.num_measures_per_line_score,
@@ -34,9 +39,59 @@ def format_arrangement_version(version_id: int):
     mscz_main(**kwargs)  #noqa -- no idea why this error is here but it shouldn't be
 
 @shared_task
-def export_arrangement_version(version_id: int, action:str = "score"):
-    version = ArrangementVersion.objects.get(id=version_id)
-    return export_score_and_parts_ms4(version.output_file_path, version.output_file_location)
+def export_arrangement_version(version_id: int, action: str = "score"):
+    """
+    Export arrangement version using storage keys.
+    
+    Args:
+        version_id: ID of the ArrangementVersion to export
+        action: Export action type (currently unused but kept for compatibility)
+    """
+    try:
+        version = ArrangementVersion.objects.get(id=version_id)
+    except ArrangementVersion.DoesNotExist:
+        logger.error(f"ArrangementVersion {version_id} does not exist")
+        return {"status": "error", "details": f"Version {version_id} not found"}
+    
+    try:
+        # Use the processed file as input (or raw file if processed doesn't exist)
+        input_key = version.output_file_key
+        if not default_storage.exists(input_key):
+            logger.warning(f"Processed file doesn't exist, using raw file: {version.mscz_file_key}")
+            input_key = version.mscz_file_key
+        
+        if not default_storage.exists(input_key):
+            logger.error(f"No input file found for version {version_id}")
+            version.error_on_export = True
+            version.is_processing = False
+            version.save()
+            return {"status": "error", "details": "No input file found"}
+        
+        # Generate output prefix based on the version's storage structure
+        # Extract the directory part from output_file_key
+        output_dir = os.path.dirname(version.output_file_key) + "/"
+        
+        logger.info(f"Starting export for version {version_id}")
+        result = export_score_and_parts_ms4_storage(input_key, output_dir)
+        
+        if result["status"] == "success":
+            logger.info(f"Successfully exported {len(result['written'])} files for version {version_id}")
+            version.error_on_export = False
+        else:
+            logger.error(f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}")
+            version.error_on_export = True
+        
+        version.is_processing = False
+        version.save()
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Unexpected error exporting version {version_id}: {str(e)}")
+        version.error_on_export = True
+        version.is_processing = False
+        version.save()
+        return {"status": "error", "details": str(e)}
 
 
 @shared_task
