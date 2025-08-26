@@ -149,7 +149,7 @@ class ArrangementVersion(models.Model):
     @property
     def score_parts_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
-        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext}-Score+Parts.pdf"
+        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext} - Score+Parts.pdf"
 
     @property
     def mscz_file_url(self) -> str:
