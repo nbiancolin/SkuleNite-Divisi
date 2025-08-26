@@ -88,7 +88,6 @@ export default function ArrangementDisplay() {
         mvt_no: data.mvt_no || '',
         actNumber: data.actNumber,
       });
-      setSelectedStyle(data.style)
 
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
@@ -105,8 +104,8 @@ export default function ArrangementDisplay() {
 
     try {
       setSaveLoading(true);
-      // Assuming you have an API method to update arrangement
-      // You'll need to implement this in your apiService
+      editData.style = selectedStyle
+
       await apiService.updateArrangement(arrangement.id, editData);
       
       // Refresh the arrangement data
@@ -126,7 +125,7 @@ export default function ArrangementDisplay() {
         ensemble: arrangement.ensemble || 0,
         title: arrangement.title || '',
         subtitle: arrangement.subtitle || '',
-        style: arrangement.style || '',
+        style: arrangement.style,
         composer: arrangement.composer || '',
         mvt_no: arrangement.mvt_no || '',
         actNumber: arrangement.actNumber,
