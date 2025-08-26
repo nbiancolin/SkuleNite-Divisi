@@ -11,8 +11,6 @@ from .tasks import prep_and_export_mscz, export_arrangement_version
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
-    CreateEnsembleSerializer,
-    CreateArrangementSerializer,
     EnsembleSerializer,
     ArrangementSerializer,
     CreateArrangementVersionMsczSerializer,
@@ -39,15 +37,16 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class ArrangementViewSet(viewsets.ModelViewSet):
+class BaseArrangementViewSet(viewsets.ModelViewSet):
     queryset = Arrangement.objects.all()
     serializer_class = ArrangementSerializer
+
+
+class ArrangementViewSet(BaseArrangementViewSet):
     lookup_field = "slug"
 
 
-class ArrangementByIdViewSet(viewsets.ModelViewSet):
-    queryset = Arrangement.objects.all()
-    serializer_class = ArrangementSerializer
+class ArrangementByIdViewSet(BaseArrangementViewSet):
     lookup_field = "id"
 
 
@@ -92,8 +91,12 @@ class UploadArrangementVersionMsczView(APIView):
             version = ArrangementVersion.objects.create(
                 arrangement=arr,
                 file_name=serializer.validated_data["file"].name,
-                num_measures_per_line_score=serializer.validated_data["num_measures_per_line_score"],
-                num_measures_per_line_part=serializer.validated_data["num_measures_per_line_part"],
+                num_measures_per_line_score=serializer.validated_data[
+                    "num_measures_per_line_score"
+                ],
+                num_measures_per_line_part=serializer.validated_data[
+                    "num_measures_per_line_part"
+                ],
             )
 
             version.save(
@@ -109,17 +112,15 @@ class UploadArrangementVersionMsczView(APIView):
         if not os.path.exists(version.mscz_file_location):
             os.makedirs(version.mscz_file_location)
 
-        
-
         with open(version.mscz_file_path, "wb+") as f:
             for chunk in uploaded_file.chunks():
                 f.write(chunk)
 
-        #format mscz
+        # format mscz
         if serializer.validated_data["format_parts"]:
             prep_and_export_mscz.delay(version.pk)
         else:
-            #just export
+            # just export
             export_arrangement_version.delay(version.pk)
 
         return Response(
@@ -169,65 +170,6 @@ class ArrangementVersionDownloadLinks(APIView):
                 "error": version.error_on_export,
                 "raw_mscz_url": raw_mscz_url,
                 "processed_mscz_url": processed_mscz_url,
-                "score_parts_pdf_link": output_score_url
+                "score_parts_pdf_link": output_score_url,
             }
         )
-
-
-"""
-Ideal URL Patterns
-BASE = http://divisi.nbiancolin.ca/divisi
-
-FE URL Patterns
-View (all arrangements in) Ensemble: BASE/ensembles/<name>
-(Alt: BASe/home) (If we restrict users to only be in one ensemble at a time)
-View Arrangement: BAr: BASE/arrangements/<pk> (haven't decided which is best)
-(Alt: BASE/arr/<title> orsion:  BASE/arrangements/<pk>
-Upload New Arrangement <Arr-url>/upload
-
-
-
-BE Url Patterns don't really matter, they're just APIs, so IG model viewsets for all of them
-"""
-
-# OLD: TODO remove
-
-
-class CreateEnsembleView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = CreateEnsembleSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        ens = Ensemble.objects.create(name=serializer.validated_data["name"])
-
-        return Response(
-            {"message": "Ensemble Created Successfully", "name_slug": ens.slug},
-            status=status.HTTP_200_OK,
-        )
-
-
-class CreateArrangementView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = CreateArrangementSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        ens = Ensemble.objects.get(name=serializer.validated_data["ensemble_name"])
-
-        arr = Arrangement.objects.create(
-            ensemble_id=ens.pk,
-            title=serializer.validated_data["title"],
-            subtitle=serializer.validated_data.get("subtitle"),
-            act_number=serializer.validated_data.get("act_number"),
-            piece_number=serializer.validated_data["piece_number"],
-        )
-
-        return Response(
-            {"message": "Ensemble Created Successfully", "title_slug": arr.slug},
-            status=status.HTTP_200_OK,
-        )
-
-        arrangements = ens.arrangements.all()  # TODO: Check if this is a legit error
-        serializer = ArrangementSerializer(arrangements, many=True)
-        return Response(serializer.data)

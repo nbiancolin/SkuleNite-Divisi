@@ -21,6 +21,8 @@ export interface Arrangement {
   mvt_no: string;
   latest_version: ArrangementVersion;
   latest_version_num: string;
+  version_uuids: [string];
+  version_nums: [string];
 }
 
 export interface Ensemble {

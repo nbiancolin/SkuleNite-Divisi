@@ -23,7 +23,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import type { Arrangement } from '../../services/apiService';
 
 export default function ArrangementDisplay() {
-  const {arrangementId = 1} = useParams()
+  const {arrangementId = 1} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +33,9 @@ export default function ArrangementDisplay() {
   const [scoreUrl, setScoreUrl] = useState<string>("");
   const [exportLoading, setExportLoading] = useState<boolean>(true);
   const [exportError, setExportError] = useState<boolean>(false);
+  const [selectedVersion, setSelectedVersion] = useState<string>("");
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
