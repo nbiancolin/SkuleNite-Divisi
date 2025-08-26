@@ -15,18 +15,38 @@ import {
   Grid,
   ActionIcon,
   Tooltip,
+  TextInput,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload } from '@tabler/icons-react';
+import { IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX, IconPilcrow } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
-import type { Arrangement } from '../../services/apiService';
+import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
+import type { Arrangement, EditableArrangementData } from '../../services/apiService';
+
+import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
 export default function ArrangementDisplay() {
   const {arrangementId = 1} = useParams()
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mvtNo, setMvtNo] = useState<string>("")
+
+  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
+
+  // Edit mode states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<EditableArrangementData>({
+    ensemble: 0,
+    title: '',
+    subtitle: '',
+    style: "broadway",
+    composer: '',
+    piece_number: undefined,
+    act_number: undefined,
+  });
+  const [saveLoading, setSaveLoading] = useState(false);
 
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
@@ -35,6 +55,28 @@ export default function ArrangementDisplay() {
   const [exportError, setExportError] = useState<boolean>(false);
 
   const navigate = useNavigate()
+
+  const processMvtNo = (mvt_no: string) => {
+    // split string at eithr - or m,
+      // if neither present, return the whole thing as a number
+    // first one is act number, second one is piece number
+
+    if(mvt_no.includes("-")){
+        const vals = mvt_no.split("-")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[1]
+
+    } else if (mvt_no.includes("m")) {
+        const vals = mvt_no.split("m")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[1]
+    }
+    else {
+      //wrap in trycatch
+      editData.piece_number = +mvt_no
+      editData.act_number = null
+    }
+  }
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
@@ -59,6 +101,18 @@ export default function ArrangementDisplay() {
       setError(null);
       const data = await apiService.getArrangementById(id);
       setArrangement(data);
+      setMvtNo(data.mvt_no)
+
+      // Initialize edit data
+      setEditData({
+        ensemble: data.ensemble || 0,
+        title: data.title || '',
+        subtitle: data.subtitle || '',
+        style: data.style,
+        composer: data.composer || '',
+        piece_number: data.piece_number,
+        act_number: data.act_number,
+      });
 
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
@@ -68,6 +122,41 @@ export default function ArrangementDisplay() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!arrangement) return;
+
+    try {
+      setSaveLoading(true);
+      editData.style = selectedStyle
+      processMvtNo(mvtNo)
+      await apiService.updateArrangement(arrangement.id, editData);
+      
+      // Refresh the arrangement data
+      await fetchArrangement(+arrangementId);
+      setIsEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save changes');
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if (arrangement) {
+      // Reset edit data to original values
+      setEditData({
+        ensemble: arrangement.ensemble || 0,
+        title: arrangement.title || '',
+        subtitle: arrangement.subtitle || '',
+        style: arrangement.style,
+        composer: arrangement.composer || '',
+        piece_number: arrangement.pieceNumber,
+        act_number: arrangement.actNumber,
+      });
+    }
+    setIsEditing(false);
   };
 
   useEffect(() => {
@@ -146,9 +235,46 @@ export default function ArrangementDisplay() {
                 </Button>
               </Group>
             </Stack>
-            <Title order={1} mb="xs">
-              {arrangement.mvt_no}: {arrangement.title}
-            </Title>
+            
+            {isEditing ? (
+              <>
+                <TextInput
+                  value={editData.title}
+                  onChange={(event) => setEditData(prev => ({ ...prev, title: event.target.value }))}
+                  size="xl"
+                  variant="unstyled"
+                  styles={{
+                    input: {
+                      fontSize: '2rem',
+                      fontWeight: 700,
+                      padding: 0,
+                    }
+                  }}
+                  placeholder="Arrangement title"
+                  mb="xs"
+                />
+                <TextInput
+                  value={editData.subtitle}
+                  onChange={(event) => setEditData(prev => ({ ...prev, subtitle: event.target.value }))}
+                  size="lg"
+                  variant="unstyled"
+                  c="dimmed"
+                  style={{ fontStyle: 'italic' }}
+                  placeholder="Arrangement subtitle"
+                  mb="xs"
+                />
+              </>
+            ) : (
+              <>
+                <Title order={1} mb="xs">
+                  {arrangement.mvt_no}: {arrangement.title}
+                </Title>
+                <Text size="lg" c="dimmed" mb="xs" fw={500} style={{ fontStyle: 'italic' }}>
+                  {arrangement.subtitle}
+                </Text>
+              </>
+            )}
+            
             <Group gap="xs">
               <Badge variant="light" color="blue">
                 ID: {arrangement.id}
@@ -158,11 +284,53 @@ export default function ArrangementDisplay() {
               </Badge>
             </Group>
           </div>
-          <Tooltip label="Refresh data">
-            <ActionIcon variant="light" size="lg" onClick={handleRefresh}>
-              <IconRefresh size={20} />
-            </ActionIcon>
-          </Tooltip>
+          
+          <Group gap="xs">
+            {isEditing ? (
+              <>
+                <Tooltip label="Save changes">
+                  <ActionIcon 
+                    variant="light" 
+                    size="lg" 
+                    color="green"
+                    onClick={handleSaveChanges}
+                    loading={saveLoading}
+                  >
+                    <IconCheck size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Cancel editing">
+                  <ActionIcon 
+                    variant="light" 
+                    size="lg" 
+                    color="red"
+                    onClick={handleCancelEdit}
+                    disabled={saveLoading}
+                  >
+                    <IconX size={20} />
+                  </ActionIcon>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <Tooltip label="Edit arrangement">
+                  <ActionIcon 
+                    variant="light" 
+                    size="lg" 
+                    color="blue"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <IconEdit size={20} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label="Refresh data">
+                  <ActionIcon variant="light" size="lg" onClick={handleRefresh}>
+                    <IconRefresh size={20} />
+                  </ActionIcon>
+                </Tooltip>
+              </>
+            )}
+          </Group>
         </Group>
 
         <Divider my="lg" />
@@ -173,127 +341,172 @@ export default function ArrangementDisplay() {
               <Stack gap="md">
                 <Group>
                   <IconUser size={20} color="gray" />
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <Text size="sm" c="dimmed">Composer</Text>
-                    <Text fw={500}>
-                      {arrangement.composer || 'Unknown'}
-                    </Text>
+                    {isEditing ? (
+                      <TextInput
+                        value={editData.composer}
+                        onChange={(event) => setEditData(prev => ({ ...prev, composer: event.target.value }))}
+                        placeholder="Composer name"
+                        variant="unstyled"
+                        styles={{
+                          input: {
+                            fontWeight: 500,
+                            padding: 0,
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Text fw={500}>
+                        {arrangement.composer || 'Unknown'}
+                      </Text>
+                    )}
                   </div>
                 </Group>
 
                 <Group>
-                  <IconMusic size={20} color="gray" />
-                  <div>
-                    <Text size="sm" c="dimmed">Movement</Text>
-                    <Text fw={500}>{arrangement.mvt_no}</Text>
+                  <IconHash size={20} color="gray" />
+                  <div style={{ flex: 1 }}>
+                    <Text size="sm" c="dimmed">Score Number</Text>
+                    {isEditing ? (
+                      <TextInput
+                        value={mvtNo}
+                        onChange={(e) => setMvtNo(e.currentTarget.value)}
+                        placeholder="eg. '12' or '1-3' or '2m5'"
+                        variant="unstyled"
+                        styles={{
+                          input: {
+                            fontWeight: 500,
+                            padding: 0,
+                          }
+                        }}
+                      />
+                    ) : (
+                      <Text fw={500}>{arrangement.mvt_no}</Text>
+                    )}
                   </div>
                 </Group>
 
-                {arrangement.actNumber && (
-                  <Group>
-                    <IconHash size={20} color="gray" />
-                    <div>
-                      <Text size="sm" c="dimmed">Act Number</Text>
-                      <Text fw={500}>{arrangement.actNumber}</Text>
+                <Group>
+                  <IconPilcrow size={20} color="gray" />
+                    <div style={{ flex: 1 }}>
+                      <Text size="sm" c="dimmed">Style</Text>
+                      <Text fw="500">{arrangement.style}</Text>
                     </div>
-                  </Group>
-                )}
+                </Group>
               </Stack>
             </Card>
           </Grid.Col>
 
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="xs" padding="lg" radius="md" withBorder>
-              <Title order={3} mb="md">Latest Version</Title>
-              <Stack gap="md">
-                <Group>
-                  <Badge variant="filled" color="teal" size="lg">
-                    v{arrangement.latest_version_num || 'N/A'}
-                  </Badge>
-                  {/* Fix spacing of these buttons */}
-                  <Button
-                    component={Link}
-                    to={`/app/arrangements/${arrangement.id}/new-version`}
-                    variant={arrangement.latest_version ? "subtle" : "filled"}
-                    size="sm"
-                    rightSection={<IconUpload size={16} />}
-                  >
-                    Upload new Version
-                  </Button>
 
-
-                  {arrangement.latest_version && !exportLoading && !exportError && (
-                    <>
+              {isEditing ? (
+                <ScoreTitlePreview
+                  selectedStyle={selectedStyle}
+                  setSelectedStyle={setSelectedStyle}
+                  title={editData.title}
+                  ensemble={arrangement.ensemble_name}
+                  subtitle={editData.subtitle}
+                  composer={editData.composer}
+                  arranger={null}
+                  mvtNo={mvtNo}
+                  showTitle={arrangement.ensemble_name}
+                  pieceNumber={null}
+                  />
+              ) : (
+                <div id="nickId"> 
+                <Title order={3} mb="md">Latest Version</Title>
+                <Stack gap="md">
+                  <Group>
+                    <Badge variant="filled" color="teal" size="lg">
+                      v{arrangement.latest_version_num || 'N/A'}
+                    </Badge>
+                    {/* Fix spacing of these buttons */}
                     <Button
-                    component={Link}
-                    target="_blank"
-                    to={scoreUrl}
-                    variant="filled"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />} 
-                  >
-                    Download Score & Parts
-                  </Button>
-                  <Button
-                    component={Link}
-                    target="_blank"
-                    to={msczUrl}
-                    variant="filled"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />} 
-                  >
-                    Download Formatted MSCZ file
-                  </Button>
-                  <Button
-                    component={Link}
-                    target="_blank"
-                    to={rawMsczUrl}
-                    variant="subtle"
-                    size="sm"
-                    rightSection={<IconDownload size={16} />}  //TOOD Fix icon here
-                  >
-                    Download Raw MSCZ file
-                  </Button>
-                  </>
-                  )}
+                      component={Link}
+                      to={`/app/arrangements/${arrangement.id}/new-version`}
+                      variant={arrangement.latest_version ? "subtle" : "filled"}
+                      size="sm"
+                      rightSection={<IconUpload size={16} />}
+                    >
+                      Upload new Version
+                    </Button>
 
-                  {exportLoading && (
-                    <Container>
-                      <Group justify="center" py="xl">
-                        <Loader size="md" />
-                        <Text>Score Exporting...</Text>
+                    {arrangement.latest_version && !exportLoading && !exportError && (
+                      <>
+                      <Button
+                      component={Link}
+                      target="_blank"
+                      to={scoreUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Score & Parts
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={msczUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Formatted MSCZ file
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={rawMsczUrl}
+                      variant="subtle"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />}
+                    >
+                      Download Raw MSCZ file
+                    </Button>
+                    </>
+                    )}
+
+                    {exportLoading && (
+                      <Container>
+                        <Group justify="center" py="xl">
+                          <Loader size="md" />
+                          <Text>Score Exporting...</Text>
+                        </Group>
+                      </Container>
+                    )}
+
+                    {exportError && (
+                      <Container>
+                        <Group justify="center" py="xl">
+                          <Text>Error with Formatting. Tell Nick</Text>
+                        </Group>
+                      </Container>
+                    )}
+                  </Group>
+
+                  {arrangement.latest_version ? (
+                    <>
+                      <Group>
+                        <IconCalendar size={20} color="gray" />
+                        <div>
+                          <Text size="sm" c="dimmed">Last Updated</Text>
+                          <Text fw={500} size="sm">
+                            {formatTimestamp(arrangement.latest_version.timestamp)}
+                          </Text>
+                        </div>
                       </Group>
-                    </Container>
+                    </>
+                  ) : (
+                    <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
+                      No version information available
+                    </Alert>
                   )}
-
-                  {exportError && (
-                    <Container>
-                      <Group justify="center" py="xl">
-                        <Text>Error with Formatting. Tell Nick</Text>
-                      </Group>
-                    </Container>
-                  )}
-                  
-                </Group>
-
-                {arrangement.latest_version ? (
-                  <>
-                    <Group>
-                      <IconCalendar size={20} color="gray" />
-                      <div>
-                        <Text size="sm" c="dimmed">Last Updated</Text>
-                        <Text fw={500} size="sm">
-                          {formatTimestamp(arrangement.latest_version.timestamp)}
-                        </Text>
-                      </div>
-                    </Group>
-                  </>
-                ) : (
-                  <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
-                    No version information available
-                  </Alert>
-                )}
-              </Stack>
+                </Stack>
+              </div>
+              )}
+              
             </Card>
           </Grid.Col>
         </Grid>
