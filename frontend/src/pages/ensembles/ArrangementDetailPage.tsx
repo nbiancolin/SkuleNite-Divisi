@@ -63,12 +63,12 @@ export default function ArrangementDisplay() {
     if(mvt_no.includes("-")){
         const vals = mvt_no.split("-")
         editData.act_number = +vals[0]
-        editData.piece_number = +vals[2]
+        editData.piece_number = +vals[1]
 
     } else if (mvt_no.includes("m")) {
         const vals = mvt_no.split("m")
         editData.act_number = +vals[0]
-        editData.piece_number = +vals[2]
+        editData.piece_number = +vals[1]
     }
     else {
       //wrap in trycatch
