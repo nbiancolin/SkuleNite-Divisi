@@ -16,14 +16,15 @@ import {
   ActionIcon,
   Tooltip,
   TextInput,
-  NumberInput,
 } from '@mantine/core';
-import { IconMusic, IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX, IconPilcrow } from '@tabler/icons-react';
+import { IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX, IconPilcrow } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 import type { Arrangement, EditableArrangementData } from '../../services/apiService';
+
+import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
 export default function ArrangementDisplay() {
   const {arrangementId = 1} = useParams()
@@ -32,7 +33,7 @@ export default function ArrangementDisplay() {
   const [error, setError] = useState<string | null>(null);
   const [mvtNo, setMvtNo] = useState<string>("")
 
-  const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
+  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   // Edit mode states
   const [isEditing, setIsEditing] = useState(false);
@@ -411,7 +412,7 @@ export default function ArrangementDisplay() {
                   arranger={null}
                   mvtNo={mvtNo}
                   showTitle={arrangement.ensemble_name}
-                  piece_number={null}
+                  pieceNumber={null}
                   />
               ) : (
                 <div id="nickId"> 
