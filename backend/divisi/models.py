@@ -43,7 +43,7 @@ class UploadSession(models.Model):
 
     def delete(self, **kwargs):
         # delete files when session is deleted
-        paths_to_delete = [self.mscz_file_key, self.output_file_key]
+        paths_to_delete = [self.mscz_file_key, self.output_file_key, self.output_file_key[:-4] + "pdf"]
         for path in paths_to_delete:
             default_storage.delete(path)
 
