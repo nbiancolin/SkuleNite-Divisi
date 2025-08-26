@@ -9,6 +9,7 @@ from django.conf import settings
 
 import tempfile
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile, File
 
 logger = logging.getLogger("MsczFormatting")
 
@@ -593,67 +594,65 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             )
 
 
-def mscz_main(
-    input_path,
-    output_path,
-    style_name,
-    **kwargs,
-):
+def mscz_main(input_key, output_key, style_name, **kwargs):
+    """
+    Process an uploaded .mscz file stored in Spaces and save the processed file back.
+    """
+
     if not kwargs.get("movementTitle"):
         kwargs["movementTitle"] = ""
     if not kwargs.get("workNumber"):
         kwargs["workNumber"] = ""
-    
 
-    work_dir = TEMP_DIR + input_path.split("/")[-1]
+    # Create a local temp work directory
+    work_dir = tempfile.mkdtemp()
 
-    # Open the zip file from storage (file-like object)
-    with default_storage.open(key, "rb") as zip_file:
-        # If a library needs a real path, use a temporary file
-        with tempfile.NamedTemporaryFile() as tmp:
-            tmp.write(zip_file.read())
-            tmp.flush()  # make sure all bytes are written
+    # Download zip from storage
+    with default_storage.open(input_key, "rb") as f:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_in:
+            tmp_in.write(f.read())
+            tmp_in.flush()
 
-            # Now you can use zipfile with the temp file path
-            with zipfile.ZipFile(tmp.name, "r") as zip_ref:
-                # Extract all files to a working directory
+            # Extract to working dir
+            with zipfile.ZipFile(tmp_in.name, "r") as zip_ref:
                 zip_ref.extractall(work_dir)
+                mscx_files = [
+                    os.path.join(work_dir, f)
+                    for f in zip_ref.namelist()
+                    if f.endswith(".mscx")
+                ]
 
     selected_style = Style(style_name)
-
     add_styles_to_score_and_parts(selected_style, work_dir)
 
-    mscx_files = [
-        os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
-    ]
-
-    nmpl_part = kwargs.pop("num_measures_per_line_part")
-    nmpl_score = kwargs.pop("num_measures_per_line_score")
+    nmpl_part = kwargs.pop("num_measures_per_line_part", NUM_MEASURES_PER_LINE)
+    nmpl_score = kwargs.pop("num_measures_per_line_score", NUM_MEASURES_PER_LINE)
     num_measures_per_line = [
         nmpl_part if "Excerpts" in name else nmpl_score for name in mscx_files
     ]
-    for f in zip_ref.namelist():
-        logger.info(f"Filename: {f}")
+
     if not mscx_files:
         logger.info("[Processing] No .mscx files found in the provided mscz file.")
         shutil.rmtree(work_dir)
         return
 
-    
+    # Process each .mscx file
     for mscx_path, nmpl in zip(mscx_files, num_measures_per_line):
         logger.info(f"Processing {mscx_path}...")
-        process_mscx(
-            mscx_path,
-            selected_style,
-            measures_per_line=nmpl,
-            **kwargs,
-        )
+        process_mscx(mscx_path, selected_style, measures_per_line=nmpl, **kwargs)
 
-    with zipfile.ZipFile(output_path, "w") as zip_out:
-        for root, _, files in os.walk(work_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                zip_out.write(file_path, os.path.relpath(file_path, work_dir))
+    # Write processed zip to temp file
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_out:
+        with zipfile.ZipFile(tmp_out.name, "w") as zip_out:
+            for root, _, files in os.walk(work_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    zip_out.write(file_path, os.path.relpath(file_path, work_dir))
+        tmp_out.flush()
+
+        # Save back to Spaces
+        with open(tmp_out.name, "rb") as final_file:
+            default_storage.save(output_key, File(final_file))
 
     shutil.rmtree(work_dir)
 

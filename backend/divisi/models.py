@@ -10,6 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class UploadSession(models.Model):
     """
     User's file upload and resulting files
@@ -28,19 +29,20 @@ class UploadSession(models.Model):
         return f"part-formatter/uploads/{self.id}/{self.file_name}"
 
     @property
-    def mscz_file_path(self) -> str:
-        return default_storage.url(self.mscz_file_key)
-
-    @property
     def output_file_key(self) -> str:
         return f"part-formatter/processed/{self.id}/{self.file_name}"
 
     @property
-    def output_file_path(self) -> str:
+    def mscz_file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.mscz_file_key)
+
+    @property
+    def output_file_url(self) -> str:
         return default_storage.url(self.output_file_key)
-    
+
     def delete(self, **kwargs):
-        #delete files when session is deleted
+        # delete files when session is deleted
         paths_to_delete = [self.mscz_file_key, self.output_file_key]
         for path in paths_to_delete:
             default_storage.delete(path)

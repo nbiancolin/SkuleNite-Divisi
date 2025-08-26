@@ -81,28 +81,19 @@ class FormatMsczFile(APIView):
         if res["status"] == "success":
             #do success stuff
             session = UploadSession.objects.get(id=session_id)
-            output_path = session.output_file_path
+            output_path = res["output"]
+            mscz_url = session.output_file_url
             session.completed = True
             session.save()
         else:
             #do error stuff
             return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # if not os.path.exists(output_path):
-        #     return Response(
-        #         {"error": "Processed file not found."},
-        #         status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        #     )
-
-        # relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
-        # score_url = request.build_absolute_uri(settings.MEDIA_URL + relative_path.replace("\\", "/"))
-        # mscz_url = score_url[:-3] + "mscz"
-
         return Response(
             {
                 "message": "File processed successfully.",
-                "score_download_url": output_path,
-                # "mscz_download_url": mscz_url
+                "score_download_url": request.build_absolute_uri(output_path),
+                "mscz_download_url": request.build_absolute_uri(mscz_url)
             },
             status=status.HTTP_200_OK,
         )
