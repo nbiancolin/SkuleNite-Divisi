@@ -37,8 +37,8 @@ export interface EditableArrangementData {
   title: string;
   subtitle: string;
   composer: string;
-  mvt_no: string;
-  actNumber?: number;
+  piece_number?: number;
+  act_number?: number;
   style: string;
 }
 

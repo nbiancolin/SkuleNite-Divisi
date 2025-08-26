@@ -30,6 +30,7 @@ export default function ArrangementDisplay() {
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [mvtNo, setMvtNo] = useState<string>("")
 
   const [selectedStyle, setSelectedStyle] = useState<string>("broadway")
 
@@ -41,8 +42,8 @@ export default function ArrangementDisplay() {
     subtitle: '',
     style: "broadway",
     composer: '',
-    mvt_no: '',
-    actNumber: undefined,
+    piece_number: undefined,
+    act_number: undefined,
   });
   const [saveLoading, setSaveLoading] = useState(false);
 
@@ -53,6 +54,28 @@ export default function ArrangementDisplay() {
   const [exportError, setExportError] = useState<boolean>(false);
 
   const navigate = useNavigate()
+
+  const processMvtNo = (mvt_no: string) => {
+    // split string at eithr - or m,
+      // if neither present, return the whole thing as a number
+    // first one is act number, second one is piece number
+
+    if(mvt_no.includes("-")){
+        const vals = mvt_no.split("-")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[2]
+
+    } else if (mvt_no.includes("m")) {
+        const vals = mvt_no.split("m")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[2]
+    }
+    else {
+      //wrap in trycatch
+      editData.piece_number = +mvt_no
+      editData.act_number = undefined
+    }
+  }
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
@@ -85,8 +108,8 @@ export default function ArrangementDisplay() {
         subtitle: data.subtitle || '',
         style: data.style,
         composer: data.composer || '',
-        mvt_no: data.mvt_no || '',
-        actNumber: data.actNumber,
+        piece_number: data.piece_number,
+        act_number: data.act_number,
       });
 
       if (data?.latest_version?.id) {
@@ -105,6 +128,7 @@ export default function ArrangementDisplay() {
     try {
       setSaveLoading(true);
       editData.style = selectedStyle
+      processMvtNo(mvtNo)
 
       await apiService.updateArrangement(arrangement.id, editData);
       
@@ -127,8 +151,8 @@ export default function ArrangementDisplay() {
         subtitle: arrangement.subtitle || '',
         style: arrangement.style,
         composer: arrangement.composer || '',
-        mvt_no: arrangement.mvt_no || '',
-        actNumber: arrangement.actNumber,
+        piece_number: arrangement.piece_number || '',
+        act_number: arrangement.act_number,
       });
     }
     setIsEditing(false);
@@ -340,14 +364,14 @@ export default function ArrangementDisplay() {
                 </Group>
 
                 <Group>
-                  <IconMusic size={20} color="gray" />
+                  <IconHash size={20} color="gray" />
                   <div style={{ flex: 1 }}>
-                    <Text size="sm" c="dimmed">Movement</Text>
+                    <Text size="sm" c="dimmed">Score Number</Text>
                     {isEditing ? (
                       <TextInput
-                        value={editData.mvt_no}
-                        onChange={(event) => setEditData(prev => ({ ...prev, mvt_no: event.target.value }))}
-                        placeholder="Movement number"
+                        value={mvtNo}
+                        onChange={(e) => setMvtNo(e.currentTarget.value)}
+                        placeholder="eg. '12' or '1-3' or '2m5'"
                         variant="unstyled"
                         styles={{
                           input: {
@@ -362,31 +386,6 @@ export default function ArrangementDisplay() {
                   </div>
                 </Group>
 
-                <Group>
-                  <IconHash size={20} color="gray" />
-                  <div style={{ flex: 1 }}>
-                    <Text size="sm" c="dimmed">Act Number</Text>
-                    {isEditing ? (
-                      <NumberInput
-                        value={editData.actNumber}
-                        onChange={(value) => setEditData(prev => ({ ...prev, actNumber: typeof value === 'number' ? value : undefined }))}
-                        placeholder="Act number (optional)"
-                        variant="unstyled"
-                        styles={{
-                          input: {
-                            fontWeight: 500,
-                            padding: 0,
-                          }
-                        }}
-                        min={1}
-                        allowDecimal={false}
-                        allowNegative={false}
-                      />
-                    ) : (
-                      <Text fw={500}>{arrangement.actNumber || 'Not specified'}</Text>
-                    )}
-                  </div>
-                </Group>
                 <Group>
                   <IconPilcrow size={20} color="gray" />
                     <div style={{ flex: 1 }}>
@@ -406,13 +405,13 @@ export default function ArrangementDisplay() {
                   selectedStyle={selectedStyle}
                   setSelectedStyle={setSelectedStyle}
                   title={editData.title}
-                  ensemble={arrangement.ensemble_slug}
+                  ensemble={arrangement.ensemble_name}
                   subtitle={editData.subtitle}
                   composer={editData.composer}
                   arranger={null}
-                  mvtNo={editData.mvt_no}
-                  showTitle={null}
-                  pieceNumber={null}
+                  mvtNo={mvtNo}
+                  showTitle={arrangement.ensemble_name}
+                  piece_number={null}
                   />
               ) : (
                 <div id="nickId"> 
