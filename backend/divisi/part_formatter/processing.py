@@ -10,6 +10,7 @@ from django.conf import settings
 import tempfile
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile, File
+from django.contrib.staticfiles.storage import staticfiles_storage
 
 logger = logging.getLogger("MsczFormatting")
 
@@ -18,8 +19,13 @@ NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
 
-STYLES_DIR = f"{settings.STATIC_ROOT}/_styles"
-TEMP_DIR = f"{settings.MEDIA_ROOT}/temp"
+# Updated to use staticfiles_storage instead of STATIC_ROOT
+STYLES_BASE_PATH = "_styles"
+TEMP_DIR = (
+    f"{settings.MEDIA_ROOT}/temp"
+    if hasattr(settings, "MEDIA_ROOT") and settings.MEDIA_ROOT
+    else "/tmp"
+)
 
 
 class Style(Enum):
@@ -555,6 +561,33 @@ def new_final_pass_through(staff: ET.Element) -> ET.Element:
     return staff
 
 
+def _get_style_file_content(style_filename: str) -> str:
+    """
+    Helper function to get style file content from static storage (S3).
+
+    Args:
+        style_filename: The filename of the style file (e.g., 'broadway_score.mss')
+
+    Returns:
+        The content of the style file as a string
+
+    Raises:
+        FileNotFoundError: If the style file doesn't exist in static storage
+    """
+    style_path = f"{STYLES_BASE_PATH}/{style_filename}"
+
+    try:
+        # Use staticfiles_storage to access files from S3
+        if staticfiles_storage.exists(style_path):
+            with staticfiles_storage.open(style_path, "r") as f:
+                return f.read()
+        else:
+            raise FileNotFoundError(f"Style file not found: {style_path}")
+    except Exception as e:
+        logger.error(f"Error reading style file {style_path}: {e}")
+        raise
+
+
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
 # TODO: Allow users to set page and staff spacing from the website
 def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
@@ -565,15 +598,23 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
     This includes both the main score and individual part style files.
     """
 
-    # Determine style files
+    # Determine style filenames
     if style == Style.BROADWAY:
-        score_style_path = os.path.join(STYLES_DIR, "broadway_score.mss")
-        part_style_path = os.path.join(STYLES_DIR, "broadway_part.mss")
+        score_style_filename = "broadway_score.mss"
+        part_style_filename = "broadway_part.mss"
     elif style == Style.JAZZ:
-        score_style_path = os.path.join(STYLES_DIR, "jazz_score.mss")
-        part_style_path = os.path.join(STYLES_DIR, "jazz_part.mss")
+        score_style_filename = "jazz_score.mss"
+        part_style_filename = "jazz_part.mss"
     else:
         raise ValueError(f"Unsupported style: {style}")
+
+    # Get style file contents from S3
+    try:
+        score_style_content = _get_style_file_content(score_style_filename)
+        part_style_content = _get_style_file_content(part_style_filename)
+    except FileNotFoundError as e:
+        logger.error(f"Style file not found: {e}")
+        return
 
     # Walk through files in temp directory
     for root, _, files in os.walk(work_dir):
@@ -586,8 +627,12 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             rel_path = os.path.relpath(full_path, work_dir)
             is_excerpt = "Excerpts" in rel_path
 
-            source_style = part_style_path if is_excerpt else score_style_path
-            shutil.copyfile(source_style, full_path)
+            # Choose appropriate style content
+            style_content = part_style_content if is_excerpt else score_style_content
+
+            # Write the style content to the local file
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(style_content)
 
             logger.info(
                 f"[Processing] Replaced {'part' if is_excerpt else 'score'} style: {full_path}"

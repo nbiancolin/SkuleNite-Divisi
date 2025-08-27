@@ -66,7 +66,7 @@ def export_mscz_to_pdf(uuid: int):
         tmp_out_path = tmp_out.name
 
         # Download from storage into tmp_in
-        with default_storage.open(session.mscz_file_key, "rb") as f:
+        with default_storage.open(session.output_file_key, "rb") as f:
             tmp_in.write(f.read())
             tmp_in.flush()
 
