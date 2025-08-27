@@ -1,10 +1,10 @@
 from django.db import models
 from django.utils.text import slugify
 from django.conf import settings
+from django.core.files.storage import default_storage
 
 import uuid
 import os
-import shutil
 from logging import getLogger
 
 logger = getLogger("app")
@@ -133,6 +133,41 @@ class ArrangementVersion(models.Model):
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
 
+    @property
+    def mscz_file_key(self) -> str:
+        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/raw/{self.file_name}"
+
+    @property
+    def output_file_key(self) -> str:
+        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{self.file_name}"
+
+    @property
+    def score_pdf_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext}.pdf"
+
+    @property
+    def score_parts_pdf_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext} - Score+Parts.pdf"
+
+    @property
+    def mscz_file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.mscz_file_key)
+
+    @property
+    def output_file_url(self) -> str:
+        return default_storage.url(self.output_file_key)
+
+    @property
+    def score_pdf_url(self) -> str:
+        return default_storage.url(self.score_pdf_key)
+
+    @property
+    def score_parts_pdf_url(self) -> str:
+        return default_storage.url(self.score_parts_pdf_key)
+
     def _bump_version_label(self, version_type, old_version_label):
         major, minor, patch = map(int, old_version_label.split("."))
         if version_type == "major":
@@ -145,7 +180,6 @@ class ArrangementVersion(models.Model):
         else:
             patch += 1
         return f"{major}.{minor}.{patch}"
-
 
     def save(self, *args, **kwargs):
         version_type = kwargs.pop("version_type", None)
@@ -168,52 +202,27 @@ class ArrangementVersion(models.Model):
 
         super().save(*args, **kwargs)
 
-        #create directories
-        os.makedirs(self.mscz_file_location, exist_ok=True)
-        os.makedirs(self.output_file_location, exist_ok=True)
-
     def delete(self, **kwargs):
-        #delete files when session is deleted
-        paths_to_delete = [self.mscz_file_location, self.output_file_location]
+        # Delete files when version is deleted
+        keys_to_delete = [
+            self.mscz_file_key, 
+            self.output_file_key, 
+            self.score_pdf_key, 
+            self.score_parts_pdf_key
+        ]
         logger.warning("Deleting ArrangementVersion")
 
-        for rel_path in paths_to_delete:
-            abs_path = os.path.abspath(rel_path) 
-
-            if os.path.exists(abs_path):
-                try:
-                    shutil.rmtree(abs_path)
-                    logger.info(f"Deleted folder: {abs_path}")
-                except Exception as e:
-                    logger.error(f"Failed to delete {abs_path}: {e}")
-            else:
-                logger.warning(f"Path does not exist, skipping: {abs_path}")
+        for key in keys_to_delete:
+            try:
+                if default_storage.exists(key):
+                    default_storage.delete(key)
+                    logger.info(f"Deleted file: {key}")
+                else:
+                    logger.warning(f"File does not exist, skipping: {key}")
+            except Exception as e:
+                logger.error(f"Failed to delete {key}: {e}")
 
         super().delete(**kwargs)
-
-    @property
-    def mscz_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/raw/"
-
-    @property
-    def mscz_file_path(self) -> str:
-        return self.mscz_file_location + f"{self.file_name}"
-
-    @property
-    def output_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/_ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.uuid}/processed/"
-
-    @property
-    def output_file_path(self) -> str:
-        return self.output_file_location + f"{self.file_name}"
-    
-    @property
-    def score_pdf_path(self) -> str:
-        return self.output_file_path[:-4] + "pdf"
-
-    @property
-    def score_parts_pdf_path(self) -> str:
-        return self.output_file_path[:-5] + "-Score+Parts.pdf"
 
     @property
     def arrangement_title(self):
@@ -238,19 +247,48 @@ class ArrangementVersion(models.Model):
         ordering = ["-timestamp"]
 
 
-def _part_upload_path(instance, filename):
-    ensemble = instance.version.arrangement.ensemble.name.replace(" ", "_")
-    arrangement = instance.version.arrangement.title.replace(" ", "_")
+def _part_upload_key(instance, filename):
+    """Generate storage key for part files"""
+    ensemble_slug = instance.version.arrangement.ensemble.slug
+    arrangement_slug = instance.version.arrangement.slug
     version = instance.version.version_label
-    return f"blob/PDF/{ensemble}/{arrangement}/{version}/{filename}"  # TODO: Move this to use media/static root
+    uuid = instance.version.uuid
+    return f"ensembles/{ensemble_slug}/arrangements/{arrangement_slug}/versions/{uuid}/parts/{filename}"
 
+_part_upload_path = _part_upload_key
 
 class Part(models.Model):
     version = models.ForeignKey(
         ArrangementVersion, related_name="parts", on_delete=models.CASCADE
     )
     part_name = models.CharField(max_length=120)
-    file = models.FileField(upload_to=_part_upload_path)
+    file = models.FileField(upload_to=_part_upload_key)
+
+    @property
+    def file_key(self) -> str:
+        """Get the storage key for this part's file"""
+        if self.file:
+            return self.file.name
+        return ""
+
+    @property
+    def file_url(self) -> str:
+        """Public URL for serving to clients"""
+        if self.file:
+            return default_storage.url(self.file.name)
+        return ""
+
+    def delete(self, **kwargs):
+        # Delete the file when part is deleted
+        if self.file:
+            try:
+                if default_storage.exists(self.file.name):
+                    default_storage.delete(self.file.name)
+                    logger.info(f"Deleted part file: {self.file.name}")
+            except Exception as e:
+                logger.error(f"Failed to delete part file {self.file.name}: {e}")
+        
+        super().delete(**kwargs)
 
     def __str__(self):
         return f"{self.version.arrangement.title} - {self.part_name} (v{self.version.version_label})"

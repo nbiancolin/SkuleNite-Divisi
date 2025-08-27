@@ -8,6 +8,9 @@ MEDIA_ROOT = BASE_DIR / "blob"
 
 STATIC_ROOT = BASE_DIR / "static"
 
+# Use filesystem storage locally
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+
 CORS_ORIGIN_WHITELIST = [
      'http://localhost:5173'
 ]
