@@ -7,6 +7,8 @@ CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_DOMAIN = 'divisi.nbiancolin.ca'
 SECURE_SSL_REDIRECT = False  #TODO Remoe for prod
 
+STATIC_ROOT = BASE_DIR / "static"   # required even if using S3
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -52,10 +54,13 @@ AWS_STORAGE_BUCKET_NAME = "divisi-files"
 AWS_S3_ENDPOINT_URL = "https://tor1.digitaloceanspaces.com"  # change to your region
 AWS_DEFAULT_ACL = "public-read"  # or "private" if you want to control access
 
-# Remote storage
-DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/blob/"
+AWS_QUERYSTRING_AUTH = False  # disables signed temporary URLs
 
 # Static files
 STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-STATIC_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/static/"
+STATIC_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.tor1.digitaloceanspaces.com/static/"
+STATIC_ROOT = BASE_DIR / "static"
+
+# Media files
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.tor1.digitaloceanspaces.com/"
