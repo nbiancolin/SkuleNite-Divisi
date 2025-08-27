@@ -64,7 +64,10 @@ RUN apt-get update && \
         libxcb1 \
         qt5dxcb-plugin \
         libgpg-error0 \ 
-        p7zip-full && \
+        p7zip-full \
+        fonts-dejavu-core \
+        fonts-liberation \
+        fonts-noto && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Install MuseScore 4
@@ -79,10 +82,15 @@ RUN wget -O /tmp/mscore.AppImage "https://cdn.jsdelivr.net/musescore/v4.5.2/${MS
     ln -s /opt/musescore/AppRun /usr/local/bin/mscore4 && \
     rm /tmp/mscore.AppImage
 
-# Install custom fonts
+# Install custom fonts PROPERLY
 COPY assets/fonts.zip /tmp/fonts.zip
 RUN mkdir -p /usr/share/fonts/truetype/custom && \
     unzip /tmp/fonts.zip -d /usr/share/fonts/truetype/custom && \
+    # Set proper permissions for fonts
+    chmod -R 644 /usr/share/fonts/truetype/custom/*.ttf /usr/share/fonts/truetype/custom/*.otf 2>/dev/null || true && \
+    chmod -R 644 /usr/share/fonts/truetype/custom/*.TTF /usr/share/fonts/truetype/custom/*.OTF 2>/dev/null || true && \
+    chmod 755 /usr/share/fonts/truetype/custom && \
+    # Update font cache
     fc-cache -fv && \
     rm -f /tmp/fonts.zip
 
@@ -102,10 +110,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV QT_QPA_PLATFORM=offscreen
 
-# Create non-root user
+# Create non-root user early
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Install runtime dependencies only
+# Install runtime dependencies including essential fonts
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libpq-dev \
@@ -145,7 +153,13 @@ RUN apt-get update && \
         libxcb1 \
         qt5dxcb-plugin \
         libgpg-error0 \ 
-        p7zip-full && \
+        p7zip-full \
+        netcat-openbsd \
+        xvfb \
+        fonts-dejavu-core \
+        fonts-liberation \
+        fonts-noto \
+        fonts-freefont-ttf && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 WORKDIR /app
@@ -157,13 +171,32 @@ COPY --from=backend-build /usr/local/bin /usr/local/bin
 # Copy backend application
 COPY --from=backend-build /app/backend /app/backend
 
-# Copy fonts and MuseScore
-COPY --from=backend-build /usr/share/fonts /usr/share/fonts
+# Copy fonts from build stage with proper ownership
+COPY --from=backend-build --chown=root:root /usr/share/fonts /usr/share/fonts
+
+# Copy MuseScore from build stage
 COPY --from=backend-build /opt/musescore /opt/musescore
-RUN ln -sf /opt/musescore/AppRun /usr/local/bin/mscore4
-RUN chmod +x /usr/local/bin/mscore4
+RUN ln -sf /opt/musescore/AppRun /usr/local/bin/mscore4 && \
+    chmod +x /usr/local/bin/mscore4
+
+# Create MuseScore directories with proper permissions
 RUN mkdir -p /home/appuser/.local/share/MuseScore/MuseScore4/logs && \
-    chown -R appuser:appuser /home/appuser/.local
+    mkdir -p /home/appuser/.config/MuseScore && \
+    chown -R appuser:appuser /home/appuser
+
+# Create font cache directories with proper permissions
+RUN mkdir -p /var/cache/fontconfig && \
+    chmod 1777 /var/cache/fontconfig && \
+    mkdir -p /tmp/fontconfig && \
+    chmod 1777 /tmp/fontconfig && \
+    # Create user-specific font directories
+    mkdir -p /home/appuser/.cache/fontconfig && \
+    mkdir -p /home/appuser/.fonts && \
+    chown -R appuser:appuser /home/appuser/.cache && \
+    chown -R appuser:appuser /home/appuser/.fonts
+
+# Generate font cache as root first
+RUN fc-cache -f -v
 
 # Copy frontend build
 COPY --from=frontend-build /app/frontend/dist /var/www/html
@@ -171,25 +204,18 @@ COPY --from=frontend-build /app/frontend/dist /var/www/html
 # Copy Nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Install netcat for database health checks
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
-
-# Set proper permissions
+# Set proper permissions for application files
 RUN chown -R appuser:appuser /app /var/www/html && \
     # Create nginx directories and set permissions
     mkdir -p /var/cache/nginx /var/log/nginx /var/lib/nginx /run/nginx && \
     chown -R appuser:appuser /var/cache/nginx /var/log/nginx /var/lib/nginx /run/nginx && \
-    # Allow nginx to bind to port 80
     chmod 755 /var/log/nginx
 
 WORKDIR /app/backend
 
-# Don't switch to non-root user yet - nginx needs root privileges
-# USER appuser
-
 EXPOSE 80
 
-# Create entrypoint script inline and run it
+# Create entrypoint script with improved font handling
 CMD ["bash", "-c", "\
     echo '[INFO] Starting application initialization...' && \
     DB_HOST=${POSTGRES_HOST:-db} && \
@@ -200,14 +226,19 @@ CMD ["bash", "-c", "\
         sleep 2; \
     done && \
     echo '[INFO] Database is ready!' && \
+    echo '[INFO] Setting up fonts for appuser...' && \
+    su -c 'fc-cache -f -v' appuser && \
+    su -c 'fc-list | head -10' appuser && \
+    echo '[INFO] Testing MuseScore font access...' && \
+    su -c 'mscore4 --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"' appuser && \
     echo '[INFO] Running Django migrations...' && \
     su -c 'python manage.py migrate --noinput' appuser && \
     echo '[INFO] Collecting static files...' && \
     su -c 'python manage.py collectstatic --noinput' appuser && \
     echo '[INFO] Starting Gunicorn...' && \
-    su -c 'gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -' appuser & \
+    su -c 'FONTCONFIG_CACHE=/home/appuser/.cache/fontconfig gunicorn backend.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -' appuser & \
     echo '[INFO] Starting Celery worker...' && \
-    su -c 'celery -A backend worker --loglevel=info' appuser & \
+    su -c 'FONTCONFIG_CACHE=/home/appuser/.cache/fontconfig celery -A backend worker --loglevel=info' appuser & \
     sleep 3 && \
     echo '[INFO] Starting Nginx...' && \
     nginx -t && \

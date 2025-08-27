@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.core.files.storage import default_storage
 
 import os
 import shutil
@@ -8,6 +9,7 @@ import uuid
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class UploadSession(models.Model):
     """
@@ -23,42 +25,27 @@ class UploadSession(models.Model):
     deleted = models.BooleanField(default=False)
 
     @property
-    def mscz_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}"
+    def mscz_file_key(self) -> str:
+        return f"part-formatter/uploads/{self.id}/{self.file_name}"
 
     @property
-    def mscz_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/uploads/{self.id}/{self.file_name}"
+    def output_file_key(self) -> str:
+        return f"part-formatter/processed/{self.id}/{self.file_name}"
 
     @property
-    def output_file_location(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}"
+    def mscz_file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.mscz_file_key)
 
     @property
-    def output_file_path(self) -> str:
-        return f"{settings.MEDIA_ROOT}/processed/{self.id}/{self.file_name}"
-    
-    def save(self, **kwargs):
-        super(UploadSession, self).save(**kwargs)
-        #create directories if they don't exist yet
-        os.makedirs(self.mscz_file_location, exist_ok=True)
-        os.makedirs(self.output_file_location, exist_ok=True)
-    
+    def output_file_url(self) -> str:
+        return default_storage.url(self.output_file_key)
+
     def delete(self, **kwargs):
-        #delete files when session is deleted
-        paths_to_delete = [self.mscz_file_location, self.output_file_location]
-
-        for rel_path in paths_to_delete:
-            abs_path = os.path.abspath(rel_path) 
-
-            if os.path.exists(abs_path):
-                try:
-                    shutil.rmtree(abs_path)
-                    logger.info(f"Deleted folder: {abs_path}")
-                except Exception as e:
-                    logger.error(f"Failed to delete {abs_path}: {e}")
-            else:
-                logger.warning(f"Path does not exist, skipping: {abs_path}")
+        # delete files when session is deleted
+        paths_to_delete = [self.mscz_file_key, self.output_file_key, self.output_file_key[:-4] + "pdf"]
+        for path in paths_to_delete:
+            default_storage.delete(path)
 
         super().delete(**kwargs)
 

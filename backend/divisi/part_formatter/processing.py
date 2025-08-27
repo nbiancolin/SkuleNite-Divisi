@@ -7,6 +7,11 @@ from enum import Enum
 import logging
 from django.conf import settings
 
+import tempfile
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile, File
+from django.contrib.staticfiles.storage import staticfiles_storage
+
 logger = logging.getLogger("MsczFormatting")
 
 
@@ -14,8 +19,13 @@ NUM_MEASURES_PER_LINE = (
     6  # TODO[SC-42]: Make this a function of the time signature somehow?
 )
 
-STYLES_DIR = f"{settings.STATIC_ROOT}/_styles"
-TEMP_DIR = f"{settings.MEDIA_ROOT}/temp"
+# Updated to use staticfiles_storage instead of STATIC_ROOT
+STYLES_BASE_PATH = "_styles"
+TEMP_DIR = (
+    f"{settings.MEDIA_ROOT}/temp"
+    if hasattr(settings, "MEDIA_ROOT") and settings.MEDIA_ROOT
+    else "/tmp"
+)
 
 
 class Style(Enum):
@@ -109,7 +119,9 @@ def _add_page_break_to_measure(measure: ET.Element) -> None:
         measure.find("LayoutBreak").find("subtype").text = "page"
         return
 
-    logger.info("[Processing] added a page break to a bar that did not have a line break!")
+    logger.info(
+        "[Processing] added a page break to a bar that did not have a line break!"
+    )
     index = 0
     for elem in measure:
         if elem.tag == "voice":
@@ -382,7 +394,9 @@ def add_page_breaks(staff: ET.Element) -> ET.Element:
             return 0
 
         else:
-            logger.info("[Processing] Oops, couldn't find a good spot, adding a page break to first one")
+            logger.info(
+                "[Processing] Oops, couldn't find a good spot, adding a page break to first one"
+            )
             _add_page_break_to_measure(first_option[0])
             return 1
 
@@ -500,9 +514,11 @@ def new_final_pass_through(staff: ET.Element) -> ET.Element:
                 f"[FinalPass] Line 1 length={line1_len}, Line 2 length={line2_len}, initial={initial}, first={first}, second={second}"
             )
 
-            if has_double_bar(staff[first]) or has_rehearsal_mark(staff[first +1]):
-                #continue
-                logger.warning(f"[FinalPass] first found bar ({first}) has a special marking, continue onwards")
+            if has_double_bar(staff[first]) or has_rehearsal_mark(staff[first + 1]):
+                # continue
+                logger.warning(
+                    f"[FinalPass] first found bar ({first}) has a special marking, continue onwards"
+                )
                 initial = first
                 first = second
                 second = None
@@ -522,7 +538,7 @@ def new_final_pass_through(staff: ET.Element) -> ET.Element:
                         for m in staff[initial : second + 1]
                         if m.tag == "Measure" and not is_mm(m)
                     ]
-                    midpoint_index = (len(all_measures) -1) // 2
+                    midpoint_index = (len(all_measures) - 1) // 2
                     midpoint_measure = all_measures[midpoint_index]
                     _add_line_break_to_measure_opt(midpoint_measure)
                     logger.info(
@@ -545,6 +561,33 @@ def new_final_pass_through(staff: ET.Element) -> ET.Element:
     return staff
 
 
+def _get_style_file_content(style_filename: str) -> str:
+    """
+    Helper function to get style file content from static storage (S3).
+
+    Args:
+        style_filename: The filename of the style file (e.g., 'broadway_score.mss')
+
+    Returns:
+        The content of the style file as a string
+
+    Raises:
+        FileNotFoundError: If the style file doesn't exist in static storage
+    """
+    style_path = f"{STYLES_BASE_PATH}/{style_filename}"
+
+    try:
+        # Use staticfiles_storage to access files from S3
+        if staticfiles_storage.exists(style_path):
+            with staticfiles_storage.open(style_path, "r") as f:
+                return f.read()
+        else:
+            raise FileNotFoundError(f"Style file not found: {style_path}")
+    except Exception as e:
+        logger.error(f"Error reading style file {style_path}: {e}")
+        raise
+
+
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
 # TODO: Allow users to set page and staff spacing from the website
 def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
@@ -555,15 +598,23 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
     This includes both the main score and individual part style files.
     """
 
-    # Determine style files
+    # Determine style filenames
     if style == Style.BROADWAY:
-        score_style_path = os.path.join(STYLES_DIR, "broadway_score.mss")
-        part_style_path = os.path.join(STYLES_DIR, "broadway_part.mss")
+        score_style_filename = "broadway_score.mss"
+        part_style_filename = "broadway_part.mss"
     elif style == Style.JAZZ:
-        score_style_path = os.path.join(STYLES_DIR, "jazz_score.mss")
-        part_style_path = os.path.join(STYLES_DIR, "jazz_part.mss")
+        score_style_filename = "jazz_score.mss"
+        part_style_filename = "jazz_part.mss"
     else:
         raise ValueError(f"Unsupported style: {style}")
+
+    # Get style file contents from S3
+    try:
+        score_style_content = _get_style_file_content(score_style_filename)
+        part_style_content = _get_style_file_content(part_style_filename)
+    except FileNotFoundError as e:
+        logger.error(f"Style file not found: {e}")
+        return
 
     # Walk through files in temp directory
     for root, _, files in os.walk(work_dir):
@@ -576,65 +627,77 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str) -> None:
             rel_path = os.path.relpath(full_path, work_dir)
             is_excerpt = "Excerpts" in rel_path
 
-            source_style = part_style_path if is_excerpt else score_style_path
-            shutil.copyfile(source_style, full_path)
+            # Choose appropriate style content
+            style_content = part_style_content if is_excerpt else score_style_content
 
-            logger.info(f"[Processing] Replaced {'part' if is_excerpt else 'score'} style: {full_path}")
+            # Write the style content to the local file
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(style_content)
+
+            logger.info(
+                f"[Processing] Replaced {'part' if is_excerpt else 'score'} style: {full_path}"
+            )
 
 
-def mscz_main(
-    input_path,
-    output_path,
-    style_name,
-    **kwargs,
-):
+def mscz_main(input_key, output_key, style_name, **kwargs):
+    """
+    Process an uploaded .mscz file stored in Spaces and save the processed file back.
+    """
+
     if not kwargs.get("movementTitle"):
         kwargs["movementTitle"] = ""
     if not kwargs.get("workNumber"):
         kwargs["workNumber"] = ""
-    
 
-    work_dir = TEMP_DIR + input_path.split("/")[-1]
+    # Create a local temp work directory
+    work_dir = tempfile.mkdtemp()
 
-    with zipfile.ZipFile(input_path, "r") as zip_ref:
-        # Extract all files to "temp" and collect all .mscx files from the zip structure
-        zip_ref.extractall(work_dir)
+    # Download zip from storage
+    with default_storage.open(input_key, "rb") as f:
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_in:
+            tmp_in.write(f.read())
+            tmp_in.flush()
+
+            # Extract to working dir
+            with zipfile.ZipFile(tmp_in.name, "r") as zip_ref:
+                zip_ref.extractall(work_dir)
+                mscx_files = [
+                    os.path.join(work_dir, f)
+                    for f in zip_ref.namelist()
+                    if f.endswith(".mscx")
+                ]
 
     selected_style = Style(style_name)
-
     add_styles_to_score_and_parts(selected_style, work_dir)
 
-    mscx_files = [
-        os.path.join(work_dir, f) for f in zip_ref.namelist() if f.endswith(".mscx")
-    ]
-
-    nmpl_part = kwargs.pop("num_measures_per_line_part")
-    nmpl_score = kwargs.pop("num_measures_per_line_score")
+    nmpl_part = kwargs.pop("num_measures_per_line_part", NUM_MEASURES_PER_LINE)
+    nmpl_score = kwargs.pop("num_measures_per_line_score", NUM_MEASURES_PER_LINE)
     num_measures_per_line = [
         nmpl_part if "Excerpts" in name else nmpl_score for name in mscx_files
     ]
-    for f in zip_ref.namelist():
-        logger.info(f"Filename: {f}")
+
     if not mscx_files:
         logger.info("[Processing] No .mscx files found in the provided mscz file.")
         shutil.rmtree(work_dir)
         return
 
-    
+    # Process each .mscx file
     for mscx_path, nmpl in zip(mscx_files, num_measures_per_line):
         logger.info(f"Processing {mscx_path}...")
-        process_mscx(
-            mscx_path,
-            selected_style,
-            measures_per_line=nmpl,
-            **kwargs,
-        )
+        process_mscx(mscx_path, selected_style, measures_per_line=nmpl, **kwargs)
 
-    with zipfile.ZipFile(output_path, "w") as zip_out:
-        for root, _, files in os.walk(work_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                zip_out.write(file_path, os.path.relpath(file_path, work_dir))
+    # Write processed zip to temp file
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_out:
+        with zipfile.ZipFile(tmp_out.name, "w") as zip_out:
+            for root, _, files in os.walk(work_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    zip_out.write(file_path, os.path.relpath(file_path, work_dir))
+        tmp_out.flush()
+
+        # Save back to Spaces
+        with open(tmp_out.name, "rb") as final_file:
+            default_storage.save(output_key, File(final_file))
 
     shutil.rmtree(work_dir)
 
@@ -668,7 +731,7 @@ def process_mscx(
                     metaTag.text = v
                     found = True
                     break
-            
+
             if not found:
                 new_meta = ET.Element("metaTag")
                 new_meta.set("name", k)
@@ -680,7 +743,9 @@ def process_mscx(
                     score.insert(index + 1, new_meta)
                 else:
                     # No existing metaTag, just append
-                    logger.warning("[Processing] No metaTags found in score, appending new meta tag")
+                    logger.warning(
+                        "[Processing] No metaTags found in score, appending new meta tag"
+                    )
                     score.append(new_meta)
 
         show_number = kwargs["workNumber"]
@@ -698,7 +763,7 @@ def process_mscx(
         # add_page_breaks(
         #     staff
         # )  # TODO: Only add page breaks if not working on conductor score
-        #TODO: Line Breaks are bugged up -- has an off by 1 error before a double bar, then it uses the right number after the double bar ... investigate why
+        # TODO: Line Breaks are bugged up -- has an off by 1 error before a double bar, then it uses the right number after the double bar ... investigate why
         cleanup_mm_rests(staff)
         if selected_style == Style.BROADWAY:
             add_broadway_header(staff, show_number, show_title)

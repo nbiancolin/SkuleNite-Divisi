@@ -2,10 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-import os
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
 from .tasks import part_formatter_mscz, export_mscz_to_pdf
-from .models import UploadSession, ProcessedFile
+from .models import UploadSession
 from .serializers import FormatMsczFileSerializer
 
 import logging
@@ -22,21 +23,28 @@ class UploadMsczFile(APIView):
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Create a session first
         session = UploadSession.objects.create(
             user_agent=request.headers.get("User-Agent"),
             ip_address=request.META.get("REMOTE_ADDR"),
             file_name=uploaded_file.name,
         )
+    
+        key = session.mscz_file_key
 
-        with open(session.mscz_file_path, "wb+") as f:
-            for chunk in uploaded_file.chunks():
-                f.write(chunk)
+        # Save the uploaded file to the storage backend
+        default_storage.save(key, uploaded_file)
+
+        file_url = default_storage.url(key)
 
         return Response(
-            {"message": "File Uploaded Successfully", "session_id": session.id},
+            {
+                "message": "File uploaded successfully",
+                "session_id": session.id,
+                "file_url": file_url,
+            },
             status=status.HTTP_200_OK,
         )
-
 
 class FormatMsczFile(APIView):
     def post(self, request, *args, **kwargs):
@@ -72,29 +80,20 @@ class FormatMsczFile(APIView):
         res = export_mscz_to_pdf(session_id)
         if res["status"] == "success":
             #do success stuff
-            output_path = res["output"]
             session = UploadSession.objects.get(id=session_id)
+            output_path = res["output"]
+            mscz_url = session.output_file_url
             session.completed = True
             session.save()
         else:
             #do error stuff
             return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        if not os.path.exists(output_path):
-            return Response(
-                {"error": "Processed file not found."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        relative_path = os.path.relpath(output_path, settings.MEDIA_ROOT)
-        score_url = request.build_absolute_uri(settings.MEDIA_URL + relative_path.replace("\\", "/"))
-        mscz_url = score_url[:-3] + "mscz"
-
         return Response(
             {
                 "message": "File processed successfully.",
-                "score_download_url": score_url,
-                "mscz_download_url": mscz_url
+                "score_download_url": request.build_absolute_uri(output_path),
+                "mscz_download_url": request.build_absolute_uri(mscz_url)
             },
             status=status.HTTP_200_OK,
         )

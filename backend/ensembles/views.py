@@ -6,6 +6,7 @@ from rest_framework import status
 
 from django.db import transaction
 from django.conf import settings
+from django.core.files.storage import default_storage
 
 from .tasks import prep_and_export_mscz, export_arrangement_version
 
@@ -19,6 +20,7 @@ from .serializers import (
 from logging import getLogger
 
 import os
+import io
 
 logger = getLogger("EnsembleViews")
 
@@ -86,7 +88,6 @@ class UploadArrangementVersionMsczView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # TODO wrap in transaction
         with transaction.atomic():
             version = ArrangementVersion.objects.create(
                 arrangement=arr,
@@ -109,18 +110,31 @@ class UploadArrangementVersionMsczView(APIView):
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not os.path.exists(version.mscz_file_location):
-            os.makedirs(version.mscz_file_location)
-
-        with open(version.mscz_file_path, "wb+") as f:
+        # Save file to storage using the storage key
+        try:
+            # Create a file-like object from the uploaded file
+            file_content = b""
             for chunk in uploaded_file.chunks():
-                f.write(chunk)
+                file_content += chunk
+            
+            # Save to storage using the key
+            default_storage.save(version.mscz_file_key, io.BytesIO(file_content))
+            logger.info(f"Saved file to storage: {version.mscz_file_key}")
+            
+        except Exception as e:
+            logger.error(f"Failed to save file to storage: {e}")
+            # Clean up the version if file save failed
+            version.delete()
+            return Response(
+                {"error": "Failed to save file to storage"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-        # format mscz
+        # Format mscz
         if serializer.validated_data["format_parts"]:
             prep_and_export_mscz.delay(version.pk)
         else:
-            # just export
+            # Just export
             export_arrangement_version.delay(version.pk)
 
         return Response(
@@ -144,32 +158,26 @@ class ArrangementVersionDownloadLinks(APIView):
                 {"message": "Provided version ID does not exist"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        # Use the new URL properties from the model
+        response_data = {
+            "message": "Successfully created download links",
+            "is_processing": version.is_processing,
+            "error": version.error_on_export,
+            "raw_mscz_url": request.build_absolute_uri(version.mscz_file_url),
+            "processed_mscz_url": request.build_absolute_uri(version.output_file_url),
+            "score_parts_pdf_link": request.build_absolute_uri(version.score_parts_pdf_url)
+        }
 
-        relative_raw_path = os.path.relpath(version.mscz_file_path, settings.MEDIA_ROOT)
-        relative_output_path = os.path.relpath(
-            version.output_file_path, settings.MEDIA_ROOT
-        )
-        relative_score_parts_path = os.path.relpath(
-            version.score_parts_pdf_path, settings.MEDIA_ROOT
-        )
-        raw_mscz_url = request.build_absolute_uri(
-            settings.MEDIA_URL + relative_raw_path.replace("\\", "/")
-        )
-        processed_mscz_url = request.build_absolute_uri(
-            settings.MEDIA_URL + relative_output_path.replace("\\", "/")
-        )
+        # Only include URLs for files that actually exist
+        if not default_storage.exists(version.mscz_file_key):
+            response_data["raw_mscz_url"] = None
+            
+        if not default_storage.exists(version.output_file_key):
+            response_data["processed_mscz_url"] = None
+            
+        if not default_storage.exists(version.score_parts_pdf_key):
+            response_data["score_parts_pdf_link"] = None
 
-        output_score_url = request.build_absolute_uri(
-            settings.MEDIA_URL + relative_score_parts_path.replace("\\", "/")
-        )
+        return Response(response_data)
 
-        return Response(
-            {
-                "message": "Successfully created download links",
-                "is_processing": version.is_processing,
-                "error": version.error_on_export,
-                "raw_mscz_url": raw_mscz_url,
-                "processed_mscz_url": processed_mscz_url,
-                "score_parts_pdf_link": output_score_url,
-            }
-        )
+
