@@ -5,7 +5,7 @@ import os
 # General
 # -------------------------------
 DEBUG = False
-ALLOWED_HOSTS = ["146.190.255.211", "localhost", "127.0.1", "divisi.nbiancolin.ca"]
+ALLOWED_HOSTS = ["146.190.255.211", "localhost", "127.0.0.1", "divisi.nbiancolin.ca"]
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_DOMAIN = "divisi.nbiancolin.ca"
 SECURE_SSL_REDIRECT = False  # TODO: enable in production
