@@ -51,7 +51,7 @@ STATICFILES_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 STATIC_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.{AWS_S3_REGION_NAME}.digitaloceanspaces.com/static/"
 
 # Dummy path required by Django collectstatic (will not be used)
-STATIC_ROOT = "/tmp/static/"
+STATIC_ROOT = "/app/backend/backend/static"
 
 # -------------------------------
 # Media files
