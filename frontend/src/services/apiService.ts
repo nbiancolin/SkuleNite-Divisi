@@ -42,6 +42,15 @@ export interface EditableArrangementData {
   style: string;
 }
 
+// New interface for version history
+export interface VersionHistoryItem {
+  id: number;
+  uuid: string;
+  version_label: string;
+  timestamp: string;
+  is_latest: boolean;
+}
+
 export const apiService = {
   async getEnsembles() {
     const response = await fetch(`${API_BASE_URL}/ensembles/`);
@@ -196,6 +205,7 @@ export const apiService = {
 
   return response.json();
   },
+
   async getDownloadLinksForVersion(versionId: number) {
     const response = await fetch(`${API_BASE_URL}/get-download-links/?version_id=${versionId}`);
     if (!response.ok){
@@ -212,5 +222,41 @@ export const apiService = {
     }
 
     return response.json()
+  },
+
+  // NEW: Get version history for an arrangement
+  async getVersionHistory(arrangementId: number): Promise<VersionHistoryItem[]> {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/versions/`);
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch version history (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  // NEW: Get specific version details
+  async getVersionDetails(versionId: number): Promise<ArrangementVersion> {
+    const response = await fetch(`${API_BASE_URL}/versions/${versionId}/`);
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch version details (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
   }
 };

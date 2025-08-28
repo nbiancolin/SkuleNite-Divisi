@@ -16,18 +16,38 @@ import {
   ActionIcon,
   Tooltip,
   TextInput,
+  Collapse,
+  Table,
+  ScrollArea,
+  Modal,
 } from '@mantine/core';
-import { IconUser, IconCalendar, IconHash, IconAlertCircle, IconRefresh, IconArrowLeft, IconDownload, IconUpload, IconEdit, IconCheck, IconX, IconPilcrow } from '@tabler/icons-react';
+import { 
+  IconUser, 
+  IconCalendar, 
+  IconHash, 
+  IconAlertCircle, 
+  IconRefresh, 
+  IconArrowLeft, 
+  IconDownload, 
+  IconUpload, 
+  IconEdit, 
+  IconCheck, 
+  IconX, 
+  IconPilcrow,
+  IconHistory,
+  IconChevronDown,
+  IconChevronUp,
+} from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData } from '../../services/apiService';
+import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
 export default function ArrangementDisplay() {
-  const {arrangementId = 1} = useParams()
+  const {arrangementId = 1} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +74,22 @@ export default function ArrangementDisplay() {
   const [exportLoading, setExportLoading] = useState<boolean>(true);
   const [exportError, setExportError] = useState<boolean>(false);
 
-  const navigate = useNavigate()
+  // Version history states
+  const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
+  const [selectedVersionForDownload, setSelectedVersionForDownload] = useState<number | null>(null);
+  const [versionDownloadModal, setVersionDownloadModal] = useState(false);
+  const [versionDownloadLoading, setVersionDownloadLoading] = useState(false);
+  const [versionDownloadLinks, setVersionDownloadLinks] = useState({
+    rawMsczUrl: '',
+    msczUrl: '',
+    scoreUrl: '',
+    exportLoading: false,
+    exportError: false
+  });
+
+  const navigate = useNavigate();
 
   const processMvtNo = (mvt_no: string) => {
     // split string at eithr - or m,
@@ -95,6 +130,39 @@ export default function ArrangementDisplay() {
     }
   }
 
+  const fetchVersionHistory = async (arrangementId: number) => {
+    try {
+      setVersionHistoryLoading(true);
+      const history = await apiService.getVersionHistory(arrangementId);
+      setVersionHistory(history);
+    } catch (err) {
+      console.error('Failed to fetch version history:', err);
+    } finally {
+      setVersionHistoryLoading(false);
+    }
+  };
+
+  const handleVersionDownload = async (versionId: number) => {
+    setSelectedVersionForDownload(versionId);
+    setVersionDownloadModal(true);
+    setVersionDownloadLoading(true);
+
+    try {
+      const data = await apiService.getDownloadLinksForVersion(versionId);
+      setVersionDownloadLinks({
+        rawMsczUrl: data.raw_mscz_url,
+        msczUrl: data.processed_mscz_url,
+        scoreUrl: data.score_parts_pdf_link,
+        exportLoading: data.is_processing,
+        exportError: data.error
+      });
+    } catch (err) {
+      setVersionDownloadLinks(prev => ({ ...prev, exportError: true }));
+    } finally {
+      setVersionDownloadLoading(false);
+    }
+  };
+
   const fetchArrangement = async (id: number) => {
     try {
       setLoading(true);
@@ -117,6 +185,9 @@ export default function ArrangementDisplay() {
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
       }
+
+      // Fetch version history
+      await fetchVersionHistory(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch arrangement');
     } finally {
@@ -510,6 +581,142 @@ export default function ArrangementDisplay() {
             </Card>
           </Grid.Col>
         </Grid>
+
+        {/* Version History Section */}
+        <Card shadow="xs" padding="lg" radius="md" withBorder mt="lg">
+          <Group justify="space-between" mb="md">
+            <Group>
+              <IconHistory size={20} />
+              <Title order={3}>Version History</Title>
+              <Badge variant="light" color="blue">
+                {versionHistory.length} versions
+              </Badge>
+            </Group>
+            <Button
+              variant="subtle"
+              rightSection={showVersionHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+              onClick={() => setShowVersionHistory(!showVersionHistory)}
+              loading={versionHistoryLoading}
+            >
+              {showVersionHistory ? 'Hide' : 'Show'} History
+            </Button>
+          </Group>
+
+          <Collapse in={showVersionHistory}>
+            {versionHistory.length > 0 ? (
+              <ScrollArea>
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>Version</Table.Th>
+                      <Table.Th>Date</Table.Th>
+                      <Table.Th>Actions</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {versionHistory.map((version) => (
+                      <Table.Tr key={version.id}>
+                        <Table.Td>
+                          <Text fw={version.is_latest ? 700 : 400}>
+                            v{version.version_label}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">
+                            {formatTimestamp(version.timestamp)}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs">
+                            <Tooltip label="Download this version">
+                              <ActionIcon
+                                variant="light"
+                                color="blue"
+                                size="sm"
+                                onClick={() => handleVersionDownload(version.id)}
+                              >
+                                <IconDownload size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          </Group>
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
+            ) : (
+              <Text c="dimmed" ta="center" py="xl">
+                No version history available
+              </Text>
+            )}
+          </Collapse>
+        </Card>
+
+        {/* Version Download Modal */}
+        <Modal
+          opened={versionDownloadModal}
+          onClose={() => setVersionDownloadModal(false)}
+          title={`Download Version ${versionHistory.find(v => v.id === selectedVersionForDownload)?.version_label || ''}`}
+          size="lg"
+        >
+          {versionDownloadLoading ? (
+            <Group justify="center" py="xl">
+              <Loader size="md" />
+              <Text>Loading download links...</Text>
+            </Group>
+          ) : versionDownloadLinks.exportError ? (
+            <Alert icon={<IconAlertCircle size={16} />} color="red" mb="md">
+              Error loading download links for this version
+            </Alert>
+          ) : versionDownloadLinks.exportLoading ? (
+            <Group justify="center" py="xl">
+              <Loader size="md" />
+              <Text>This version is still processing...</Text>
+            </Group>
+          ) : (
+            <Stack gap="md">
+              <Text size="sm" c="dimmed">
+                Choose which files to download for this version:
+              </Text>
+              
+              <Group>
+                <Button
+                  component="a"
+                  href={versionDownloadLinks.scoreUrl}
+                  target="_blank"
+                  variant="filled"
+                  rightSection={<IconDownload size={16} />}
+                  disabled={!versionDownloadLinks.scoreUrl}
+                >
+                  Score & Parts (PDF)
+                </Button>
+                
+                <Button
+                  component="a"
+                  href={versionDownloadLinks.msczUrl}
+                  target="_blank"
+                  variant="filled"
+                  rightSection={<IconDownload size={16} />}
+                  disabled={!versionDownloadLinks.msczUrl}
+                >
+                  Formatted MSCZ
+                </Button>
+                
+                <Button
+                  component="a"
+                  href={versionDownloadLinks.rawMsczUrl}
+                  target="_blank"
+                  variant="subtle"
+                  rightSection={<IconDownload size={16} />}
+                  disabled={!versionDownloadLinks.rawMsczUrl}
+                >
+                  Raw MSCZ
+                </Button>
+              </Group>
+            </Stack>
+          )}
+        </Modal>
 
         <Card shadow="xs" padding="lg" radius="md" withBorder>
           <Title order={3} mb="md">Download Parts</Title>

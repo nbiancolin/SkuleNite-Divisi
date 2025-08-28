@@ -135,21 +135,21 @@ class ArrangementVersion(models.Model):
 
     @property
     def mscz_file_key(self) -> str:
-        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/raw/{self.file_name}"
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/raw/{self.file_name}"
 
     @property
     def output_file_key(self) -> str:
-        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{self.file_name}"
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{self.file_name}"
 
     @property
     def score_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
-        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext}.pdf"
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
 
     @property
     def score_parts_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
-        return f"ensembles/{self.arrangement.ensemble.slug}/arrangements/{self.arrangement.slug}/versions/{self.uuid}/processed/{filename_without_ext} - Score+Parts.pdf"
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext} - Score+Parts.pdf"
 
     @property
     def mscz_file_url(self) -> str:
