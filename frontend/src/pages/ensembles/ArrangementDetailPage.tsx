@@ -37,7 +37,6 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
-  IconEye
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -611,7 +610,6 @@ export default function ArrangementDisplay() {
                     <Table.Tr>
                       <Table.Th>Version</Table.Th>
                       <Table.Th>Date</Table.Th>
-                      <Table.Th>Status</Table.Th>
                       <Table.Th>Actions</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -627,13 +625,6 @@ export default function ArrangementDisplay() {
                           <Text size="sm">
                             {formatTimestamp(version.timestamp)}
                           </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {version.is_latest && (
-                            <Badge variant="filled" color="teal" size="sm">
-                              Latest
-                            </Badge>
-                          )}
                         </Table.Td>
                         <Table.Td>
                           <Group gap="xs">
