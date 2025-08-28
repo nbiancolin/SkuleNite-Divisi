@@ -22,8 +22,8 @@ export interface Arrangement {
   mvt_no: string;
   latest_version: ArrangementVersion;
   latest_version_num: string;
-  version_uuids: [string];
-  version_nums: [string];
+  version_ids: number[];
+  version_nums: string[];
   style: string;
 }
 
@@ -198,6 +198,7 @@ export const apiService = {
 
   return response.json();
   },
+
   async getDownloadLinksForVersion(versionId: number) {
     const response = await fetch(`${API_BASE_URL}/get-download-links/?version_id=${versionId}`);
     if (!response.ok){

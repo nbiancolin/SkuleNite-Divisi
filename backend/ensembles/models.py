@@ -111,8 +111,8 @@ class Arrangement(models.Model):
         return self.ensemble.slug
     
     @property
-    def version_uuids(self):
-        return self.versions.values_list("uuid", flat=True)
+    def version_ids(self):
+        return self.versions.values_list("pk", flat=True)
     
     # Used by FE to get old arrangement versions
     @property

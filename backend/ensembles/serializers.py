@@ -37,7 +37,8 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "mvt_no",
             "style",
             "latest_version",
-            "latest_version_numversion_uuids",
+            "latest_version_num",
+            "version_ids",
             "version_nums",
         ]
         read_only_fields = [
