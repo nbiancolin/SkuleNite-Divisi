@@ -109,15 +109,6 @@ class Arrangement(models.Model):
     @property
     def ensemble_slug(self):
         return self.ensemble.slug
-    
-    @property
-    def version_ids(self):
-        return self.versions.values_list("pk", flat=True)
-    
-    # Used by FE to get old arrangement versions
-    @property
-    def version_nums(self):
-        return ArrangementVersion.objects.filter(arrangement=self).values_list("version_label", flat=True)
 
     def __str__(self):
         return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"

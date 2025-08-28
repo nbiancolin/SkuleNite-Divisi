@@ -37,23 +37,24 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
+  IconEye
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData } from '../../services/apiService';
+import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
 export default function ArrangementDisplay() {
-  const { arrangementId = 1 } = useParams();
+  const {arrangementId = 1} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mvtNo, setMvtNo] = useState<string>("");
+  const [mvtNo, setMvtNo] = useState<string>("")
 
-  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway");
+  const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   // Edit mode states
   const [isEditing, setIsEditing] = useState(false);
@@ -68,7 +69,6 @@ export default function ArrangementDisplay() {
   });
   const [saveLoading, setSaveLoading] = useState(false);
 
-  // Latest version download links
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
@@ -76,7 +76,9 @@ export default function ArrangementDisplay() {
   const [exportError, setExportError] = useState<boolean>(false);
 
   // Version history states
+  const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
   const [selectedVersionForDownload, setSelectedVersionForDownload] = useState<number | null>(null);
   const [versionDownloadModal, setVersionDownloadModal] = useState(false);
   const [versionDownloadLoading, setVersionDownloadLoading] = useState(false);
@@ -91,36 +93,57 @@ export default function ArrangementDisplay() {
   const navigate = useNavigate();
 
   const processMvtNo = (mvt_no: string) => {
-    if (mvt_no.includes("-")) {
-      const vals = mvt_no.split("-");
-      editData.act_number = +vals[0];
-      editData.piece_number = +vals[1];
+    // split string at eithr - or m,
+      // if neither present, return the whole thing as a number
+    // first one is act number, second one is piece number
+
+    if(mvt_no.includes("-")){
+        const vals = mvt_no.split("-")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[1]
+
     } else if (mvt_no.includes("m")) {
-      const vals = mvt_no.split("m");
-      editData.act_number = +vals[0];
-      editData.piece_number = +vals[1];
-    } else {
-      editData.piece_number = +mvt_no;
-      editData.act_number = null;
+        const vals = mvt_no.split("m")
+        editData.act_number = +vals[0]
+        editData.piece_number = +vals[1]
     }
-  };
+    else {
+      //wrap in trycatch
+      editData.piece_number = +mvt_no
+      editData.act_number = null
+    }
+  }
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
-      setExportLoading(true);
-      setExportError(false);
+      setLoading(true);
+      setError(null);
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
-      setExportLoading(data.is_processing);
+      setExportLoading(data.is_processing)
       setExportError(data.error);
     } catch (err) {
-      setExportError(true);
+      setError(err instanceof Error ? err.message : 'Failed to fetch version download links');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const fetchVersionHistory = async (arrangementId: number) => {
+    try {
+      setVersionHistoryLoading(true);
+      const history = await apiService.getVersionHistory(arrangementId);
+      setVersionHistory(history);
+    } catch (err) {
+      console.error('Failed to fetch version history:', err);
+    } finally {
+      setVersionHistoryLoading(false);
     }
   };
 
-  const handleVersionDownload = async (versionId: number, versionNum: string) => {
+  const handleVersionDownload = async (versionId: number) => {
     setSelectedVersionForDownload(versionId);
     setVersionDownloadModal(true);
     setVersionDownloadLoading(true);
@@ -135,11 +158,7 @@ export default function ArrangementDisplay() {
         exportError: data.error
       });
     } catch (err) {
-      setVersionDownloadLinks(prev => ({ 
-        ...prev, 
-        exportError: true,
-        exportLoading: false
-      }));
+      setVersionDownloadLinks(prev => ({ ...prev, exportError: true }));
     } finally {
       setVersionDownloadLoading(false);
     }
@@ -151,7 +170,7 @@ export default function ArrangementDisplay() {
       setError(null);
       const data = await apiService.getArrangementById(id);
       setArrangement(data);
-      setMvtNo(data.mvt_no);
+      setMvtNo(data.mvt_no)
 
       // Initialize edit data
       setEditData({
@@ -167,6 +186,9 @@ export default function ArrangementDisplay() {
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
       }
+
+      // Fetch version history
+      await fetchVersionHistory(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch arrangement');
     } finally {
@@ -179,8 +201,8 @@ export default function ArrangementDisplay() {
 
     try {
       setSaveLoading(true);
-      editData.style = selectedStyle;
-      processMvtNo(mvtNo);
+      editData.style = selectedStyle
+      processMvtNo(mvtNo)
       await apiService.updateArrangement(arrangement.id, editData);
       
       // Refresh the arrangement data
@@ -202,10 +224,9 @@ export default function ArrangementDisplay() {
         subtitle: arrangement.subtitle || '',
         style: arrangement.style,
         composer: arrangement.composer || '',
-        piece_number: arrangement.piece_number,
-        act_number: arrangement.act_number,
+        piece_number: arrangement.pieceNumber,
+        act_number: arrangement.actNumber,
       });
-      setMvtNo(arrangement.mvt_no);
     }
     setIsEditing(false);
   };
@@ -218,7 +239,7 @@ export default function ArrangementDisplay() {
     fetchArrangement(+arrangementId);
   };
 
-  const handleBackClick = () => {
+   const handleBackClick = () => {
     navigate(`/app/ensembles/${arrangement?.ensemble_slug}/arrangements`);
   };
 
@@ -231,15 +252,6 @@ export default function ArrangementDisplay() {
       minute: '2-digit'
     });
   };
-
-  // Create version history from arrangement data
-  const versionHistory = arrangement ? arrangement.version_ids.map((id, index) => ({
-    id,
-    version_num: arrangement.version_nums[index],
-    is_latest: id === arrangement.latest_version?.id
-  })).reverse() : []; // Reverse to show newest first
-
-  const selectedVersionNum = versionHistory.find(v => v.id === selectedVersionForDownload)?.version_num || '';
 
   if (loading) {
     return (
@@ -449,10 +461,10 @@ export default function ArrangementDisplay() {
 
                 <Group>
                   <IconPilcrow size={20} color="gray" />
-                  <div style={{ flex: 1 }}>
-                    <Text size="sm" c="dimmed">Style</Text>
-                    <Text fw="500">{arrangement.style}</Text>
-                  </div>
+                    <div style={{ flex: 1 }}>
+                      <Text size="sm" c="dimmed">Style</Text>
+                      <Text fw="500">{arrangement.style}</Text>
+                    </div>
                 </Group>
               </Stack>
             </Card>
@@ -460,6 +472,7 @@ export default function ArrangementDisplay() {
 
           <Grid.Col span={{ base: 12, md: 6 }}>
             <Card shadow="xs" padding="lg" radius="md" withBorder>
+
               {isEditing ? (
                 <ScoreTitlePreview
                   selectedStyle={selectedStyle}
@@ -472,94 +485,100 @@ export default function ArrangementDisplay() {
                   mvtNo={mvtNo}
                   showTitle={arrangement.ensemble_name}
                   pieceNumber={null}
-                />
+                  />
               ) : (
-                <div> 
-                  <Title order={3} mb="md">Latest Version</Title>
-                  <Stack gap="md">
-                    <Group>
-                      <Badge variant="filled" color="teal" size="lg">
-                        v{arrangement.latest_version_num || 'N/A'}
-                      </Badge>
+                <div id="nickId"> 
+                <Title order={3} mb="md">Latest Version</Title>
+                <Stack gap="md">
+                  <Group>
+                    <Badge variant="filled" color="teal" size="lg">
+                      v{arrangement.latest_version_num || 'N/A'}
+                    </Badge>
+                    {/* Fix spacing of these buttons */}
+                    <Button
+                      component={Link}
+                      to={`/app/arrangements/${arrangement.id}/new-version`}
+                      variant={arrangement.latest_version ? "subtle" : "filled"}
+                      size="sm"
+                      rightSection={<IconUpload size={16} />}
+                    >
+                      Upload new Version
+                    </Button>
+
+                    {arrangement.latest_version && !exportLoading && !exportError && (
+                      <>
                       <Button
-                        component={Link}
-                        to={`/app/arrangements/${arrangement.id}/new-version`}
-                        variant={arrangement.latest_version ? "subtle" : "filled"}
-                        size="sm"
-                        rightSection={<IconUpload size={16} />}
-                      >
-                        Upload new Version
-                      </Button>
+                      component={Link}
+                      target="_blank"
+                      to={scoreUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Score & Parts
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={msczUrl}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />} 
+                    >
+                      Download Formatted MSCZ file
+                    </Button>
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      to={rawMsczUrl}
+                      variant="subtle"
+                      size="sm"
+                      rightSection={<IconDownload size={16} />}
+                    >
+                      Download Raw MSCZ file
+                    </Button>
+                    </>
+                    )}
 
-                      {arrangement.latest_version && !exportLoading && !exportError && (
-                        <>
-                          <Button
-                            component={Link}
-                            target="_blank"
-                            to={scoreUrl}
-                            variant="filled"
-                            size="sm"
-                            rightSection={<IconDownload size={16} />} 
-                          >
-                            Download Score & Parts
-                          </Button>
-                          <Button
-                            component={Link}
-                            target="_blank"
-                            to={msczUrl}
-                            variant="filled"
-                            size="sm"
-                            rightSection={<IconDownload size={16} />} 
-                          >
-                            Download Formatted MSCZ file
-                          </Button>
-                          <Button
-                            component={Link}
-                            target="_blank"
-                            to={rawMsczUrl}
-                            variant="subtle"
-                            size="sm"
-                            rightSection={<IconDownload size={16} />}
-                          >
-                            Download Raw MSCZ file
-                          </Button>
-                        </>
-                      )}
-
-                      {exportLoading && (
+                    {exportLoading && (
+                      <Container>
                         <Group justify="center" py="xl">
                           <Loader size="md" />
                           <Text>Score Exporting...</Text>
                         </Group>
-                      )}
+                      </Container>
+                    )}
 
-                      {exportError && (
+                    {exportError && (
+                      <Container>
                         <Group justify="center" py="xl">
                           <Text>Error with Formatting. Tell Nick</Text>
                         </Group>
-                      )}
-                    </Group>
-
-                    {arrangement.latest_version ? (
-                      <>
-                        <Group>
-                          <IconCalendar size={20} color="gray" />
-                          <div>
-                            <Text size="sm" c="dimmed">Last Updated</Text>
-                            <Text fw={500} size="sm">
-                              {formatTimestamp(arrangement.latest_version.timestamp)}
-                            </Text>
-                          </div>
-                        </Group>
-                      </>
-                    ) : (
-                      <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
-                        No version information available
-                      </Alert>
+                      </Container>
                     )}
-                  </Stack>
-                </div>
+                  </Group>
+
+                  {arrangement.latest_version ? (
+                    <>
+                      <Group>
+                        <IconCalendar size={20} color="gray" />
+                        <div>
+                          <Text size="sm" c="dimmed">Last Updated</Text>
+                          <Text fw={500} size="sm">
+                            {formatTimestamp(arrangement.latest_version.timestamp)}
+                          </Text>
+                        </div>
+                      </Group>
+                    </>
+                  ) : (
+                    <Alert icon={<IconAlertCircle size={16} />} color="gray" variant="light">
+                      No version information available
+                    </Alert>
+                  )}
+                </Stack>
+              </div>
               )}
+              
             </Card>
           </Grid.Col>
         </Grid>
@@ -578,6 +597,7 @@ export default function ArrangementDisplay() {
               variant="subtle"
               rightSection={showVersionHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
               onClick={() => setShowVersionHistory(!showVersionHistory)}
+              loading={versionHistoryLoading}
             >
               {showVersionHistory ? 'Hide' : 'Show'} History
             </Button>
@@ -590,6 +610,7 @@ export default function ArrangementDisplay() {
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>Version</Table.Th>
+                      <Table.Th>Date</Table.Th>
                       <Table.Th>Status</Table.Th>
                       <Table.Th>Actions</Table.Th>
                     </Table.Tr>
@@ -599,7 +620,12 @@ export default function ArrangementDisplay() {
                       <Table.Tr key={version.id}>
                         <Table.Td>
                           <Text fw={version.is_latest ? 700 : 400}>
-                            v{version.version_num}
+                            v{version.version_label}
+                          </Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">
+                            {formatTimestamp(version.timestamp)}
                           </Text>
                         </Table.Td>
                         <Table.Td>
@@ -616,7 +642,7 @@ export default function ArrangementDisplay() {
                                 variant="light"
                                 color="blue"
                                 size="sm"
-                                onClick={() => handleVersionDownload(version.id, version.version_num)}
+                                onClick={() => handleVersionDownload(version.id)}
                               >
                                 <IconDownload size={16} />
                               </ActionIcon>
@@ -640,7 +666,7 @@ export default function ArrangementDisplay() {
         <Modal
           opened={versionDownloadModal}
           onClose={() => setVersionDownloadModal(false)}
-          title={`Download Version ${selectedVersionNum}`}
+          title={`Download Version ${versionHistory.find(v => v.id === selectedVersionForDownload)?.version_label || ''}`}
           size="lg"
         >
           {versionDownloadLoading ? (

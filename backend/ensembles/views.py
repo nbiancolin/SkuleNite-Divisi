@@ -14,6 +14,7 @@ from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
+    ArrangementVersionSerializer, 
     CreateArrangementVersionMsczSerializer,
     ArrangementVersionDownloadLinksSeiializer,
 )
@@ -42,6 +43,14 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 class BaseArrangementViewSet(viewsets.ModelViewSet):
     queryset = Arrangement.objects.all()
     serializer_class = ArrangementSerializer
+
+    @action(detail=True, methods=["get"], url_path="versions")
+    def versions(self, request, *args, **kwargs):
+        """Return all versions for an arrangement"""
+        arr = self.get_object()
+        versions = arr.versions.all()
+        serializer = ArrangementVersionSerializer(versions, many=True)
+        return Response(serializer.data)
 
 
 class ArrangementViewSet(BaseArrangementViewSet):

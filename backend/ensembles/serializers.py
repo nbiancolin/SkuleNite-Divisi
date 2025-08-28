@@ -10,9 +10,9 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "uuid",
-            "arrangement",
             "version_label",
             "timestamp",
+            "is_latest"
         ]
 
 
@@ -38,8 +38,6 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "style",
             "latest_version",
             "latest_version_num",
-            "version_ids",
-            "version_nums",
         ]
         read_only_fields = [
             "slug",
