@@ -2,7 +2,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export interface ArrangementVersion {
   id: number;
-  uuid: string;
   arrangementId: number;
   versionNum: string;
   timestamp: string;
@@ -45,7 +44,6 @@ export interface EditableArrangementData {
 // New interface for version history
 export interface VersionHistoryItem {
   id: number;
-  uuid: string;
   version_label: string;
   timestamp: string;
   is_latest: boolean;

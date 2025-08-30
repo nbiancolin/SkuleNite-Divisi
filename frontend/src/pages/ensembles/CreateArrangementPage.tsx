@@ -35,7 +35,6 @@ export default function CreateArrangementPage() {
   mvt_no: "",
   latest_version: {
     id: 0,
-    uuid: "",
     arrangementId: 0,
     versionNum: "0.0.0",
     timestamp: ""
