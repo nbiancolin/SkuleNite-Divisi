@@ -31,3 +31,14 @@
     color: var(--mantine-color-white);
   }
 }
+
+.titleLink {
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  /* Optional: remove outline on click/focus */
+  outline: none;
+  /* Optional: ensure it doesn't look like a button on hover */
+  background: none;
+  box-shadow: none;
+}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Burger, Container, Group, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from './HeaderSimple.module.css';
+import { Link } from 'react-router-dom';
 
 const links = [
   { link: '/app', label: 'Ensemble Score Management' },
@@ -30,7 +31,9 @@ export function HeaderSimple() {
   return (
     <header className={classes.header}>
       <Container size="md" className={classes.inner}>
-        <Title order={2}>Divisi App</Title>
+        <Link to="/" className={classes.titleLink}>
+          <Title order={2}>Divisi App</Title>
+        </Link>
         <Group gap={5} visibleFrom="xs">
           {items}
         </Group>
