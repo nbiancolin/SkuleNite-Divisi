@@ -243,6 +243,38 @@ class ArrangementVersion(models.Model):
     class Meta:
         ordering = ["-timestamp"]
 
+class Diff(models.Model):
+    from_version = models.ForeignKey(
+        ArrangementVersion,
+        on_delete=models.CASCADE,
+        related_name="diff_as_source"
+    )
+    to_version = models.ForeignKey(
+        ArrangementVersion,
+        on_delete=models.CASCADE,
+        related_name="diff_as_target"
+    )
+
+    file_name = models.CharField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def file_key(self) -> str:
+        return f"ensemble-diffs/{self.from_version.ensemble_slug}/{self.from_version.arrangement_slug}/{self.from_version.version_label}-{self.to_version.version_label}/{self.file_name}"
+
+    @property
+    def file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.file_key)
+
+    class Meta:
+        unique_together = ("from_version", "to_version")
+
+    def __str__(self):
+        return f"Diff {self.from_version} → {self.to_version}"
+
+
+
 
 def _part_upload_key(instance, filename):
     """Generate storage key for part files"""

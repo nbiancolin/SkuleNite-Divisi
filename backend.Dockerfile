@@ -83,4 +83,6 @@ RUN chown -R myuser:myuser /app
 ENV PYTHONBUFFERED=1
 USER myuser
 
+RUN python _scripts/setup_music21.py
+
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
