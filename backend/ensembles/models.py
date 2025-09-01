@@ -1,9 +1,7 @@
 from django.db import models
 from django.utils.text import slugify
-from django.conf import settings
 from django.core.files.storage import default_storage
 
-import uuid
 import os
 from logging import getLogger
 
@@ -122,7 +120,6 @@ class ArrangementVersion(models.Model):
         Arrangement, related_name="versions", on_delete=models.CASCADE
     )
 
-    uuid = models.UUIDField(default=uuid.uuid4, editable=False)
     file_name = models.CharField()
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -252,8 +249,7 @@ def _part_upload_key(instance, filename):
     ensemble_slug = instance.version.arrangement.ensemble.slug
     arrangement_slug = instance.version.arrangement.slug
     version = instance.version.version_label
-    uuid = instance.version.uuid
-    return f"ensembles/{ensemble_slug}/arrangements/{arrangement_slug}/versions/{uuid}/parts/{filename}"
+    return f"ensembles/{ensemble_slug}/arrangements/{arrangement_slug}/versions/{version}/parts/{filename}"
 
 _part_upload_path = _part_upload_key
 

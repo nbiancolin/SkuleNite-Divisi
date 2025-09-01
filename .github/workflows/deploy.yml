@@ -24,6 +24,7 @@ jobs:
         "set -e;
          cd /app;
          docker compose down --remove-orphans;
+         docker image prune -af;
          git fetch origin main;
          git reset --hard origin/main;
          docker compose -f docker-compose.prod.yml up -d --build --quiet-pull"
