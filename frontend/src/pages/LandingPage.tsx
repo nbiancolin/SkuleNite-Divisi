@@ -26,6 +26,7 @@ import {
   IconDeviceDesktop,
   IconBrandGithub
 } from '@tabler/icons-react';
+import { Link } from 'react-router-dom';
 
 export default function LandingPage() {
   const features = [
@@ -115,6 +116,8 @@ export default function LandingPage() {
                   boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                 }}
+                component={Link}
+                to="/app/ensembles"
               >
                 Get Started Free
               </Button>
@@ -127,6 +130,8 @@ export default function LandingPage() {
                   borderColor: 'rgba(255,255,255,0.8)',
                   color: 'white'
                 }}
+                component={Link}
+                to="/app"
               >
                 Learn More
               </Button>
@@ -243,6 +248,8 @@ export default function LandingPage() {
                   size="lg" 
                   radius="xl" 
                   style={{ alignSelf: 'flex-start' }}
+                  component={Link}
+                  to="/part-formatter"
                 >
                   Try Formatter Now
                 </Button>
@@ -267,7 +274,7 @@ export default function LandingPage() {
                     <IconMusic size={50} />
                   </ThemeIcon>
                   <Text c="dimmed">
-                    Interactive Demo Coming Soon
+                    Pictures coming soon(tm)
                   </Text>
                 </Stack>
               </Box>
@@ -281,7 +288,7 @@ export default function LandingPage() {
         <Container size="lg">
           <Center>
             <Stack align="center">
-              <Title order={2} size={36} c="white">
+              <Title order={2} size={36} c="white" style={{ maxWidth: 500 }}>
                 Ready to revolutionize your ensemble workflow?
               </Title>
               
@@ -298,6 +305,8 @@ export default function LandingPage() {
                   style={{
                     boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
                   }}
+                  component={Link}
+                  to="/app/ensembles"
                 >
                   Start Using Divisi
                 </Button>
@@ -306,6 +315,9 @@ export default function LandingPage() {
                   radius="xl" 
                   variant="outline" 
                   color="white"
+                  component="a"
+                  href="https://github.com/nbiancolin/SkuleNite-Divisi"
+                  target="_blank"
                 >
                   View on GitHub
                 </Button>
