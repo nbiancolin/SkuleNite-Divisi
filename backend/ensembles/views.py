@@ -10,7 +10,7 @@ from django.core.files.storage import default_storage
 
 from .tasks import prep_and_export_mscz, export_arrangement_version
 
-from .models import Arrangement, Ensemble, ArrangementVersion
+from .models import Arrangement, Ensemble, ArrangementVersion, Diff
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -96,7 +96,8 @@ class UploadArrangementVersionMsczView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+        
+        old_version = Arrangement.objects.get(id=arrangement_id).latest_version
         with transaction.atomic():
             version = ArrangementVersion.objects.create(
                 arrangement=arr,
@@ -112,6 +113,9 @@ class UploadArrangementVersionMsczView(APIView):
             version.save(
                 version_type=serializer.validated_data["version_type"],
             )
+
+            diff = Diff.objects.create(from_version=old_version, to_version=version, )
+
 
         uploaded_file = serializer.validated_data["file"]
         if not uploaded_file:
@@ -146,8 +150,10 @@ class UploadArrangementVersionMsczView(APIView):
             # Just export
             export_arrangement_version.delay(version.pk)
 
-        res = export_arrangement_version(version.pk, action="mxl")
-        logger.info(res)
+        export_arrangement_version(version.pk, action="mxl")
+
+        #compute diff now that the mxl file exists
+        diff.compute_diff()
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},
