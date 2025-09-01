@@ -144,6 +144,11 @@ class ArrangementVersion(models.Model):
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
 
     @property
+    def mxl_file_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.musicxml"
+
+    @property
     def score_parts_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext} - Score+Parts.pdf"
@@ -257,6 +262,7 @@ class Diff(models.Model):
 
     file_name = models.CharField()
     timestamp = models.DateTimeField(auto_now_add=True)
+    generated = models.BooleanField(default=False)
 
     @property
     def file_key(self) -> str:

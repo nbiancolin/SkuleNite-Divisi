@@ -215,6 +215,8 @@ WORKDIR /app/backend
 
 EXPOSE 80
 
+RUN python _scripts/setup_music21.py
+
 # Create entrypoint script with improved font handling
 CMD ["bash", "-c", "\
     echo '[INFO] Starting application initialization...' && \

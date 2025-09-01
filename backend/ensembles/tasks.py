@@ -1,7 +1,7 @@
 from celery import shared_task
 
 from divisi.part_formatter.processing import mscz_main
-from divisi.part_formatter.export import export_score_and_parts_ms4_storage
+from divisi.part_formatter.export import export_score_and_parts_ms4_storage, export_mscz_to_musicxml
 from .models import ArrangementVersion
 from logging import getLogger
 from django.core.files.storage import default_storage
@@ -53,45 +53,75 @@ def export_arrangement_version(version_id: int, action: str = "score"):
         logger.error(f"ArrangementVersion {version_id} does not exist")
         return {"status": "error", "details": f"Version {version_id} not found"}
     
-    try:
-        # Use the processed file as input (or raw file if processed doesn't exist)
-        input_key = version.output_file_key
-        if not default_storage.exists(input_key):
-            logger.warning(f"Processed file doesn't exist, using raw file: {version.mscz_file_key}")
-            input_key = version.mscz_file_key
-        
-        if not default_storage.exists(input_key):
-            logger.error(f"No input file found for version {version_id}")
-            version.error_on_export = True
-            version.is_processing = False
-            version.save()
-            return {"status": "error", "details": "No input file found"}
-        
-        # Generate output prefix based on the version's storage structure
-        # Extract the directory part from output_file_key
-        output_dir = os.path.dirname(version.output_file_key) + "/"
-        
-        logger.info(f"Starting export for version {version_id}")
-        result = export_score_and_parts_ms4_storage(input_key, output_dir)
-        
-        if result["status"] == "success":
-            logger.info(f"Successfully exported {len(result['written'])} files for version {version_id}")
-            version.error_on_export = False
-        else:
-            logger.error(f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}")
-            version.error_on_export = True
-        
-        version.is_processing = False
-        version.save()
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Unexpected error exporting version {version_id}: {str(e)}")
-        version.error_on_export = True
-        version.is_processing = False
-        version.save()
-        return {"status": "error", "details": str(e)}
+    match action:
+        case "score":
+            try:
+                # Use the processed file as input (or raw file if processed doesn't exist)
+                input_key = version.output_file_key
+                if not default_storage.exists(input_key):
+                    logger.warning(f"Processed file doesn't exist, using raw file: {version.mscz_file_key}")
+                    input_key = version.mscz_file_key
+                
+                if not default_storage.exists(input_key):
+                    logger.error(f"No input file found for version {version_id}")
+                    version.error_on_export = True
+                    version.is_processing = False
+                    version.save()
+                    return {"status": "error", "details": "No input file found"}
+                
+                # Generate output prefix based on the version's storage structure
+                # Extract the directory part from output_file_key
+                output_dir = os.path.dirname(version.output_file_key) + "/"
+                
+                logger.info(f"Starting export for version {version_id}")
+                result = export_score_and_parts_ms4_storage(input_key, output_dir)
+                
+                if result["status"] == "success":
+                    logger.info(f"Successfully exported {len(result['written'])} files for version {version_id}")
+                    version.error_on_export = False
+                else:
+                    logger.error(f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}")
+                    version.error_on_export = True
+                
+                version.is_processing = False
+                version.save()
+                
+                return result
+                
+            except Exception as e:
+                logger.error(f"Unexpected error exporting version {version_id}: {str(e)}")
+                version.error_on_export = True
+                version.is_processing = False
+                version.save()
+                return {"status": "error", "details": str(e)}
+        case "mxl":
+            logger.info("======================================================================================\nExporting MXL file")
+            try:
+                input_key = version.output_file_key
+                if not default_storage.exists(input_key):
+                    logger.warning(f"Couldn't Find Processed file for mxl export -- doesn't exist, using raw file: {version.mscz_file_key}")
+                    input_key = version.mscz_file_key
+
+                if not default_storage.exists(input_key):
+                    logger.error(f"No input file found for version {version_id}")
+                    version.error_on_export = True
+                    version.is_processing = False
+                    version.save()
+                    return {"status": "error", "details": "No input file found when exporting MXL"}
+                
+                output_key = version.mxl_file_key
+                return export_mscz_to_musicxml(input_key, output_key)
+                
+                
+
+            except Exception as e:
+                logger.error(f"Unexpected error exporting version {version_id}: {str(e)}")
+                version.error_on_export = True
+                version.is_processing = False
+                version.save()
+                return {"status": "error", "details": str(e)}
+
+            
 
 
 @shared_task

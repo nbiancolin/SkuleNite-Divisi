@@ -146,6 +146,9 @@ class UploadArrangementVersionMsczView(APIView):
             # Just export
             export_arrangement_version.delay(version.pk)
 
+        res = export_arrangement_version(version.pk, action="mxl")
+        logger.info(res)
+
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},
             status=status.HTTP_200_OK,
