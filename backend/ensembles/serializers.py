@@ -9,7 +9,6 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
         model = ArrangementVersion
         fields = [
             "id",
-            "uuid",
             "version_label",
             "timestamp",
             "is_latest"
