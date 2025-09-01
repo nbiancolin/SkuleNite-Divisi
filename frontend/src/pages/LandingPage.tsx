@@ -20,11 +20,9 @@ import {
   IconUsers,
   IconVersions,
   IconFileMusic,
-  IconDownload,
   IconSettings,
   IconCloudUpload,
   IconDeviceDesktop,
-  IconBrandGithub
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 
