@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 
-from .models import Ensemble, Arrangement, ArrangementVersion, Diff Part
-from .tasks import export_arrangement_version, prep_and_export_mscz
+from .models import Ensemble, Arrangement, ArrangementVersion, Diff, Part
+from .tasks import export_arrangement_version, prep_and_export_mscz, compute_diff
 
 from django.http import HttpRequest
 
@@ -44,6 +44,23 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
             messages.success(request, f"Successfully retriggered format and export for \"{version.arrangement.title}\" v{version.version_label}")
 
     #TODO: Add admin action to manually create and compute a diff
+    @admin.action(description="Manually compute diff of two scores")
+    def manually_compute_diff(self, request, queryset):
+        if len(queryset) != 2:
+            messages.warning(request, "Can only compute diff of two scores. no more, no less.")
+            return
+        
+        from_version = ArrangementVersion.objects.get(id=queryset[0])
+        to_version = ArrangementVersion.objects.get(id=queryset[1])
+        if from_version.arrangement != to_version.arrangement:
+            messages.warning(request, "Must select 2 versions of the same arrangement")
+            return
+        
+        d = Diff.objects.create(from_version=from_version, to_version=to_version, filename="comp-diff.pdf")
+
+        res = compute_diff(d.id)
+        messages.success(request, f"Res: {res}")
+
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

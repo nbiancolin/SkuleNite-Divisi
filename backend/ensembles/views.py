@@ -114,7 +114,7 @@ class UploadArrangementVersionMsczView(APIView):
                 version_type=serializer.validated_data["version_type"],
             )
 
-            diff = Diff.objects.create(from_version=old_version, to_version=version, )
+            diff = Diff.objects.create(from_version=old_version, to_version=version, filename="comp-diff.pdf")
 
 
         uploaded_file = serializer.validated_data["file"]
