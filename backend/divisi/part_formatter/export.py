@@ -17,9 +17,6 @@ def export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     )
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
-    logger.info(
-        f"===========================================================================================\nInput path: {input_file_path} - output: {output_path}"
-    )
     try:
         subprocess.run(["mscore4", input_file_path, "-o", output_path], check=True)
         return {"status": "success", "output": output_path}

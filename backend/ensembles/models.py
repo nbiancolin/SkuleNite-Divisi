@@ -272,9 +272,6 @@ class Diff(models.Model):
     def file_url(self) -> str:
         """Public URL for serving to clients"""
         return default_storage.url(self.file_key)
-    
-    def compute_diff(self):
-        pass
 
     class Meta:
         unique_together = ("from_version", "to_version")

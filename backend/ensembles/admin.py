@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Ensemble, Arrangement, ArrangementVersion, Part
+from .models import Ensemble, Arrangement, ArrangementVersion, Diff Part
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
@@ -43,6 +43,7 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
             prep_and_export_mscz.delay(version.pk)
             messages.success(request, f"Successfully retriggered format and export for \"{version.arrangement.title}\" v{version.version_label}")
 
+    #TODO: Add admin action to manually create and compute a diff
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -50,6 +51,10 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
     def has_change_permission(self, request: HttpRequest, obj = None) -> bool:
         return False
 
+
+class DiffAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
 
 class PartAdmin(admin.ModelAdmin):
     list_display = ("version", "part_name", "file")
@@ -63,4 +68,5 @@ class PartAdmin(admin.ModelAdmin):
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
+admin.site.register(Diff, DiffAdmin)
 admin.site.register(Part, PartAdmin)
