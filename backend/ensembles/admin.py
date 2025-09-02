@@ -4,6 +4,7 @@ from .models import Ensemble, Arrangement, ArrangementVersion, Diff, Part
 from .tasks import export_arrangement_version, prep_and_export_mscz, compute_diff
 
 from django.http import HttpRequest
+from django.db.utils import IntegrityError
 
 
 class EnsembleAdmin(admin.ModelAdmin):
@@ -23,7 +24,7 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
     
     list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp")
 
-    actions = ("re_export_version", "re_process_version", )
+    actions = ("re_export_version", "re_process_version", "manually_compute_diff")
 
     @admin.action(description="Re-trigger export of version")
     def re_export_version(self, request, queryset):
@@ -49,14 +50,20 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
         if len(queryset) != 2:
             messages.warning(request, "Can only compute diff of two scores. no more, no less.")
             return
-        
-        from_version = ArrangementVersion.objects.get(id=queryset[0])
-        to_version = ArrangementVersion.objects.get(id=queryset[1])
+
+        queryset = queryset.order_by("timestamp")
+
+        from_version = ArrangementVersion.objects.get(id=queryset[0].id)
+        to_version = ArrangementVersion.objects.get(id=queryset[1].id)
         if from_version.arrangement != to_version.arrangement:
             messages.warning(request, "Must select 2 versions of the same arrangement")
             return
         
-        d = Diff.objects.create(from_version=from_version, to_version=to_version, filename="comp-diff.pdf")
+        try:
+            d = Diff.objects.create(from_version=from_version, to_version=to_version, file_name="comp-diff.pdf")
+        except IntegrityError:
+            messages.warning(request, "A Diff for these versions already exists! delete it first")
+            return
 
         res = compute_diff(d.id)
         messages.success(request, f"Res: {res}")
@@ -72,6 +79,12 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
 class DiffAdmin(admin.ModelAdmin):
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
+    
+    # Override to allow for delete method to actualy clean up old stuff
+    # There is a performance impact, but its ncessary to save space
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
 
 class PartAdmin(admin.ModelAdmin):
     list_display = ("version", "part_name", "file")

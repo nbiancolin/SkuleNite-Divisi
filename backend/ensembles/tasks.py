@@ -12,6 +12,7 @@ from django.core.files.base import ContentFile
 import os
 import subprocess
 import tempfile
+import musicdiff
 
 logger = getLogger("export_tasks")
 
@@ -178,20 +179,23 @@ def compute_diff(diff_id: int):
             ):
                 dst.write(src.read())
 
-            # Output path in temp
-            temp_output = os.path.join(temp_dir, "output.pdf")
-
             # Run MusicDiff
-            options = ["-o", "visual"]
+            options = ["-o", "visual", ]
             subprocess.run(
-                ["python", "-m", "musicdiff"] + options + [temp_input_1, temp_input_2],
+                ["python", "-m", "musicdiff"] + [temp_input_1, temp_input_2] + options,
                 check=True,
                 capture_output=True,
                 env=env,
             )
 
+            temp_output_1 = os.path.join(temp_dir, "output.pdf")
+            temp_output_2 = os.path.join(temp_dir, "outpu2t.pdf")
+            musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)
+
+            # Output path in temp
+
             # Save to storage
-            with open(temp_output, "rb") as f:
+            with open(temp_output_2, "rb") as f:
                 default_storage.save(diff.file_key, ContentFile(f.read()))
 
             return {"status": "success", "output": diff.file_key}

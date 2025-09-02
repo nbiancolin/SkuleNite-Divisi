@@ -279,7 +279,24 @@ class Diff(models.Model):
     def __str__(self):
         return f"Diff {self.from_version} → {self.to_version}"
 
+    def delete(self, **kwargs):
+        # Delete files when diff is deleted
+        keys_to_delete = [
+            self.file_key
+        ]
+        logger.warning("Deleting Diff")
 
+        for key in keys_to_delete:
+            try:
+                if default_storage.exists(key):
+                    default_storage.delete(key)
+                    logger.info(f"Deleted file: {key}")
+                else:
+                    logger.warning(f"File does not exist, skipping: {key}")
+            except Exception as e:
+                logger.error(f"Failed to delete {key}: {e}")
+
+        super().delete(**kwargs)
 
 
 def _part_upload_key(instance, filename):
