@@ -161,6 +161,8 @@ def compute_diff(diff_id: int):
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
     
     diff = Diff.objects.get(id=diff_id)
+    diff.status = "in_progress"
+    diff.save()
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:

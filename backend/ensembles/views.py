@@ -203,6 +203,12 @@ class ArrangementVersionDownloadLinks(APIView):
 class ComputeDiffView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = ComputeDiffSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            serializer.save()
-        return Response({"message": "Diff export has been triggered"}, status=status.HTTP_202_ACCEPTED)
+        if not serializer.is_valid(raise_exception=True):
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.save(), status=status.HTTP_202_ACCEPTED)
+    
+    def get(self, request, *args, **kwargs):
+        serializer = ComputeDiffSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.save(get=True), status=status.HTTP_200_OK)

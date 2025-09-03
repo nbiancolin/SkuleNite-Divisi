@@ -70,30 +70,47 @@ class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
 
 
 class ComputeDiffSerializer(serializers.Serializer):
-    from_version_id = serializers.IntegerField(required=True)
-    to_version_id = serializers.IntegerField(required=True)
+    from_version_id = serializers.IntegerField(required=False)
+    to_version_id = serializers.IntegerField(required=False)
+    diff_id = serializers.IntegerField(required=False)
 
     def validate(self, attrs):
-        attrs = super().validate(attrs)
+        if not attrs.get("diff_id") or not (attrs.get("from_version_id") and attrs.get("to_version_id")):
+            raise serializers.ValidationError("Must either pass in diff_id or (from_version_id and to_version_id)")
+        if attrs.get("diff_id"):
+            try:
+                Diff.objects.get(id=attrs.get("diff_id"))
+            except Diff.DoesNotExist:
+                raise serializers.ValidationError("Diff_id does not match any diffs in DB must be from the same arrangement")
         if ArrangementVersion.objects.get(id=attrs["from_version_id"]).arrangement != ArrangementVersion.objects.get(id=attrs["to_version_id"]).arrangement:
             raise serializers.ValidationError("ArrangementVersions must be from the same arrangement")
-        if Diff.objects.get(from_version__id=attrs["from_version_id"], to_version__id=attrs["to_version_id"]):
-            raise serializers.ValidationError("Diff already exists")
+            return False
         return attrs
 
-        
 
     def save(self, **kwargs):
         """Compute actual diff"""
-        d = Diff.objects.create(
-            from_version=self.from_version_id,
-            to_version=self.to_version_id,
-            file_name="comp-diff.pdf",
-        )
+        if self.diff_id:
+            diff = Diff.objects.get(id=self.diff_id)
+        else:
+            Diff.objects.get(
+                from_version=self.from_version_id,
+                to_version=self.to_version_id,
+            )
 
+        if kwargs.get("get"):
+            
+            return serializers.serialize(diff)
+        else:
+            diff, created = Diff.objects.get_or_create(
+                from_version=self.from_version_id,
+                to_version=self.to_version_id,
+                file_name="comp-diff.pdf",
+            )
 
-        res = compute_diff.delay(d.id)
-        assert res["status"] == "success"
-        return d
+            if created:
+                compute_diff.delay(diff.id)
+            diff.refresh_from_db()
+            return serializers.serialize(diff)
             
 
