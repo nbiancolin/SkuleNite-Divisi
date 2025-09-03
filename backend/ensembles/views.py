@@ -17,6 +17,7 @@ from .serializers import (
     ArrangementVersionSerializer, 
     CreateArrangementVersionMsczSerializer,
     ArrangementVersionDownloadLinksSeiializer,
+    ComputeDiffSerializer,
 )
 from logging import getLogger
 
@@ -158,7 +159,7 @@ class UploadArrangementVersionMsczView(APIView):
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},
-            status=status.HTTP_200_OK,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -199,4 +200,9 @@ class ArrangementVersionDownloadLinks(APIView):
 
         return Response(response_data)
 
-
+class ComputeDiffView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ComputeDiffSerializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+        return Response({"message": "Diff export has been triggered"}, status=status.HTTP_202_ACCEPTED)

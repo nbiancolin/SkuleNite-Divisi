@@ -21,7 +21,7 @@ from rest_framework import routers
 
 from django.conf import settings
 
-from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementByIdViewSet, ArrangementVersionViewSet, UploadArrangementVersionMsczView, ArrangementVersionDownloadLinks
+from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementByIdViewSet, ArrangementVersionViewSet, UploadArrangementVersionMsczView, ArrangementVersionDownloadLinks, ComputeDiffView
 from divisi.views import UploadMsczFile, FormatMsczFile
 
 router = routers.DefaultRouter()
@@ -36,6 +36,7 @@ urlpatterns = [
     path('api/format-mscz/', FormatMsczFile.as_view(), name='format-mscz'),
     path('api/upload-arrangement-version/', UploadArrangementVersionMsczView.as_view(), name="upload-arrangement-version"),
     path('api/get-download-links/', ArrangementVersionDownloadLinks.as_view(), name="get arrangement version download links"),
+    path('api/compute-diff/', ComputeDiffView.as_view(), name="compute-diff"),
     path('api/', include(router.urls)),
 ] 
 if settings.DEBUG:
