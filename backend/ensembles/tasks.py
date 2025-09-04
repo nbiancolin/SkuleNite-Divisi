@@ -13,6 +13,7 @@ import os
 import subprocess
 import tempfile
 import musicdiff
+import traceback
 
 logger = getLogger("export_tasks")
 
@@ -200,8 +201,14 @@ def compute_diff(diff_id: int):
             # Output path in temp
 
             # Save to storage
-            with open(temp_output_2, "rb") as f:
-                default_storage.save(diff.file_key, ContentFile(f.read()))
+            try:
+                with open(temp_output_2, "rb") as f:
+                    default_storage.save(diff.file_key, ContentFile(f.read()))
+            except Exception:
+                diff.status = "failed"
+                diff.error_msg = "Scores are Identical -- no diff created"
+                diff.save()
+                return {"status": "error", "details": "Scores are identical, no diff created"}
 
             diff.status = "completed"
             diff.save()
@@ -210,10 +217,12 @@ def compute_diff(diff_id: int):
             stderr = (e.stderr or b"").decode("utf-8", errors="replace")
             logger.error("MuseScore export failed: %s", stderr)
             diff.status = "failed"
+            diff.error_msg = f"Musescore Export Failed: {traceback.format_exc()}"
             diff.save()
             return {"status": "error", "details": stderr}
         except Exception as e:
             logger.exception("MusicDiff error")
             diff.status = "failed"
+            diff.error_msg = f"MusicDiff error: {traceback.format_exc()}"
             diff.save()
             return {"status": "error", "details": str(e)}

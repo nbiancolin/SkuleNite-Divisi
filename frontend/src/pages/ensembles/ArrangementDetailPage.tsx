@@ -197,7 +197,7 @@ export default function ArrangementDisplay() {
             setDiffUrl(updatedDiff.file_url);
             setDiffLoading(false);
           } else if (updatedDiff.status === 'failed') {
-            setDiffError('Failed to compute diff');
+            setDiffError(`Failed to compute diff: ${updatedDiff.error_msg}`);
             setDiffLoading(false);
           } else {
             // Continue polling
@@ -209,11 +209,11 @@ export default function ArrangementDisplay() {
         setDiffUrl(diffData.file_url);
         setDiffLoading(false);
       } else if (diffData.status === 'failed') {
-        setDiffError('Failed to compute diff');
+        setDiffError(`Failed to compute diff: ${diffData.error_msg}`);
         setDiffLoading(false);
       }
     } catch (err) {
-      setDiffError(err instanceof Error ? err.message : 'Failed to compute diff');
+      setDiffError(err instanceof Error ? err.message : 'Failed to compute diff - An unknown error occurred');
       setDiffLoading(false);
     } 
   };
