@@ -123,7 +123,7 @@ class ComputeDiffSerializer(serializers.Serializer):
                     )
                     created = False
                 except Diff.DoesNotExist:
-                    return {"error": "cannot create diff on get request"}
+                    return {"error_msg": "cannot create diff on get request"}
             else:
                 from_version_id = self.validated_data.get("from_version_id")
                 to_version_id = self.validated_data.get("to_version_id")
@@ -145,6 +145,6 @@ class ComputeDiffSerializer(serializers.Serializer):
             if created:
                 compute_diff.delay(diff.id)
         diff.refresh_from_db()
-        return {"id": diff.id, "status": diff.status, "file_url": diff.file_url}
+        return {"id": diff.id, "status": diff.status, "file_url": diff.file_url, "error_msg": diff.error_msg}
             
 

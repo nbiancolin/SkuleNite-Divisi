@@ -56,6 +56,7 @@ export interface DiffData {
   timestamp: string;
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   file_url: string;
+  error_msg: string;
 }
 
 export const apiService = {
