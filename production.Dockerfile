@@ -215,8 +215,6 @@ WORKDIR /app/backend
 
 EXPOSE 80
 
-RUN python _scripts/setup_music21.py
-
 # Create entrypoint script with improved font handling
 CMD ["bash", "-c", "\
     echo '[INFO] Starting application initialization...' && \
@@ -235,6 +233,8 @@ CMD ["bash", "-c", "\
     su -c 'mscore4 --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"' appuser && \
     echo '[INFO] Running Django migrations...' && \
     su -c 'python manage.py migrate --noinput' appuser && \
+    echo '[INFO] Setting up Music21 ... ' && \
+    su -c 'python _scripts/setup_music21.py' appuser && \
     echo '[INFO] Collecting static files...' && \
     su -c 'python manage.py collectstatic --noinput' appuser && \
     echo '[INFO] Starting Gunicorn...' && \

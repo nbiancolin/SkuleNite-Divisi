@@ -110,7 +110,11 @@ class ComputeDiffSerializer(serializers.Serializer):
         diff_id = self.validated_data.get("diff_id")
         if diff_id:
             diff = Diff.objects.get(id=diff_id)
-            created = False
+            if diff.status == "failed":
+                created = True
+                diff.status = "pending"
+            else:
+                created = False
         else:
             if kwargs.get("get"):
                 from_version_id = self.validated_data.get("from_version_id")
@@ -132,15 +136,6 @@ class ComputeDiffSerializer(serializers.Serializer):
                         to_version=ArrangementVersion.objects.get(id=to_version_id), 
                     file_name="comp-diff.pdf",
                 )
-
-        # if kwargs.get("get"):
-        #     from_version_id = self.validated_data.get("from_version_id")
-        #     to_version_id = self.validated_data.get("to_version_id")
-        #     diff, created = Diff.objects.get_or_create(
-        #         from_version=from_version_id,
-        #         to_version=to_version_id,
-        #         file_name="comp-diff.pdf",
-        #     )
 
             if created:
                 compute_diff.delay(diff.id)
