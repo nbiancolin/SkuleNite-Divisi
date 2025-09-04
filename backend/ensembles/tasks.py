@@ -171,20 +171,39 @@ def compute_diff(diff_id: int):
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             # Download inputs
-            temp_input_1 = os.path.join(temp_dir, "input1.musicxml")
-            with (
-                default_storage.open(diff.from_version.mxl_file_key, "rb") as src,
-                open(temp_input_1, "wb") as dst,
-            ):
-                dst.write(src.read())
+            try:
+                temp_input_1 = os.path.join(temp_dir, "input1.musicxml")
+                with (
+                    default_storage.open(diff.from_version.mxl_file_key, "rb") as src,
+                    open(temp_input_1, "wb") as dst,
+                ):
+                    dst.write(src.read())
+            except FileNotFoundError:
+                export_arrangement_version(diff.from_version.id, action="mxl")
+                temp_input_1 = os.path.join(temp_dir, "input1.musicxml")
+                with (
+                    default_storage.open(diff.from_version.mxl_file_key, "rb") as src,
+                    open(temp_input_1, "wb") as dst,
+                ):
+                    dst.write(src.read())
 
-            temp_input_2 = os.path.join(temp_dir, "input2.musicxml")
-            with (
-                default_storage.open(diff.to_version.mxl_file_key, "rb") as src,
-                open(temp_input_2, "wb") as dst,
-            ):
-                dst.write(src.read())
+            try:
+                temp_input_2 = os.path.join(temp_dir, "input2.musicxml")
+                with (
+                    default_storage.open(diff.to_version.mxl_file_key, "rb") as src,
+                    open(temp_input_2, "wb") as dst,
+                ):
+                    dst.write(src.read())
+            except FileNotFoundError:
+                export_arrangement_version(diff.to_version.id, action="mxl")
+                temp_input_2 = os.path.join(temp_dir, "input2.musicxml")
+                with (
+                    default_storage.open(diff.to_version.mxl_file_key, "rb") as src,
+                    open(temp_input_2, "wb") as dst,
+                ):
+                    dst.write(src.read())
 
+                
             # Run MusicDiff
             options = ["-o", "visual", ]
             subprocess.run(
