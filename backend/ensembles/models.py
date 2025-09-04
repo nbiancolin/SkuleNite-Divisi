@@ -107,7 +107,7 @@ class Arrangement(models.Model):
         return self.ensemble.slug
 
     def __str__(self):
-        return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
+        return f"({self.mvt_no}) {self.title}"
 
     class Meta:
         ordering = ["act_number", "piece_number"]
@@ -241,7 +241,7 @@ class ArrangementVersion(models.Model):
         return self.arrangement.ensemble_slug
 
     def __str__(self):
-        return f"{self.arrangement.__str__} (v{self.version_label})"
+        return f"{self.arrangement.__str__()} (v{self.version_label})"
 
     class Meta:
         ordering = ["-timestamp"]
@@ -267,6 +267,14 @@ class Diff(models.Model):
         ],
         default="pending",
     )
+
+    @property
+    def from_version__str__(self):
+        return self.from_version.__str__()
+    
+    @property
+    def to_version__str__(self):
+        return self.to_version.__str__()
 
     @property
     def file_key(self) -> str:

@@ -12,7 +12,7 @@ class EnsembleAdmin(admin.ModelAdmin):
 
 
 class ArrangementAdmin(admin.ModelAdmin):
-    list_display = ("ensemble", "title", "latest_version")
+    list_display = ("title", "ensemble", "latest_version")
 
 
 class ArrangementVersionAdmin(admin.ModelAdmin):
@@ -77,6 +77,8 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
 
 
 class DiffAdmin(admin.ModelAdmin):
+
+    list_display = ("from_version__str__", "to_version__str__", "status", "timestamp")
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
     
