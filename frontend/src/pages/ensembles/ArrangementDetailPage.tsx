@@ -195,24 +195,27 @@ export default function ArrangementDisplay() {
           const updatedDiff = await apiService.getDiff(diffData.id);
           if (updatedDiff.status === 'completed') {
             setDiffUrl(updatedDiff.file_url);
+            setDiffLoading(false);
           } else if (updatedDiff.status === 'failed') {
             setDiffError('Failed to compute diff');
+            setDiffLoading(false);
           } else {
             // Continue polling
-            setTimeout(pollForDiff, 2000);
+            setTimeout(pollForDiff, 1000);
           }
         };
-        setTimeout(pollForDiff, 2000);
+        setTimeout(pollForDiff, 1000);
       } else if (diffData.status === 'completed') {
         setDiffUrl(diffData.file_url);
+        setDiffLoading(false);
       } else if (diffData.status === 'failed') {
         setDiffError('Failed to compute diff');
+        setDiffLoading(false);
       }
     } catch (err) {
       setDiffError(err instanceof Error ? err.message : 'Failed to compute diff');
-    } finally {
       setDiffLoading(false);
-    }
+    } 
   };
 
   const handleShowDiff = () => {

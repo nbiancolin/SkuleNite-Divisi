@@ -213,7 +213,13 @@ class ComputeDiffView(APIView):
             return Response(res, status=status.HTTP_202_ACCEPTED)
     
     def get(self, request, *args, **kwargs):
-        serializer = ComputeDiffSerializer(data=request.data)
+        serializer = ComputeDiffSerializer(data=request.query_params)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response(serializer.save(get=True), status=status.HTTP_200_OK)
+        
+        res = serializer.save()
+        res["file_url"] = request.build_absolute_uri(res["file_url"])
+        if res["status"] == "completed":
+            return Response(res, status=status.HTTP_200_OK)
+        else:
+            return Response(res, status=status.HTTP_202_ACCEPTED)

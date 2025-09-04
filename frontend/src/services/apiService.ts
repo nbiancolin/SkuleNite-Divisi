@@ -301,16 +301,16 @@ export const apiService = {
    * @returns Promise<DiffData>
    */
   async getDiff(diffId: number): Promise<DiffData> {
-    const response = await fetch(`${API_BASE_URL}/diffs/`, {
+    const response = await fetch(`${API_BASE_URL}/diffs/?diff_id=${diffId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         // Add your auth headers here if needed
         // 'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({
-        diff_id: diffId,
-      }),
+      // body: JSON.stringify({
+      //   diff_id: diffId,
+      // }),
     });
 
     if (!response.ok) {
