@@ -68,6 +68,11 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
 class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
     version_id = serializers.IntegerField(required=True)
 
+class DiffSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Diff
+        fields = '__all__'
+        
 
 class ComputeDiffSerializer(serializers.Serializer):
     from_version_id = serializers.IntegerField(required=False)
@@ -75,42 +80,71 @@ class ComputeDiffSerializer(serializers.Serializer):
     diff_id = serializers.IntegerField(required=False)
 
     def validate(self, attrs):
-        if not attrs.get("diff_id") or not (attrs.get("from_version_id") and attrs.get("to_version_id")):
+        diff_id = attrs.get("diff_id")
+        from_version_id = attrs.get("from_version_id")
+        to_version_id = attrs.get("to_version_id")
+
+        if not diff_id and not (from_version_id and to_version_id):
             raise serializers.ValidationError("Must either pass in diff_id or (from_version_id and to_version_id)")
-        if attrs.get("diff_id"):
+
+        if diff_id:
             try:
-                Diff.objects.get(id=attrs.get("diff_id"))
+                Diff.objects.get(id=diff_id)
             except Diff.DoesNotExist:
-                raise serializers.ValidationError("Diff_id does not match any diffs in DB must be from the same arrangement")
-        if ArrangementVersion.objects.get(id=attrs["from_version_id"]).arrangement != ArrangementVersion.objects.get(id=attrs["to_version_id"]).arrangement:
-            raise serializers.ValidationError("ArrangementVersions must be from the same arrangement")
-            return False
+                raise serializers.ValidationError("Diff_id does not match any diffs in the database.")
+        elif from_version_id and to_version_id:
+            try:
+                from_version = ArrangementVersion.objects.get(id=from_version_id)
+                to_version = ArrangementVersion.objects.get(id=to_version_id)
+            except ArrangementVersion.DoesNotExist:
+                raise serializers.ValidationError("Invalid from_version_id or to_version_id provided.")
+            
+            if from_version.arrangement != to_version.arrangement:
+                raise serializers.ValidationError("ArrangementVersions must be from the same arrangement.")
+
         return attrs
 
 
     def save(self, **kwargs):
         """Compute actual diff"""
-        if self.diff_id:
-            diff = Diff.objects.get(id=self.diff_id)
+        diff_id = self.validated_data.get("diff_id")
+        if diff_id:
+            diff = Diff.objects.get(id=diff_id)
+            created = False
         else:
-            Diff.objects.get(
-                from_version=self.from_version_id,
-                to_version=self.to_version_id,
-            )
+            if kwargs.get("get"):
+                from_version_id = self.validated_data.get("from_version_id")
+                to_version_id = self.validated_data.get("to_version_id")
+                try:
+                    diff = Diff.objects.get(
+                        from_version=ArrangementVersion.objects.get(id=from_version_id),
+                        to_version=ArrangementVersion.objects.get(id=to_version_id), 
+                        file_name="comp-diff.pdf",
+                    )
+                    created = False
+                except Diff.DoesNotExist:
+                    return {"error": "cannot create diff on get request"}
+            else:
+                from_version_id = self.validated_data.get("from_version_id")
+                to_version_id = self.validated_data.get("to_version_id")
+                diff, created = Diff.objects.get_or_create(
+                    from_version=ArrangementVersion.objects.get(id=from_version_id),
+                        to_version=ArrangementVersion.objects.get(id=to_version_id), 
+                    file_name="comp-diff.pdf",
+                )
 
-        if kwargs.get("get"):
-            
-            return serializers.serialize(diff)
-        else:
-            diff, created = Diff.objects.get_or_create(
-                from_version=self.from_version_id,
-                to_version=self.to_version_id,
-                file_name="comp-diff.pdf",
-            )
+        # if kwargs.get("get"):
+        #     from_version_id = self.validated_data.get("from_version_id")
+        #     to_version_id = self.validated_data.get("to_version_id")
+        #     diff, created = Diff.objects.get_or_create(
+        #         from_version=from_version_id,
+        #         to_version=to_version_id,
+        #         file_name="comp-diff.pdf",
+        #     )
 
             if created:
                 compute_diff.delay(diff.id)
-            diff.refresh_from_db()
-            return serializers.serialize(diff)
+        diff.refresh_from_db()
+        return {"id": diff.id, "status": diff.status, "file_url": diff.file_url}
             
 

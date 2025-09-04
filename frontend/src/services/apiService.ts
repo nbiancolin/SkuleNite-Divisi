@@ -274,7 +274,7 @@ export const apiService = {
    * @returns Promise<DiffData>
    */
   async computeDiff(fromVersionId: number, toVersionId: number): Promise<DiffData> {
-    const response = await fetch('/api/compute-diff/', {
+    const response = await fetch(`${API_BASE_URL}/diffs/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -301,7 +301,7 @@ export const apiService = {
    * @returns Promise<DiffData>
    */
   async getDiff(diffId: number): Promise<DiffData> {
-    const response = await fetch('/api/compute-diff/', {
+    const response = await fetch(`${API_BASE_URL}/diffs/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -328,7 +328,7 @@ export const apiService = {
    * @returns Promise<DiffData>
    */
   async getDiffByVersions(fromVersionId: number, toVersionId: number): Promise<DiffData> {
-    const response = await fetch('/api/compute-diff/', {
+    const response = await fetch(`${API_BASE_URL}/diffs/`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

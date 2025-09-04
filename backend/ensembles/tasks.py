@@ -200,11 +200,17 @@ def compute_diff(diff_id: int):
             with open(temp_output_2, "rb") as f:
                 default_storage.save(diff.file_key, ContentFile(f.read()))
 
+            diff.status = "completed"
+            diff.save()
             return {"status": "success", "output": diff.file_key}
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or b"").decode("utf-8", errors="replace")
             logger.error("MuseScore export failed: %s", stderr)
+            diff.status = "failed"
+            diff.save()
             return {"status": "error", "details": stderr}
         except Exception as e:
             logger.exception("MusicDiff error")
+            diff.status = "failed"
+            diff.save()
             return {"status": "error", "details": str(e)}
