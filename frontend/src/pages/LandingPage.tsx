@@ -115,7 +115,7 @@ export default function LandingPage() {
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                 }}
                 component={Link}
-                to="/app/ensembles"
+                to="/app/ensembles/create"
               >
                 Get Started Free
               </Button>

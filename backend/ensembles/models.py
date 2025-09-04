@@ -58,17 +58,15 @@ class Arrangement(models.Model):
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
     act_number = models.IntegerField(blank=True, null=True)
-    piece_number = models.IntegerField(
-        default=1, blank=True, null=True
-    )  
+    piece_number = models.IntegerField(default=1, blank=True, null=True)
 
-    style = models.CharField(choices=STYLE_CHOICES) 
+    style = models.CharField(choices=STYLE_CHOICES)
 
     # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
-        
+
         if not self.style:
             self.style = self.ensemble.default_style
 
@@ -99,17 +97,17 @@ class Arrangement(models.Model):
     def latest_version_num(self):
         latest = self.latest_version
         return latest.version_label if latest else "N/A"
-    
+
     @property
     def ensemble_name(self):
         return self.ensemble.name
-    
+
     @property
     def ensemble_slug(self):
         return self.ensemble.slug
 
     def __str__(self):
-        return f"{self.mvt_no}: {self.title} (v{self.latest_version_num})"
+        return f"({self.mvt_no}) {self.title}"
 
     class Meta:
         ordering = ["act_number", "piece_number"]
@@ -142,6 +140,11 @@ class ArrangementVersion(models.Model):
     def score_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
+
+    @property
+    def mxl_file_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.musicxml"
 
     @property
     def score_parts_pdf_key(self) -> str:
@@ -202,10 +205,10 @@ class ArrangementVersion(models.Model):
     def delete(self, **kwargs):
         # Delete files when version is deleted
         keys_to_delete = [
-            self.mscz_file_key, 
-            self.output_file_key, 
-            self.score_pdf_key, 
-            self.score_parts_pdf_key
+            self.mscz_file_key,
+            self.output_file_key,
+            self.score_pdf_key,
+            self.score_parts_pdf_key,
         ]
         logger.warning("Deleting ArrangementVersion")
 
@@ -224,24 +227,86 @@ class ArrangementVersion(models.Model):
     @property
     def arrangement_title(self):
         return self.arrangement.title
-    
+
     @property
     def arrangement_slug(self):
         return self.arrangement.slug
-    
+
     @property
     def ensemble_name(self):
         return self.arrangement.ensemble_name
-    
+
     @property
     def ensemble_slug(self):
         return self.arrangement.ensemble_slug
 
     def __str__(self):
-        return f"{self.arrangement.__str__} (v{self.version_label})"
+        return f"{self.arrangement.__str__()} (v{self.version_label})"
 
     class Meta:
         ordering = ["-timestamp"]
+
+
+class Diff(models.Model):
+    from_version = models.ForeignKey(
+        ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_source"
+    )
+    to_version = models.ForeignKey(
+        ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_target"
+    )
+
+    file_name = models.CharField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pending", "Pending"),
+            ("in_progress", "In Progress"),
+            ("completed", "Completed"),
+            ("failed", "Failed"),
+        ],
+        default="pending",
+    )
+
+    @property
+    def from_version__str__(self):
+        return self.from_version.__str__()
+    
+    @property
+    def to_version__str__(self):
+        return self.to_version.__str__()
+
+    @property
+    def file_key(self) -> str:
+        return f"ensemble-diffs/{self.from_version.ensemble_slug}/{self.from_version.arrangement_slug}/{self.from_version.version_label}-{self.to_version.version_label}/{self.file_name}"
+
+    @property
+    def file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.file_key)
+
+    class Meta:
+        unique_together = ("from_version", "to_version")
+
+    def __str__(self):
+        return f"Diff {self.from_version} → {self.to_version}"
+
+    def delete(self, **kwargs):
+        # Delete files when diff is deleted
+        keys_to_delete = [self.file_key]
+        logger.warning("Deleting Diff")
+
+        for key in keys_to_delete:
+            try:
+                if default_storage.exists(key):
+                    default_storage.delete(key)
+                    logger.info(f"Deleted file: {key}")
+                else:
+                    logger.warning(f"File does not exist, skipping: {key}")
+            except Exception as e:
+                logger.error(f"Failed to delete {key}: {e}")
+
+        super().delete(**kwargs)
 
 
 def _part_upload_key(instance, filename):
@@ -251,7 +316,9 @@ def _part_upload_key(instance, filename):
     version = instance.version.version_label
     return f"ensembles/{ensemble_slug}/arrangements/{arrangement_slug}/versions/{version}/parts/{filename}"
 
+
 _part_upload_path = _part_upload_key
+
 
 class Part(models.Model):
     version = models.ForeignKey(
@@ -283,7 +350,7 @@ class Part(models.Model):
                     logger.info(f"Deleted part file: {self.file.name}")
             except Exception as e:
                 logger.error(f"Failed to delete part file {self.file.name}: {e}")
-        
+
         super().delete(**kwargs)
 
     def __str__(self):

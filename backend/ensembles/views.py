@@ -10,13 +10,14 @@ from django.core.files.storage import default_storage
 
 from .tasks import prep_and_export_mscz, export_arrangement_version
 
-from .models import Arrangement, Ensemble, ArrangementVersion
+from .models import Arrangement, Ensemble, ArrangementVersion, Diff
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer, 
     CreateArrangementVersionMsczSerializer,
     ArrangementVersionDownloadLinksSeiializer,
+    ComputeDiffSerializer,
 )
 from logging import getLogger
 
@@ -96,7 +97,8 @@ class UploadArrangementVersionMsczView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
+        
+        old_version = Arrangement.objects.get(id=arrangement_id).latest_version
         with transaction.atomic():
             version = ArrangementVersion.objects.create(
                 arrangement=arr,
@@ -112,6 +114,9 @@ class UploadArrangementVersionMsczView(APIView):
             version.save(
                 version_type=serializer.validated_data["version_type"],
             )
+            if old_version:
+                diff = Diff.objects.create(from_version=old_version, to_version=version, file_name="comp-diff.pdf")
+
 
         uploaded_file = serializer.validated_data["file"]
         if not uploaded_file:
@@ -146,9 +151,15 @@ class UploadArrangementVersionMsczView(APIView):
             # Just export
             export_arrangement_version.delay(version.pk)
 
+        export_arrangement_version(version.pk, action="mxl")
+
+        # #compute diff now that the mxl file exists
+        # diff = Diff.objects.get(to_version=version)
+        # diff.compute_diff()
+
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},
-            status=status.HTTP_200_OK,
+            status=status.HTTP_202_ACCEPTED,
         )
 
 
@@ -189,4 +200,26 @@ class ArrangementVersionDownloadLinks(APIView):
 
         return Response(response_data)
 
-
+class ComputeDiffView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = ComputeDiffSerializer(data=request.data)
+        if not serializer.is_valid(raise_exception=True):
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        res = serializer.save()
+        res["file_url"] = request.build_absolute_uri(res["file_url"])
+        if res["status"] == "completed":
+            return Response(res, status=status.HTTP_200_OK)
+        else:
+            return Response(res, status=status.HTTP_202_ACCEPTED)
+    
+    def get(self, request, *args, **kwargs):
+        serializer = ComputeDiffSerializer(data=request.query_params)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        res = serializer.save()
+        res["file_url"] = request.build_absolute_uri(res["file_url"])
+        if res["status"] == "completed":
+            return Response(res, status=status.HTTP_200_OK)
+        else:
+            return Response(res, status=status.HTTP_202_ACCEPTED)

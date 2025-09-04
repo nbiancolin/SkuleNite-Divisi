@@ -41,12 +41,21 @@ export interface EditableArrangementData {
   style: string;
 }
 
-// New interface for version history
 export interface VersionHistoryItem {
   id: number;
   version_label: string;
   timestamp: string;
   is_latest: boolean;
+}
+
+export interface DiffData {
+  id: number;
+  from_version: number;
+  to_version: number;
+  file_name: string;
+  timestamp: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  file_url: string;
 }
 
 export const apiService = {
@@ -256,5 +265,88 @@ export const apiService = {
       );
     }
     return response.json();
-  }
+  },
+
+  /**
+   * Compute a diff between two arrangement versions
+   * @param fromVersionId - ID of the source version
+   * @param toVersionId - ID of the target version
+   * @returns Promise<DiffData>
+   */
+  async computeDiff(fromVersionId: number, toVersionId: number): Promise<DiffData> {
+    const response = await fetch(`${API_BASE_URL}/diffs/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add your auth headers here if needed
+        // 'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        from_version_id: fromVersionId,
+        to_version_id: toVersionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  /**
+   * Get an existing diff by ID
+   * @param diffId - ID of the diff
+   * @returns Promise<DiffData>
+   */
+  async getDiff(diffId: number): Promise<DiffData> {
+    const response = await fetch(`${API_BASE_URL}/diffs/?diff_id=${diffId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add your auth headers here if needed
+        // 'Authorization': `Bearer ${token}`,
+      },
+      // body: JSON.stringify({
+      //   diff_id: diffId,
+      // }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  /**
+   * Alternative method to get diff by version IDs (if it already exists)
+   * @param fromVersionId - ID of the source version
+   * @param toVersionId - ID of the target version
+   * @returns Promise<DiffData>
+   */
+  async getDiffByVersions(fromVersionId: number, toVersionId: number): Promise<DiffData> {
+    const response = await fetch(`${API_BASE_URL}/diffs/`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Add your auth headers here if needed
+        // 'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        from_version_id: fromVersionId,
+        to_version_id: toVersionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
 };

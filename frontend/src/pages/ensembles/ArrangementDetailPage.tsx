@@ -37,6 +37,8 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
+  IconGitCompare,
+  IconEye,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -88,6 +90,14 @@ export default function ArrangementDisplay() {
     exportLoading: false,
     exportError: false
   });
+
+  // Diff functionality states
+  const [diffModal, setDiffModal] = useState(false);
+  const [selectedFromVersion, setSelectedFromVersion] = useState<number | null>(null);
+  const [selectedToVersion, setSelectedToVersion] = useState<number | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffUrl, setDiffUrl] = useState<string>('');
+  const [diffError, setDiffError] = useState<string>('');
 
   const navigate = useNavigate();
 
@@ -161,6 +171,59 @@ export default function ArrangementDisplay() {
     } finally {
       setVersionDownloadLoading(false);
     }
+  };
+
+  const handleComputeDiff = async () => {
+    if (!selectedFromVersion || !selectedToVersion) {
+      setDiffError('Please select both versions to compare');
+      return;
+    }
+
+    if (selectedFromVersion === selectedToVersion) {
+      setDiffError('Please select two different versions');
+      return;
+    }
+
+    try {
+      setDiffLoading(true);
+      setDiffError('');
+      const diffData = await apiService.computeDiff(selectedFromVersion, selectedToVersion);
+      
+      // Poll for completion if diff is still processing
+      if (diffData.status === 'pending' || diffData.status === 'in_progress') {
+        const pollForDiff = async () => {
+          const updatedDiff = await apiService.getDiff(diffData.id);
+          if (updatedDiff.status === 'completed') {
+            setDiffUrl(updatedDiff.file_url);
+            setDiffLoading(false);
+          } else if (updatedDiff.status === 'failed') {
+            setDiffError('Failed to compute diff');
+            setDiffLoading(false);
+          } else {
+            // Continue polling
+            setTimeout(pollForDiff, 1000);
+          }
+        };
+        setTimeout(pollForDiff, 1000);
+      } else if (diffData.status === 'completed') {
+        setDiffUrl(diffData.file_url);
+        setDiffLoading(false);
+      } else if (diffData.status === 'failed') {
+        setDiffError('Failed to compute diff');
+        setDiffLoading(false);
+      }
+    } catch (err) {
+      setDiffError(err instanceof Error ? err.message : 'Failed to compute diff');
+      setDiffLoading(false);
+    } 
+  };
+
+  const handleShowDiff = () => {
+    setDiffModal(true);
+    setSelectedFromVersion(null);
+    setSelectedToVersion(null);
+    setDiffUrl('');
+    setDiffError('');
   };
 
   const fetchArrangement = async (id: number) => {
@@ -592,14 +655,25 @@ export default function ArrangementDisplay() {
                 {versionHistory.length} versions
               </Badge>
             </Group>
-            <Button
-              variant="subtle"
-              rightSection={showVersionHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
-              onClick={() => setShowVersionHistory(!showVersionHistory)}
-              loading={versionHistoryLoading}
-            >
-              {showVersionHistory ? 'Hide' : 'Show'} History
-            </Button>
+            <Group>
+              <Button
+                variant="light"
+                color="orange"
+                leftSection={<IconGitCompare size={16} />}
+                onClick={handleShowDiff}
+                disabled={versionHistory.length < 2}
+              >
+                Compare Versions
+              </Button>
+              <Button
+                variant="subtle"
+                rightSection={showVersionHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+                onClick={() => setShowVersionHistory(!showVersionHistory)}
+                loading={versionHistoryLoading}
+              >
+                {showVersionHistory ? 'Hide' : 'Show'} History
+              </Button>
+            </Group>
           </Group>
 
           <Collapse in={showVersionHistory}>
@@ -716,6 +790,105 @@ export default function ArrangementDisplay() {
               </Group>
             </Stack>
           )}
+        </Modal>
+
+        {/* Diff Comparison Modal */}
+        <Modal
+          opened={diffModal}
+          onClose={() => setDiffModal(false)}
+          title="Compare Versions"
+          size="xl"
+        >
+          <Stack gap="md">
+            <Text size="sm" c="dimmed">
+              Select two versions to compare. The diff will show changes from the first version to the second version.
+            </Text>
+            
+            {diffError && (
+              <Alert icon={<IconAlertCircle size={16} />} color="red">
+                {diffError}
+              </Alert>
+            )}
+
+            <Grid>
+              <Grid.Col span={6}>
+                <Text fw={500} mb="sm">From Version</Text>
+                <Stack gap="xs">
+                  {versionHistory.map((version) => (
+                    <Button
+                      key={version.id}
+                      variant={selectedFromVersion === version.id ? "filled" : "light"}
+                      color={selectedFromVersion === version.id ? "blue" : "gray"}
+                      onClick={() => setSelectedFromVersion(version.id)}
+                      fullWidth
+                      justify="space-between"
+                    >
+                      <Text>v{version.version_label}</Text>
+                      <Text size="xs" c="dimmed">
+                        {new Date(version.timestamp).toLocaleDateString()}
+                      </Text>
+                    </Button>
+                  ))}
+                </Stack>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <Text fw={500} mb="sm">To Version</Text>
+                <Stack gap="xs">
+                  {versionHistory.map((version) => (
+                    <Button
+                      key={version.id}
+                      variant={selectedToVersion === version.id ? "filled" : "light"}
+                      color={selectedToVersion === version.id ? "blue" : "gray"}
+                      onClick={() => setSelectedToVersion(version.id)}
+                      fullWidth
+                      justify="space-between"
+                    >
+                      <Text>v{version.version_label}</Text>
+                      <Text size="xs" c="dimmed">
+                        {new Date(version.timestamp).toLocaleDateString()}
+                      </Text>
+                    </Button>
+                  ))}
+                </Stack>
+              </Grid.Col>
+            </Grid>
+
+            <Group justify="space-between" mt="lg">
+              <Button
+                variant="light"
+                color="orange"
+                leftSection={<IconGitCompare size={16} />}
+                onClick={handleComputeDiff}
+                loading={diffLoading}
+                disabled={!selectedFromVersion || !selectedToVersion || selectedFromVersion === selectedToVersion}
+              >
+                {diffLoading ? 'Computing Diff...' : 'Compute Diff'}
+              </Button>
+
+              {diffUrl && (
+                <Button
+                  component="a"
+                  href={diffUrl}
+                  target="_blank"
+                  variant="filled"
+                  color="green"
+                  leftSection={<IconEye size={16} />}
+                >
+                  View Diff (PDF)
+                </Button>
+              )}
+            </Group>
+
+            {diffLoading && (
+              <Group justify="center" py="md">
+                <Loader size="sm" />
+                <Text size="sm" c="dimmed">
+                  Computing diff... This may take a moment.
+                </Text>
+              </Group>
+            )}
+          </Stack>
         </Modal>
 
         <Card shadow="xs" padding="lg" radius="md" withBorder>
