@@ -205,14 +205,6 @@ def compute_diff(diff_id: int):
 
                 
             # Run MusicDiff
-            options = ["-o", "visual", ]
-            subprocess.run(
-                ["python", "-m", "musicdiff"] + [temp_input_1, temp_input_2] + options,
-                check=True,
-                capture_output=True,
-                env=env,
-            )
-
             temp_output_1 = os.path.join(temp_dir, "output.pdf")
             temp_output_2 = os.path.join(temp_dir, "output2.pdf")
             musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)
