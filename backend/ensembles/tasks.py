@@ -224,13 +224,6 @@ def compute_diff(diff_id: int):
             diff.status = "completed"
             diff.save()
             return {"status": "success", "output": diff.file_key}
-        except subprocess.CalledProcessError as e:
-            stderr = (e.stderr or b"").decode("utf-8", errors="replace")
-            logger.error("MuseScore export failed: %s", stderr)
-            diff.status = "failed"
-            diff.error_msg = f"Musescore Export Failed: {traceback.format_exc()}"
-            diff.save()
-            return {"status": "error", "details": stderr}
         except Exception as e:
             logger.exception("MusicDiff error")
             diff.status = "failed"
