@@ -24,7 +24,7 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
     
     list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp")
 
-    actions = ("re_export_version", "re_process_version", "manually_compute_diff")
+    actions = ("re_export_version", "re_process_version", "manually_compute_diff", "manually_export_musicxml")
 
     @admin.action(description="Re-trigger export of version")
     def re_export_version(self, request, queryset):
@@ -44,7 +44,13 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
             prep_and_export_mscz.delay(version.pk)
             messages.success(request, f"Successfully retriggered format and export for \"{version.arrangement.title}\" v{version.version_label}")
 
-    #TODO: Add admin action to manually create and compute a diff
+
+    @admin.action(description="Manually Export MusicXML file")
+    def manually_export_musicxml(self, request, queryset):
+        for v in queryset:
+            export_arrangement_version(v.id, action="mxl")
+        messages.success(request, f"Queued {queryset.count()} versions for MXL export")
+    
     @admin.action(description="Manually compute diff of two scores")
     def manually_compute_diff(self, request, queryset):
         if len(queryset) != 2:

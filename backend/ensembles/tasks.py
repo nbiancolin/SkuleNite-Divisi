@@ -130,6 +130,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     }
 
                 output_key = version.mxl_file_key
+                if default_storage.exists(output_key):
+                    logger.info(f"[EXPORT] - Mxl file already exists for version id {version_id}, returning.")
+                    return {}
                 return export_mscz_to_musicxml(input_key, output_key)
 
             except Exception as e:
@@ -191,7 +194,7 @@ def compute_diff(diff_id: int):
             )
 
             temp_output_1 = os.path.join(temp_dir, "output.pdf")
-            temp_output_2 = os.path.join(temp_dir, "outpu2t.pdf")
+            temp_output_2 = os.path.join(temp_dir, "output2.pdf")
             musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)
 
             # Output path in temp

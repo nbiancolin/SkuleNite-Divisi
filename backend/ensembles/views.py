@@ -114,8 +114,6 @@ class UploadArrangementVersionMsczView(APIView):
             version.save(
                 version_type=serializer.validated_data["version_type"],
             )
-            if old_version:
-                diff = Diff.objects.create(from_version=old_version, to_version=version, file_name="comp-diff.pdf")
 
 
         uploaded_file = serializer.validated_data["file"]
@@ -152,10 +150,6 @@ class UploadArrangementVersionMsczView(APIView):
             export_arrangement_version.delay(version.pk)
 
         export_arrangement_version(version.pk, action="mxl")
-
-        # #compute diff now that the mxl file exists
-        # diff = Diff.objects.get(to_version=version)
-        # diff.compute_diff()
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": version.pk},
