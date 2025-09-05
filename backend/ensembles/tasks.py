@@ -203,6 +203,15 @@ def compute_diff(diff_id: int):
                 ):
                     dst.write(src.read())
 
+            from music21 import environment
+
+            us = environment.UserSettings()
+            us['musicxmlPath'] = '/usr/local/bin/mscore4'
+            us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore4'
+
+            print(us)
+
+
                 
             # Run MusicDiff
             temp_output_1 = os.path.join(temp_dir, "output.pdf")
