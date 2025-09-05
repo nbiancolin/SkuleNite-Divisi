@@ -10,7 +10,6 @@ from logging import getLogger
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import os
-import subprocess
 import tempfile
 import musicdiff
 import traceback
@@ -208,10 +207,6 @@ def compute_diff(diff_id: int):
             us = environment.UserSettings()
             us['musicxmlPath'] = '/usr/local/bin/mscore4'
             us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore4'
-
-            print(us)
-
-
                 
             # Run MusicDiff
             temp_output_1 = os.path.join(temp_dir, "output.pdf")

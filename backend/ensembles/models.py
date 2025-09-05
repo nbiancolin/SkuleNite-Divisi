@@ -62,7 +62,6 @@ class Arrangement(models.Model):
 
     style = models.CharField(choices=STYLE_CHOICES)
 
-    # TODO: Make this a little cleaner, might not be optimal
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(Arrangement, self.title, instance=self)
@@ -272,7 +271,7 @@ class Diff(models.Model):
     @property
     def from_version__str__(self):
         return self.from_version.__str__()
-    
+
     @property
     def to_version__str__(self):
         return self.to_version.__str__()
@@ -317,57 +316,6 @@ def _part_upload_key(instance, filename):
     version = instance.version.version_label
     return f"ensembles/{ensemble_slug}/arrangements/{arrangement_slug}/versions/{version}/parts/{filename}"
 
-
+#holdover from an old migration, can't delete this without squashing migrations
 _part_upload_path = _part_upload_key
 
-
-class Part(models.Model):
-    version = models.ForeignKey(
-        ArrangementVersion, related_name="parts", on_delete=models.CASCADE
-    )
-    part_name = models.CharField(max_length=120)
-    file = models.FileField(upload_to=_part_upload_key)
-
-    @property
-    def file_key(self) -> str:
-        """Get the storage key for this part's file"""
-        if self.file:
-            return self.file.name
-        return ""
-
-    @property
-    def file_url(self) -> str:
-        """Public URL for serving to clients"""
-        if self.file:
-            return default_storage.url(self.file.name)
-        return ""
-
-    def delete(self, **kwargs):
-        # Delete the file when part is deleted
-        if self.file:
-            try:
-                if default_storage.exists(self.file.name):
-                    default_storage.delete(self.file.name)
-                    logger.info(f"Deleted part file: {self.file.name}")
-            except Exception as e:
-                logger.error(f"Failed to delete part file {self.file.name}: {e}")
-
-        super().delete(**kwargs)
-
-    def __str__(self):
-        return f"{self.version.arrangement.title} - {self.part_name} (v{self.version.version_label})"
-
-
-class EnsembleSetlistEntry(models.Model):
-    ensemble = models.ForeignKey(
-        Ensemble, related_name="setlist_entries", on_delete=models.CASCADE
-    )
-    arrangement = models.ForeignKey(Arrangement, on_delete=models.CASCADE)
-    order_index = models.PositiveIntegerField()
-
-    class Meta:
-        unique_together = ("ensemble", "order_index")
-        ordering = ["order_index"]
-
-    def __str__(self):
-        return f"{self.order_index:02d} - {self.arrangement.title}"

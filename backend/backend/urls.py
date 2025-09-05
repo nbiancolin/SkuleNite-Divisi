@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.conf.urls.static import static
 from django.urls import path, include
@@ -21,23 +22,39 @@ from rest_framework import routers
 
 from django.conf import settings
 
-from ensembles.views import EnsembleViewSet, ArrangementViewSet, ArrangementByIdViewSet, ArrangementVersionViewSet, UploadArrangementVersionMsczView, ArrangementVersionDownloadLinks, ComputeDiffView
+from ensembles.views import (
+    EnsembleViewSet,
+    ArrangementViewSet,
+    ArrangementByIdViewSet,
+    ArrangementVersionViewSet,
+    UploadArrangementVersionMsczView,
+    ArrangementVersionDownloadLinks,
+    ComputeDiffView,
+)
 from divisi.views import UploadMsczFile, FormatMsczFile
 
 router = routers.DefaultRouter()
-router.register(r'ensembles', EnsembleViewSet, 'ensemble')
-router.register(r'arrangements', ArrangementViewSet, 'arrangement')
-router.register(r'arrangements-by-id', ArrangementByIdViewSet, 'arrangement-by-id')
-router.register(r'arrangementversions', ArrangementVersionViewSet, 'arrangementversion')
+router.register(r"ensembles", EnsembleViewSet, "ensemble")
+router.register(r"arrangements", ArrangementViewSet, "arrangement")
+router.register(r"arrangements-by-id", ArrangementByIdViewSet, "arrangement-by-id")
+router.register(r"arrangementversions", ArrangementVersionViewSet, "arrangementversion")
 
 urlpatterns = [
-    path('restricted/admin/', admin.site.urls),
-    path('api/upload-mscz/', UploadMsczFile.as_view(), name='upload-mscz'),
-    path('api/format-mscz/', FormatMsczFile.as_view(), name='format-mscz'),
-    path('api/upload-arrangement-version/', UploadArrangementVersionMsczView.as_view(), name="upload-arrangement-version"),
-    path('api/get-download-links/', ArrangementVersionDownloadLinks.as_view(), name="get arrangement version download links"),
-    path('api/diffs/', ComputeDiffView.as_view(), name="diffs"),
-    path('api/', include(router.urls)),
-] 
+    path("restricted/admin/", admin.site.urls),
+    path("api/upload-mscz/", UploadMsczFile.as_view(), name="upload-mscz"),
+    path("api/format-mscz/", FormatMsczFile.as_view(), name="format-mscz"),
+    path(
+        "api/upload-arrangement-version/",
+        UploadArrangementVersionMsczView.as_view(),
+        name="upload-arrangement-version",
+    ),
+    path(
+        "api/get-download-links/",
+        ArrangementVersionDownloadLinks.as_view(),
+        name="get arrangement version download links",
+    ),
+    path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
+    path("api/", include(router.urls)),
+]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
