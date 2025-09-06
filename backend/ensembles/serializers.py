@@ -58,21 +58,27 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     arrangement_id = serializers.IntegerField(required=True)
     version_type = serializers.CharField(
         required=True
-    )  # TODO: Make this a choice field
+    )  
     num_measures_per_line_score = serializers.IntegerField(default=8)
     num_measures_per_line_part = serializers.IntegerField(default=6)
 
     format_parts = serializers.BooleanField(default=True)
 
+    def validate_version_type(self, value):
+        if value not in [t[0] for t in VERSION_TYPES]:
+            raise serializers.ValidationError("Version type not one of 'major', 'minor', 'patch'")
+        return value
+
 
 class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
     version_id = serializers.IntegerField(required=True)
 
+
 class DiffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Diff
-        fields = '__all__'
-        
+        fields = "__all__"
+
 
 class ComputeDiffSerializer(serializers.Serializer):
     from_version_id = serializers.IntegerField(required=False)
@@ -85,25 +91,32 @@ class ComputeDiffSerializer(serializers.Serializer):
         to_version_id = attrs.get("to_version_id")
 
         if not diff_id and not (from_version_id and to_version_id):
-            raise serializers.ValidationError("Must either pass in diff_id or (from_version_id and to_version_id)")
+            raise serializers.ValidationError(
+                "Must either pass in diff_id or (from_version_id and to_version_id)"
+            )
 
         if diff_id:
             try:
                 Diff.objects.get(id=diff_id)
             except Diff.DoesNotExist:
-                raise serializers.ValidationError("Diff_id does not match any diffs in the database.")
+                raise serializers.ValidationError(
+                    "Diff_id does not match any diffs in the database."
+                )
         elif from_version_id and to_version_id:
             try:
                 from_version = ArrangementVersion.objects.get(id=from_version_id)
                 to_version = ArrangementVersion.objects.get(id=to_version_id)
             except ArrangementVersion.DoesNotExist:
-                raise serializers.ValidationError("Invalid from_version_id or to_version_id provided.")
-            
+                raise serializers.ValidationError(
+                    "Invalid from_version_id or to_version_id provided."
+                )
+
             if from_version.arrangement != to_version.arrangement:
-                raise serializers.ValidationError("ArrangementVersions must be from the same arrangement.")
+                raise serializers.ValidationError(
+                    "ArrangementVersions must be from the same arrangement."
+                )
 
         return attrs
-
 
     def save(self, **kwargs):
         """Compute actual diff"""
@@ -122,7 +135,7 @@ class ComputeDiffSerializer(serializers.Serializer):
                 try:
                     diff = Diff.objects.get(
                         from_version=ArrangementVersion.objects.get(id=from_version_id),
-                        to_version=ArrangementVersion.objects.get(id=to_version_id), 
+                        to_version=ArrangementVersion.objects.get(id=to_version_id),
                         file_name="comp-diff.pdf",
                     )
                     created = False
@@ -133,13 +146,16 @@ class ComputeDiffSerializer(serializers.Serializer):
                 to_version_id = self.validated_data.get("to_version_id")
                 diff, created = Diff.objects.get_or_create(
                     from_version=ArrangementVersion.objects.get(id=from_version_id),
-                        to_version=ArrangementVersion.objects.get(id=to_version_id), 
+                    to_version=ArrangementVersion.objects.get(id=to_version_id),
                     file_name="comp-diff.pdf",
                 )
 
             if created:
                 compute_diff.delay(diff.id)
         diff.refresh_from_db()
-        return {"id": diff.id, "status": diff.status, "file_url": diff.file_url, "error_msg": diff.error_msg}
-            
-
+        return {
+            "id": diff.id,
+            "status": diff.status,
+            "file_url": diff.file_url,
+            "error_msg": diff.error_msg,
+        }
