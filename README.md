@@ -47,4 +47,11 @@ Backend:
   - Formatted Score (same file name, extension.pdf)
   - Raw score XML (for computing Diffs)   TODO: This should probably export with just notes and text, no other formatting at all.
 
-> NOTE: If you log into DJANGO ADMIN then try to use the websirte it wont work. Clear cookies for the site then try again
+> NOTE: If you log into DJANGO ADMIN then try to use the website it wont work. Clear cookies for the site then try again
+
+# How to Contribute:
+
+- Reach out to me (Nick) for access to the Shortcut (https://app.shortcut.com/divisi-app/epics)
+- Add yourself as an owner to a ticket
+- Create a new branch with your changes
+- Open a PR describing your changes, and request a review from me!
