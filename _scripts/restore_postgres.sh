@@ -5,8 +5,8 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
-gunzip -c "$1" | PGPASSWORD="$POSTGRES_PASSWORD" psql \
-  -h $POSTGRES_HOST \
-  -p $POSTGRES_PORT \
-  -U $POSTGRES_USER \
-  -d $POSTGRES_DB
+gunzip -c "$1" \
+  | docker exec -i app-db-1 \
+    bash -c "PGPASSWORD=${POSTGRES_PASSWORD} psql \
+      -U ${POSTGRES_USER} \
+      -d ${POSTGRES_DB}"
