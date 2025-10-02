@@ -21,7 +21,7 @@ FILENAME="${BACKUP_DIR}/${POSTGRES_DB}_${DATE}.sql.gz"
 mkdir -p "$BACKUP_DIR"
 
 # Run pg_dump inside the Postgres container
-docker exec -i skulenite-divisi-db-1 \
+docker exec -i app-db-1 \
   sh -c "PGPASSWORD=$POSTGRES_PASSWORD pg_dump -U $POSTGRES_USER $POSTGRES_DB" \
   | gzip > "$FILENAME"
 
