@@ -71,10 +71,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Install MuseScore 4
-ENV MSCORE_VERSION=4.5.2.251141401
+ENV MSCORE_SMALL_VERSION=4.6.0
+ENV MSCORE_VERSION=4.6.0.252730944
 ENV MSCORE_APPIMAGE=MuseScore-Studio-${MSCORE_VERSION}-x86_64.AppImage
 
-RUN wget -O /tmp/mscore.AppImage "https://cdn.jsdelivr.net/musescore/v4.5.2/${MSCORE_APPIMAGE}" && \
+RUN wget -O /tmp/mscore.AppImage "https://cdn.jsdelivr.net/musescore/v${MSCORE_SMALL_VERSION}/${MSCORE_APPIMAGE}" && \
     chmod +x /tmp/mscore.AppImage && \
     cd /tmp && \
     ./mscore.AppImage --appimage-extract && \
