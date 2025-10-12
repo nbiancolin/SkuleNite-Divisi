@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'corsheaders',
     'rest_framework',
+    'core',
     'divisi',
     'ensembles',
     'storages',
