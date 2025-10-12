@@ -1,9 +1,27 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 
 # Register your models here.
 from .models import SiteWarning
 
 class SiteWarningAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("text", "is_visible")
+
+    actions = ("display_warnings", "hide_warnings")
+
+    @admin.action(description="Turn On Warnings")
+    def display_warnings(self, request, queryset):
+        for warning in queryset:
+            warning.is_visible = True
+            warning.save(update_fields=["is_visible"])
+        
+        messages.success(request, f"Successfully displayed {queryset.count()} warnings")
+    
+    @admin.action(description="Turn Off Warnings")
+    def hide_warnings(self, request, queryset):
+        for warning in queryset:
+            warning.is_visible = False
+            warning.save(update_fields=["is_visible"])
+        
+        messages.success(request, f"Successfully hid {queryset.count()} warnings")
 
 admin.site.register(SiteWarning, SiteWarningAdmin)
