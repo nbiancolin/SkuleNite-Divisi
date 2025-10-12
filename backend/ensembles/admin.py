@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Ensemble, Arrangement, ArrangementVersion, Diff
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff
 from .tasks import export_arrangement_version, prep_and_export_mscz, compute_diff
 
 from django.http import HttpRequest
@@ -142,6 +142,7 @@ class DiffAdmin(admin.ModelAdmin):
             obj.delete()
 
 
+admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)

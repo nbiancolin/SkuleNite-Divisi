@@ -253,6 +253,10 @@ class ExportFailureLog(models.Model):
     #info that I may want to add
     comments = models.CharField()
 
+    @property
+    def arrangement_version__str__(self):
+        return self.arrangement_version.__str__()
+
 
 class Diff(models.Model):
     from_version = models.ForeignKey(
