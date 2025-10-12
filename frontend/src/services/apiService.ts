@@ -60,6 +60,24 @@ export interface DiffData {
 }
 
 export const apiService = {
+
+  async getWarnings() {
+    const response = await fetch(`${API_BASE_URL}/get-warnings/`);
+    if( !response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch warning labels (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
   async getEnsembles() {
     const response = await fetch(`${API_BASE_URL}/ensembles/`);
     if (!response.ok) {

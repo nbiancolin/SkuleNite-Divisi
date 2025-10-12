@@ -22,6 +22,8 @@ from rest_framework import routers
 
 from django.conf import settings
 
+from core.views import GetWarningsView
+
 from ensembles.views import (
     EnsembleViewSet,
     ArrangementViewSet,
@@ -41,6 +43,7 @@ router.register(r"arrangementversions", ArrangementVersionViewSet, "arrangementv
 
 urlpatterns = [
     path("restricted/admin/", admin.site.urls),
+    path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
     path("api/upload-mscz/", UploadMsczFile.as_view(), name="upload-mscz"),
     path("api/format-mscz/", FormatMsczFile.as_view(), name="format-mscz"),
     path(
