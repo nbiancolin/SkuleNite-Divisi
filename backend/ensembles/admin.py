@@ -104,6 +104,15 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
         return False
 
 
+class ExportFailureLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "arrangement_version__str__")
+
+    readonly_fields = ("id", "arrangement_version", "error_msg")
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+    
+
 class DiffAdmin(admin.ModelAdmin):
     list_display = ("from_version__str__", "to_version__str__", "status", "timestamp")
 

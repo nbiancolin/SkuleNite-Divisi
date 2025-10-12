@@ -245,6 +245,14 @@ class ArrangementVersion(models.Model):
     class Meta:
         ordering = ["-timestamp"]
 
+class ExportFailureLog(models.Model):
+    arrangement_version = models.ForeignKey(ArrangementVersion, related_name="failure_log", on_delete=models.CASCADE)
+    #Auto-populated with info from 
+    error_msg = models.CharField()
+
+    #info that I may want to add
+    comments = models.CharField()
+
 
 class Diff(models.Model):
     from_version = models.ForeignKey(
