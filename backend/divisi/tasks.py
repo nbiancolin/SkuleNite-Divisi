@@ -6,7 +6,7 @@ import os
 
 from django.core.files.storage import default_storage
 
-from divisi.part_formatter.processing import mscz_main
+from part_formatter import format_mscz
 from divisi.part_formatter.export import export_mscz_to_pdf_score
 from divisi.models import UploadSession
 
@@ -45,7 +45,7 @@ def part_formatter_mscz(
     if num_measure_per_line is not None:
         kwargs["num_measure_per_line"] = num_measure_per_line
 
-    mscz_main(**kwargs)
+    format_mscz(**kwargs)
 
 
 @shared_task

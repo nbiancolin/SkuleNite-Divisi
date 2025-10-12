@@ -1,6 +1,6 @@
 from celery import shared_task
 
-from divisi.part_formatter.processing import mscz_main
+from part_formatter import format_mscz
 from divisi.part_formatter.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
@@ -43,7 +43,7 @@ def format_arrangement_version(version_id: int):
         kwargs["movementTitle"] = arr.ensemble_name
     if arr.mvt_no is not None:
         kwargs["workNumber"] = arr.mvt_no
-    mscz_main(**kwargs)  # noqa -- no idea why this error is here but it shouldn't be
+    format_mscz(**kwargs)  # noqa -- no idea why this error is here but it shouldn't be
 
 
 @shared_task
