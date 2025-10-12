@@ -5,7 +5,7 @@ from divisi.part_formatter.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
 )
-from .models import ArrangementVersion, Diff
+from .models import ArrangementVersion, Diff, ExportFailureLog
 from logging import getLogger
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -77,6 +77,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     version.error_on_export = True
                     version.is_processing = False
                     version.save()
+
+                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
+
                     return {"status": "error", "details": "No input file found"}
 
                 # Generate output prefix based on the version's storage structure
@@ -96,6 +99,7 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                         f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}"
                     )
                     version.error_on_export = True
+                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=result["details"])
 
                 version.is_processing = False
                 version.save()
@@ -109,6 +113,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 version.error_on_export = True
                 version.is_processing = False
                 version.save()
+
+                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+
                 return {"status": "error", "details": str(e)}
         case "mxl":
             try:
@@ -124,6 +131,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     version.error_on_export = True
                     version.is_processing = False
                     version.save()
+
+                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
+
                     return {
                         "status": "error",
                         "details": "No input file found when exporting MXL",
@@ -142,6 +152,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 version.error_on_export = True
                 version.is_processing = False
                 version.save()
+
+                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+
                 return {"status": "error", "details": str(e)}
 
 
