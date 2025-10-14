@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import Ensemble, Arrangement, ArrangementVersion, Diff
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff
 from .tasks import export_arrangement_version, prep_and_export_mscz, compute_diff
 
 from django.http import HttpRequest
@@ -104,6 +104,15 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
         return False
 
 
+class ExportFailureLogAdmin(admin.ModelAdmin):
+    list_display = ("id", "arrangement_version__str__")
+
+    readonly_fields = ("id", "arrangement_version", "error_msg")
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+    
+
 class DiffAdmin(admin.ModelAdmin):
     list_display = ("from_version__str__", "to_version__str__", "status", "timestamp")
 
@@ -133,6 +142,7 @@ class DiffAdmin(admin.ModelAdmin):
             obj.delete()
 
 
+admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
