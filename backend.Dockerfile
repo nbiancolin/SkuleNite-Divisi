@@ -42,8 +42,16 @@ RUN apt-get update && \
         libatk-bridge2.0-0 \
         libgtk-3-0 \
         libxkbcommon-x11-0 \
+        libxcb-cursor0 \
+        libxcb-xfixes0 \
+        libxcb-shape0 \
+        libxcb-render-util0 \
+        libxcb-icccm4 \
+        libxcb-image0 \
+        libxcb-keysyms1 \
+        libgpg-error0 \
+        pipewire \
         libxcb1 \
-        qt5dxcb-plugin \
         p7zip-full && \
     rm -rf /var/lib/apt/lists/*
 
@@ -54,10 +62,9 @@ ENV QT_QPA_PLATFORM=offscreen
 
 
 # Install MuseScore 4 (extract AppImage)
-ENV MSCORE_VERSION=4.5.2.251141401
-ENV MSCORE_APPIMAGE=MuseScore-Studio-${MSCORE_VERSION}-x86_64.AppImage
+ENV MSCORE_DOWNLOAD_LINK=https://cdn.jsdelivr.net/musescore/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage
 
-RUN wget -O /tmp/mscore.AppImage https://cdn.jsdelivr.net/musescore/v4.5.2/${MSCORE_APPIMAGE} && \
+RUN wget -O /tmp/mscore.AppImage "${MSCORE_DOWNLOAD_LINK}" && \
     chmod +x /tmp/mscore.AppImage && \
     cd /tmp && \
     ./mscore.AppImage --appimage-extract && \

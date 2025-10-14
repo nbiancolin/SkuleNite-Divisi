@@ -62,7 +62,6 @@ RUN apt-get update && \
         libgtk-3-0 \
         libxkbcommon-x11-0 \
         libxcb1 \
-        qt5dxcb-plugin \
         libgpg-error0 \ 
         p7zip-full \
         fonts-dejavu-core \
@@ -75,7 +74,9 @@ ENV MSCORE_SMALL_VERSION=4.6.2
 ENV MSCORE_VERSION=4.6.2.252830930
 ENV MSCORE_APPIMAGE=MuseScore-Studio-${MSCORE_VERSION}-x86_64.AppImage
 
-RUN wget -O /tmp/mscore.AppImage "https://cdn.jsdelivr.net/musescore/v${MSCORE_SMALL_VERSION}/${MSCORE_APPIMAGE}" && \
+ENV MSCORE_DOWNLOAD_LINK=https://cdn.jsdelivr.net/musescore/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage
+
+RUN wget -O /tmp/mscore.AppImage "${MSCORE_DOWNLOAD_LINK}" && \
     chmod +x /tmp/mscore.AppImage && \
     cd /tmp && \
     ./mscore.AppImage --appimage-extract && \
@@ -152,8 +153,15 @@ RUN apt-get update && \
         libgtk-3-0 \
         libxkbcommon-x11-0 \
         libxcb1 \
-        qt5dxcb-plugin \
-        libgpg-error0 \ 
+        libxcb-cursor0 \
+        libxcb-xfixes0 \
+        libxcb-shape0 \
+        libxcb-render-util0 \
+        libxcb-icccm4 \
+        libxcb-image0 \
+        libxcb-keysyms1 \
+        libgpg-error0 \
+        pipewire \
         p7zip-full \
         netcat-openbsd \
         xvfb \
@@ -231,7 +239,7 @@ CMD ["bash", "-c", "\
     su -c 'fc-cache -f -v' appuser && \
     su -c 'fc-list | head -10' appuser && \
     echo '[INFO] Testing MuseScore font access...' && \
-    su -c 'mscore4 --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"' appuser && \
+    su -c 'xvfb-run -a mscore4 --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"]' appuser && \
     echo '[INFO] Running Django migrations...' && \
     su -c 'python manage.py migrate --noinput' appuser && \
     echo '[INFO] Setting up Music21 ... ' && \
