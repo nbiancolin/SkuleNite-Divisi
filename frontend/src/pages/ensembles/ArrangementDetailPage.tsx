@@ -603,20 +603,44 @@ export default function ArrangementDisplay() {
                     )}
 
                     {exportLoading && (
-                      <Container>
-                        <Group justify="center" py="xl">
-                          <Loader size="md" />
-                          <Text>Score Exporting...</Text>
-                        </Group>
-                      </Container>
+                      <>
+                        <Button
+                          component={Link}
+                          target="_blank"
+                          to={rawMsczUrl}
+                          variant="subtle"
+                          size="sm"
+                          rightSection={<IconDownload size={16} />}
+                        >
+                          Download Raw MSCZ file
+                        </Button>
+                        <Container>
+                          <Group justify="center" py="xl">
+                            <Loader size="md" />
+                            <Text>Score Exporting...</Text>
+                          </Group>
+                        </Container>
+                      </>
                     )}
 
                     {exportError && (
-                      <Container>
-                        <Group justify="center" py="xl">
-                          <Text>Error with Formatting. Tell Nick</Text>
-                        </Group>
-                      </Container>
+                      <>
+                        <Button
+                          component={Link}
+                          target="_blank"
+                          to={rawMsczUrl}
+                          variant="subtle"
+                          size="sm"
+                          rightSection={<IconDownload size={16} />}
+                        >
+                          Download Raw MSCZ file
+                        </Button>
+                        <Container>
+                          <Group justify="center" py="xl">
+                            <Text>Error with Formatting. Tell Nick</Text>
+                          </Group>
+                        </Container>
+                      </>
                     )}
                   </Group>
 
