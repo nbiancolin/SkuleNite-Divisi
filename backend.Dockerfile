@@ -41,20 +41,28 @@ RUN apt-get update && \
         libatk1.0-0 \
         libatk-bridge2.0-0 \
         libgtk-3-0 \
-        libxkbcommon-x11-0 \
-        libxcb-cursor0 \
-        libxcb-xfixes0 \
-        libxcb-shape0 \
-        libxcb-render-util0 \
-        libxcb-icccm4 \
-        libxcb-image0 \
-        libxcb-keysyms1 \
         libgpg-error0 \
-        pipewire \
         libxcb1 \
         p7zip-full && \
     rm -rf /var/lib/apt/lists/*
 
+# Install Musescore Dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libxcb-cursor0 \
+    libxcb-xfixes0 \
+    libxcb-shape0 \
+    libxcb-render-util0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-randr0 \
+    libxcb-util1 \
+    libxkbcommon-x11-0 \
+    libxrender1 \
+    libx11-xcb1 \
+    pipewire \
+    xvfb \
+ && rm -rf /var/lib/apt/lists/*
 
 
 # Disable GUI display (headless)
