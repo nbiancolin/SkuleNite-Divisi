@@ -4,7 +4,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend.Dockerfile
+      dockerfile: new-backend.Dockerfile
     volumes:
       - ./backend:/app
     ports:
