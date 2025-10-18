@@ -20,88 +20,83 @@ RUN npm run build
 # ==========================================
 FROM python:3.11-slim AS backend-build
 
-ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV QT_QPA_PLATFORM=offscreen
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /app/backend
+WORKDIR /app
 
-# Install system dependencies in one layer
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        wget \
-        curl \
-        fontconfig \
-        unzip \
-        xdg-utils \
-        ca-certificates \
-        libglib2.0-0 \
-        libfuse2 \
-        libasound2 \
-        libjack0 \
-        libnss3 \
-        libopengl0 \
-        libgl1 \
-        libglx0 \
-        libegl1 \
-        libx11-6 \
-        libxext6 \
-        libxrender1 \
-        libsm6 \
-        libice6 \
-        libxrandr2 \
-        libxinerama1 \
-        libxcursor1 \
-        libxi6 \
-        libxcomposite1 \
-        libxdamage1 \
-        libxfixes3 \
-        libxss1 \
-        libatk1.0-0 \
-        libatk-bridge2.0-0 \
-        libgtk-3-0 \
-        libxkbcommon-x11-0 \
-        libxcb1 \
-        libgpg-error0 \ 
-        p7zip-full \
-        fonts-dejavu-core \
-        fonts-liberation \
-        fonts-noto && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+# Install system dependencies for MuseScore
+RUN apt-get update && apt-get install -y \
+    # Build essentials for Python packages
+    gcc \
+    g++ \
+    make \
+    # Database clients
+    postgresql-client \
+    default-libmysqlclient-dev \
+    # Dependencies for MuseScore 4
+    wget \
+    xvfb \
+    xauth \
+    libfuse2 \
+    libxcb-xinerama0 \
+    libxcb-cursor0 \
+    # OpenGL/EGL libraries
+    libopengl0 \
+    libglx0 \
+    libegl1 \
+    libglu1-mesa \
+    # Audio libraries
+    libasound2 \
+    libjack-jackd2-0 \
+    # Font libraries
+    fontconfig \
+    libfontconfig1 \
+    fonts-liberation \
+    # GLib libraries
+    libglib2.0-0 \
+    # GPG libraries
+    libgpg-error0 \
+    # NSS libraries
+    libnss3 \
+    # Additional Qt/X11 dependencies
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 \
+    libxcb-randr0 \
+    # Useful utilities
+    curl \
+    git \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install MuseScore 4
-ENV MSCORE_SMALL_VERSION=4.6.2
-ENV MSCORE_VERSION=4.6.2.252830930
-ENV MSCORE_APPIMAGE=MuseScore-Studio-${MSCORE_VERSION}-x86_64.AppImage
-
-ENV MSCORE_DOWNLOAD_LINK=https://cdn.jsdelivr.net/musescore/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage
-
-RUN wget -O /tmp/mscore.AppImage "${MSCORE_DOWNLOAD_LINK}" && \
-    chmod +x /tmp/mscore.AppImage && \
-    cd /tmp && \
-    ./mscore.AppImage --appimage-extract && \
+# Download and install MuseScore 4 AppImage
+RUN wget -O /tmp/MuseScore-4.AppImage https://github.com/musescore/MuseScore/releases/download/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage && \
+    chmod +x /tmp/MuseScore-4.AppImage && \
+    /tmp/MuseScore-4.AppImage --appimage-extract && \
     mv squashfs-root /opt/musescore && \
-    ln -s /opt/musescore/AppRun /usr/local/bin/mscore4 && \
-    rm /tmp/mscore.AppImage
+    rm /tmp/MuseScore-4.AppImage
 
-# Install custom fonts PROPERLY
+# Create a wrapper script for MuseScore to work headless
+RUN echo '#!/bin/bash\nxvfb-run -a /opt/musescore/AppRun "$@"' > /usr/local/bin/musescore && \
+    chmod +x /usr/local/bin/musescore
+
+# Copy and install custom fonts
 COPY assets/fonts.zip /tmp/fonts.zip
 RUN mkdir -p /usr/share/fonts/truetype/custom && \
     unzip /tmp/fonts.zip -d /usr/share/fonts/truetype/custom && \
-    # Set proper permissions for fonts
-    chmod -R 644 /usr/share/fonts/truetype/custom/*.ttf /usr/share/fonts/truetype/custom/*.otf 2>/dev/null || true && \
-    chmod -R 644 /usr/share/fonts/truetype/custom/*.TTF /usr/share/fonts/truetype/custom/*.OTF 2>/dev/null || true && \
-    chmod 755 /usr/share/fonts/truetype/custom && \
-    # Update font cache
     fc-cache -fv && \
     rm -f /tmp/fonts.zip
 
 # Install Python dependencies
+# Copy requirements first for better caching
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source code
-COPY backend/ .
+COPY backend .
 
 # ==========================================
 # 3. FINAL PRODUCTION STAGE
@@ -115,7 +110,7 @@ ENV QT_QPA_PLATFORM=offscreen
 # Create non-root user early
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
-# Install runtime dependencies including essential fonts
+# Install runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         libpq-dev \
@@ -129,12 +124,13 @@ RUN apt-get update && \
         libglib2.0-0 \
         libfuse2 \
         libasound2 \
-        libjack0 \
+        libjack-jackd2-0 \
         libnss3 \
         libopengl0 \
         libgl1 \
         libglx0 \
         libegl1 \
+        libglu1-mesa \
         libx11-6 \
         libxext6 \
         libxrender1 \
@@ -142,6 +138,7 @@ RUN apt-get update && \
         libice6 \
         libxrandr2 \
         libxinerama1 \
+        libxcb-xinerama0 \
         libxcursor1 \
         libxi6 \
         libxcomposite1 \
@@ -160,11 +157,14 @@ RUN apt-get update && \
         libxcb-icccm4 \
         libxcb-image0 \
         libxcb-keysyms1 \
+        libxcb-randr0 \
         libgpg-error0 \
         pipewire \
         p7zip-full \
         netcat-openbsd \
         xvfb \
+        x11-xserver-utils \
+        xauth \
         fonts-dejavu-core \
         fonts-liberation \
         fonts-noto \
@@ -178,15 +178,15 @@ COPY --from=backend-build /usr/local/lib/python3.11/site-packages /usr/local/lib
 COPY --from=backend-build /usr/local/bin /usr/local/bin
 
 # Copy backend application
-COPY --from=backend-build /app/backend /app/backend
+COPY --from=backend-build /app /app
 
 # Copy fonts from build stage with proper ownership
 COPY --from=backend-build --chown=root:root /usr/share/fonts /usr/share/fonts
 
 # Copy MuseScore from build stage
 COPY --from=backend-build /opt/musescore /opt/musescore
-RUN ln -sf /opt/musescore/AppRun /usr/local/bin/mscore4 && \
-    chmod +x /usr/local/bin/mscore4
+COPY --from=backend-build /usr/local/bin/musescore /usr/local/bin/musescore
+RUN chmod +x /usr/local/bin/musescore
 
 # Create MuseScore directories with proper permissions
 RUN mkdir -p /home/appuser/.local/share/MuseScore/MuseScore4/logs && \
@@ -220,7 +220,7 @@ RUN chown -R appuser:appuser /app /var/www/html && \
     chown -R appuser:appuser /var/cache/nginx /var/log/nginx /var/lib/nginx /run/nginx && \
     chmod 755 /var/log/nginx
 
-WORKDIR /app/backend
+WORKDIR /app
 
 EXPOSE 80
 
@@ -239,7 +239,7 @@ CMD ["bash", "-c", "\
     su -c 'fc-cache -f -v' appuser && \
     su -c 'fc-list | head -10' appuser && \
     echo '[INFO] Testing MuseScore font access...' && \
-    su -c 'xvfb-run -a mscore4 --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"]' appuser && \
+    su -c 'musescore --help > /dev/null 2>&1 || echo \"[WARN] MuseScore may have issues but continuing...\"]' appuser && \
     echo '[INFO] Running Django migrations...' && \
     su -c 'python manage.py migrate --noinput' appuser && \
     echo '[INFO] Setting up Music21 ... ' && \
