@@ -7,7 +7,7 @@ import shutil
 from django.core.files import File
 from django.core.files.storage import default_storage
 
-from part_formatter import format_mscz, FormattingParams
+from musescore_part_formatter import format_mscz, FormattingParams
 from divisi.part_formatter.export import export_mscz_to_pdf_score
 from divisi.models import UploadSession
 
