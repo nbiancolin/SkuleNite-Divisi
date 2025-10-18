@@ -39,9 +39,7 @@ def export_mscz_to_musicxml(input_key, output_key, mscore_bin=None):
     # Locate MuseScore binary
     candidate_bins = ([mscore_bin] if mscore_bin else []) + [
         os.environ.get("MSCORE_BIN"),
-        "mscore4",
-        "mscore4portable",
-        "mscore",
+        "musescore",
     ]
     candidate_bins = [b for b in candidate_bins if b]
     msbin = None

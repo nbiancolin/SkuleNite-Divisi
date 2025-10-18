@@ -217,11 +217,13 @@ def compute_diff(diff_id: int):
 
             from music21 import environment
 
+            #TODO: Fix this to use new musescore path
             us = environment.UserSettings()
             us['musicxmlPath'] = '/usr/local/bin/mscore4'
             us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore4'
                 
             # Run MusicDiff
+            
             temp_output_1 = os.path.join(temp_dir, "output.pdf")
             temp_output_2 = os.path.join(temp_dir, "output2.pdf")
             musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)
