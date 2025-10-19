@@ -36,22 +36,22 @@ def export_mscz_to_musicxml(input_key, output_key, mscore_bin=None):
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    # Locate MuseScore binary
-    candidate_bins = ([mscore_bin] if mscore_bin else []) + [
-        os.environ.get("MSCORE_BIN"),
-        "musescore",
-    ]
-    candidate_bins = [b for b in candidate_bins if b]
-    msbin = None
-    for b in candidate_bins:
-        try:
-            subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
-            msbin = b
-            break
-        except Exception:
-            continue
-    if not msbin:
-        return {"status": "error", "details": "Could not locate MuseScore CLI"}
+    # # Locate MuseScore binary
+    # candidate_bins = ([mscore_bin] if mscore_bin else []) + [
+    #     os.environ.get("MSCORE_BIN"),
+    #     "musescore",
+    # ]
+    # candidate_bins = [b for b in candidate_bins if b]
+    # msbin = None
+    # for b in candidate_bins:
+    #     try:
+    #         subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
+    #         msbin = b
+    #         break
+    #     except Exception:
+    #         continue
+    # if not msbin:
+    #     return {"status": "error", "details": "Could not locate MuseScore CLI"}
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -68,7 +68,7 @@ def export_mscz_to_musicxml(input_key, output_key, mscore_bin=None):
 
             # Run MuseScore
             subprocess.run(
-                [msbin, temp_input, "-o", temp_output],
+                ["musescore", temp_input, "-o", temp_output],
                 check=True,
                 capture_output=True,
                 env=env,
@@ -105,27 +105,27 @@ def export_score_and_parts_ms4_storage_scoreparts(
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-    # Locate MuseScore binary
-    candidate_bins = ([mscore_bin] if mscore_bin else []) + [
-        os.environ.get("MSCORE_BIN"),
-        "mscore4",
-        "mscore4portable",
-        "mscore",
-    ]
-    candidate_bins = [b for b in candidate_bins if b]
-    msbin = None
-    for b in candidate_bins:
-        try:
-            subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
-            msbin = b
-            break
-        except Exception:
-            continue
-    if not msbin:
-        return {
-            "status": "error",
-            "details": "Could not locate MuseScore CLI (mscore4/mscore4portable).",
-        }
+    # # Locate MuseScore binary
+    # candidate_bins = ([mscore_bin] if mscore_bin else []) + [
+    #     os.environ.get("MSCORE_BIN"),
+    #     "mscore4",
+    #     "mscore4portable",
+    #     "mscore",
+    # ]
+    # candidate_bins = [b for b in candidate_bins if b]
+    # msbin = None
+    # for b in candidate_bins:
+    #     try:
+    #         subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
+    #         msbin = b
+    #         break
+    #     except Exception:
+    #         continue
+    # if not msbin:
+    #     return {
+    #         "status": "error",
+    #         "details": "Could not locate MuseScore CLI (mscore4/mscore4portable).",
+    #     }
 
     def _extract_json_from_text(text):
         """Find the first complete JSON object in text by balancing braces."""
@@ -201,7 +201,7 @@ def export_score_and_parts_ms4_storage_scoreparts(
         # run MuseScore with --score-parts-pdf
         try:
             proc = subprocess.run(
-                [msbin, "--score-parts-pdf", temp_input],
+                ["musescore", "--score-parts-pdf", temp_input],
                 check=True,
                 capture_output=True,
                 env=env,

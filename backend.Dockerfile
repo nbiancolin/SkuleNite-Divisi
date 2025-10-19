@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     # Dependencies for MuseScore 4
     wget \
     xvfb \
+    xauth \
     libfuse2 \
     libxcb-xinerama0 \
     libxcb-cursor0 \
@@ -30,6 +31,7 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libjack-jackd2-0 \
     # Font libraries
+    fontconfig \
     libfontconfig1 \
     fonts-liberation \
     # GLib libraries
@@ -48,6 +50,7 @@ RUN apt-get update && apt-get install -y \
     # Useful utilities
     curl \
     git \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install MuseScore 4 AppImage
