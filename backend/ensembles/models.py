@@ -126,6 +126,7 @@ class ArrangementVersion(models.Model):
 
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
+    num_lines_per_page = models.IntegerField()
 
     @property
     def mscz_file_key(self) -> str:

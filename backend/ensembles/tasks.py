@@ -30,8 +30,7 @@ def format_arrangement_version(version_id: int):
         "show_number": arr.mvt_no,
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
-        #TODO: Allow setting num lines per page
-        "num_lines_per_page": 8,
+        "num_lines_per_page": version.num_lines_per_page,
         "msv4_6_line_break_fix": False  #TODO Remove this
         #TODO: Allow for version num
         # "versionNum": version.version_label

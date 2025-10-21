@@ -61,6 +61,7 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     )  
     num_measures_per_line_score = serializers.IntegerField(default=8)
     num_measures_per_line_part = serializers.IntegerField(default=6)
+    num_lines_per_page = serializers.IntegerField(default=8)
 
     format_parts = serializers.BooleanField(default=True)
 
