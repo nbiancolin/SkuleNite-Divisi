@@ -2,7 +2,7 @@ from celery import shared_task
 
 from musescore_part_formatter import FormattingParams, format_mscz
 
-from divisi.musescore_part_formatter.export import (
+from divisi.part_formatter.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
 )

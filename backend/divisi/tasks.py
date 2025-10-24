@@ -8,7 +8,7 @@ from django.core.files import File
 from django.core.files.storage import default_storage
 
 from musescore_part_formatter import format_mscz, FormattingParams
-from divisi.musescore_part_formatter.export import export_mscz_to_pdf_score
+from divisi.part_formatter.export import export_mscz_to_pdf_score
 from divisi.models import UploadSession
 
 
