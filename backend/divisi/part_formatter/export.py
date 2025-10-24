@@ -18,40 +18,22 @@ def export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
     try:
-        subprocess.run(["mscore4", input_file_path, "-o", output_path], check=True)
+        subprocess.run(["musescore", input_file_path, "-o", output_path], check=True)
         return {"status": "success", "output": output_path}
     except subprocess.CalledProcessError as e:
         return {"status": "error", "details": str(e)}
 
 
-def export_mscz_to_musicxml(input_key, output_key, mscore_bin=None):
+def export_mscz_to_musicxml(input_key, output_key):
     """
     Export a MusicXML file from MuseScore and save it to Django storage.
 
     Args:
         input_key (str): storage key for the input .mscz file
         output_key (str): storage key to save the resulting .musicxml
-        mscore_bin (str|None): optional MuseScore binary (default auto-detect)
     """
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-    # # Locate MuseScore binary
-    # candidate_bins = ([mscore_bin] if mscore_bin else []) + [
-    #     os.environ.get("MSCORE_BIN"),
-    #     "musescore",
-    # ]
-    # candidate_bins = [b for b in candidate_bins if b]
-    # msbin = None
-    # for b in candidate_bins:
-    #     try:
-    #         subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
-    #         msbin = b
-    #         break
-    #     except Exception:
-    #         continue
-    # if not msbin:
-    #     return {"status": "error", "details": "Could not locate MuseScore CLI"}
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -89,7 +71,8 @@ def export_mscz_to_musicxml(input_key, output_key, mscore_bin=None):
 
 
 def export_score_and_parts_ms4_storage_scoreparts(
-    input_key, output_prefix, mscore_bin=None
+    input_key,
+    output_prefix,
 ):
     """
     Export with MuseScore's --score-parts-pdf flag and save resulting PDFs to Django storage.
@@ -97,35 +80,12 @@ def export_score_and_parts_ms4_storage_scoreparts(
     Args:
         input_key (str): storage key for the input .mscz file
         output_prefix (str): storage path prefix to save outputs (should end with '/')
-        mscore_bin (str|None): optional explicit MuseScore binary path (e.g. 'mscore4')
 
     Returns:
         dict: {"status": "success"|"error", "written": [saved_keys], "details": "..."}
     """
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-    # # Locate MuseScore binary
-    # candidate_bins = ([mscore_bin] if mscore_bin else []) + [
-    #     os.environ.get("MSCORE_BIN"),
-    #     "mscore4",
-    #     "mscore4portable",
-    #     "mscore",
-    # ]
-    # candidate_bins = [b for b in candidate_bins if b]
-    # msbin = None
-    # for b in candidate_bins:
-    #     try:
-    #         subprocess.run([b, "--version"], check=True, capture_output=True, env=env)
-    #         msbin = b
-    #         break
-    #     except Exception:
-    #         continue
-    # if not msbin:
-    #     return {
-    #         "status": "error",
-    #         "details": "Could not locate MuseScore CLI (mscore4/mscore4portable).",
-    #     }
 
     def _extract_json_from_text(text):
         """Find the first complete JSON object in text by balancing braces."""

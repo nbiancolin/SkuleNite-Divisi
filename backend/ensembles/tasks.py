@@ -255,8 +255,8 @@ def compute_diff(diff_id: int):
 
             #TODO: Fix this to use new musescore path
             us = environment.UserSettings()
-            us['musicxmlPath'] = '/usr/local/bin/mscore4'
-            us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore4'
+            us['musicxmlPath'] = '/usr/local/bin/musescore'
+            us['musescoreDirectPNGPath'] = '/usr/local/bin/musescore'
                 
             # Run MusicDiff
             
