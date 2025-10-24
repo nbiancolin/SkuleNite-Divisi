@@ -2,7 +2,7 @@
 
 Understanding this code
 
-Call mscz_main with a musescore mscz file.
+Call format_mscz with a musescore mscz file.
 -> This unzips the file, adds styles, and then processes each mscx file on its own
 
 process_mscx is called with a mscx file

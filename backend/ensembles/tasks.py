@@ -1,6 +1,7 @@
 from celery import shared_task
 
-from divisi.part_formatter.processing import mscz_main
+from part_formatter import FormattingParams, format_mscz
+
 from divisi.part_formatter.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
@@ -8,8 +9,10 @@ from divisi.part_formatter.export import (
 from .models import ArrangementVersion, Diff, ExportFailureLog
 from logging import getLogger
 from django.core.files.storage import default_storage
+from django.core.files import File
 from django.core.files.base import ContentFile
 import os
+import shutil
 import tempfile
 import musicdiff
 import traceback
@@ -21,30 +24,63 @@ def format_arrangement_version(version_id: int):
     version = ArrangementVersion.objects.get(id=version_id)
     arr = version.arrangement
 
-    kwargs = {
-        "input_key": version.mscz_file_key,
-        "output_key": version.output_file_key,
-        "style_name": arr.style,
-        "versionNum": version.version_label,
+    kwargs: FormattingParams = {
+        "selected_style": arr.style,
+        "show_title": arr.ensemble_name,
+        "show_number": arr.mvt_no,
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
+        "num_lines_per_page": version.num_lines_per_page,
+        "msv4_6_line_break_fix": False  #TODO Remove this
+        #TODO: Allow for version num
+        # "versionNum": version.version_label
     }
 
-    # TODO: Arranger info
-    # if arranger is not None:
-    #     kwargs["arranger"] = arranger
-    # else:
-    #     kwargs["arranger"] = "COMPOSER"
-    kwargs["arranger"] = "COMPOSER"
-    if arr.composer is not None:
-        kwargs["compopser"] = arr.composer
+    #TODO: Allow for this
+    # kwargs["arranger"] = arr.composer if arr.composer is not None else "COMPOSER"
+    # if arr.composer is not None:
+    #     kwargs["composer"] = arr.composer  # Look into the payload returned from this
 
-    if arr.ensemble_name is not None:
-        kwargs["movementTitle"] = arr.ensemble_name
-    if arr.mvt_no is not None:
-        kwargs["workNumber"] = arr.mvt_no
-    mscz_main(**kwargs)  # noqa -- no idea why this error is here but it shouldn't be
 
+    tmp_in_path = tmp_out_path = None
+    try:
+        # create temp files
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in:
+            tmp_in_path = tmp_in.name
+            # download mscz from storage into tmp_in
+            with default_storage.open(version.mscz_file_key, "rb") as stored_in:
+                shutil.copyfileobj(stored_in, tmp_in)
+                tmp_in.flush()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
+            tmp_out_path = tmp_out.name
+
+        # call the formatter which expects input/output paths
+        format_result = format_mscz(tmp_in_path, tmp_out_path, kwargs)
+
+        # If your format_mscz returns structured result, check for errors
+        if isinstance(format_result, dict) and format_result.get("status") == "error":
+            return format_result
+
+        # upload generated file back to storage at session.output_file_key
+        with open(tmp_out_path, "rb") as out_f:
+            django_file = File(out_f)
+            default_storage.save(version.output_file_key, django_file)
+
+        # mark session completed and return public URL
+        version.error_on_export = False
+
+        return {"status": "success", "output": default_storage.url(version.output_file_key)}
+    except Exception as e:
+        #log exception as export failure log and go from there
+        ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+        return {"status": "error", "output": str(e)}
+    finally:
+        # cleanup temp files if created
+        if tmp_in_path and os.path.exists(tmp_in_path):
+            os.remove(tmp_in_path)
+        if tmp_out_path and os.path.exists(tmp_out_path):
+            os.remove(tmp_out_path)
 
 @shared_task
 def export_arrangement_version(version_id: int, action: str = "score"):
@@ -217,11 +253,13 @@ def compute_diff(diff_id: int):
 
             from music21 import environment
 
+            #TODO: Fix this to use new musescore path
             us = environment.UserSettings()
             us['musicxmlPath'] = '/usr/local/bin/mscore4'
             us['musescoreDirectPNGPath'] = '/usr/local/bin/mscore4'
                 
             # Run MusicDiff
+            
             temp_output_1 = os.path.join(temp_dir, "output.pdf")
             temp_output_2 = os.path.join(temp_dir, "output2.pdf")
             musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)

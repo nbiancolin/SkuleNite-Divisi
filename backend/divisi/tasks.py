@@ -1,12 +1,13 @@
 from celery import shared_task
-import subprocess
 import tempfile
 
 import os
+import shutil
 
+from django.core.files import File
 from django.core.files.storage import default_storage
 
-from divisi.part_formatter.processing import mscz_main
+from part_formatter import format_mscz, FormattingParams
 from divisi.part_formatter.export import export_mscz_to_pdf_score
 from divisi.models import UploadSession
 
@@ -21,31 +22,62 @@ def part_formatter_mscz(
     version_num: int | None,
     composer: str | None,
     arranger: str | None,
-) -> None:
+) -> dict:
     session = UploadSession.objects.get(id=uuid)
 
-    kwargs = {
-        "input_key": session.mscz_file_key,
-        "output_key": session.output_file_key,
-        "style_name": style,
-        "versionNum": version_num if version_num is not None else "1.0.0" #TODO[SC-83]: Move to settings.py
+    kwargs: FormattingParams = {
+        "selected_style": style,
+        "versionNum": version_num if version_num is not None else "1.0.0"
     }
-
-    if arranger is not None:
-        kwargs["arranger"] = arranger
-    else:
-        kwargs["arranger"] = "COMPOSER"
-    if composer is not None:
-        kwargs["compopser"] = composer
 
     if show_title is not None:
         kwargs["movementTitle"] = show_title
     if show_number is not None:
         kwargs["workNumber"] = show_number
+
+    kwargs["arranger"] = arranger if arranger is not None else "COMPOSER"
+    if composer is not None:
+        kwargs["composer"] = composer  # fixed key name
+
     if num_measure_per_line is not None:
         kwargs["num_measure_per_line"] = num_measure_per_line
 
-    mscz_main(**kwargs)
+    tmp_in_path = tmp_out_path = None
+    try:
+        # create temp files
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in:
+            tmp_in_path = tmp_in.name
+            # download mscz from storage into tmp_in
+            with default_storage.open(session.mscz_file_key, "rb") as stored_in:
+                shutil.copyfileobj(stored_in, tmp_in)
+                tmp_in.flush()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
+            tmp_out_path = tmp_out.name
+
+        # call the formatter which expects input/output paths
+        format_result = format_mscz(tmp_in_path, tmp_out_path, **kwargs)
+
+        # If your format_mscz returns structured result, check for errors
+        if isinstance(format_result, dict) and format_result.get("status") == "error":
+            return format_result
+
+        # upload generated file back to storage at session.output_file_key
+        with open(tmp_out_path, "rb") as out_f:
+            django_file = File(out_f)
+            default_storage.save(session.output_file_key, django_file)
+
+        # mark session completed and return public URL
+        session.completed = True
+        session.save(update_fields=["completed"])
+
+        return {"status": "success", "output": default_storage.url(session.output_file_key)}
+    finally:
+        # cleanup temp files if created
+        if tmp_in_path and os.path.exists(tmp_in_path):
+            os.remove(tmp_in_path)
+        if tmp_out_path and os.path.exists(tmp_out_path):
+            os.remove(tmp_out_path)
 
 
 @shared_task

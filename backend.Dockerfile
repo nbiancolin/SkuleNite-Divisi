@@ -1,69 +1,68 @@
-FROM python:3.11
+FROM python:3.11-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Create user early
-RUN useradd -m myuser
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /app
 
-# Install dependencies
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        wget \
-        curl \
-        fontconfig \
-        unzip \
-        xdg-utils \
-        ca-certificates \
-        libglib2.0-0 \
-        libfuse2 \
-        libasound2 \
-        libjack0 \
-        libnss3 \
-        libopengl0 \
-        libgl1 \
-        libglx0 \
-        libegl1 \
-        libx11-6 \
-        libxext6 \
-        libxrender1 \
-        libsm6 \
-        libice6 \
-        libxrandr2 \
-        libxinerama1 \
-        libxcursor1 \
-        libxi6 \
-        libxcomposite1 \
-        libxdamage1 \
-        libxfixes3 \
-        libxss1 \
-        libatk1.0-0 \
-        libatk-bridge2.0-0 \
-        libgtk-3-0 \
-        libxkbcommon-x11-0 \
-        libxcb1 \
-        qt5dxcb-plugin \
-        p7zip-full && \
-    rm -rf /var/lib/apt/lists/*
+# Install system dependencies for MuseScore
+RUN apt-get update && apt-get install -y \
+    # Build essentials for Python packages
+    gcc \
+    g++ \
+    make \
+    # Database clients
+    postgresql-client \
+    default-libmysqlclient-dev \
+    # Dependencies for MuseScore 4
+    wget \
+    xvfb \
+    xauth \
+    libfuse2 \
+    libxcb-xinerama0 \
+    libxcb-cursor0 \
+    # OpenGL/EGL libraries
+    libopengl0 \
+    libglx0 \
+    libegl1 \
+    libglu1-mesa \
+    # Audio libraries
+    libasound2 \
+    libjack-jackd2-0 \
+    # Font libraries
+    fontconfig \
+    libfontconfig1 \
+    fonts-liberation \
+    # GLib libraries
+    libglib2.0-0 \
+    # GPG libraries
+    libgpg-error0 \
+    # NSS libraries
+    libnss3 \
+    # Additional Qt/X11 dependencies
+    libxkbcommon-x11-0 \
+    libxcb-icccm4 \
+    libxcb-image0 \
+    libxcb-keysyms1 \
+    libxcb-render-util0 \
+    libxcb-randr0 \
+    # Useful utilities
+    curl \
+    git \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-
-
-# Disable GUI display (headless)
-ENV QT_QPA_PLATFORM=offscreen
-
-
-# Install MuseScore 4 (extract AppImage)
-ENV MSCORE_VERSION=4.5.2.251141401
-ENV MSCORE_APPIMAGE=MuseScore-Studio-${MSCORE_VERSION}-x86_64.AppImage
-
-RUN wget -O /tmp/mscore.AppImage https://cdn.jsdelivr.net/musescore/v4.5.2/${MSCORE_APPIMAGE} && \
-    chmod +x /tmp/mscore.AppImage && \
-    cd /tmp && \
-    ./mscore.AppImage --appimage-extract && \
+# Download and install MuseScore 4 AppImage
+RUN wget -O /tmp/MuseScore-4.AppImage https://github.com/musescore/MuseScore/releases/download/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage && \
+    chmod +x /tmp/MuseScore-4.AppImage && \
+    /tmp/MuseScore-4.AppImage --appimage-extract && \
     mv squashfs-root /opt/musescore && \
-    ln -s /opt/musescore/AppRun /usr/local/bin/mscore4 && \
-    rm /tmp/mscore.AppImage
+    rm /tmp/MuseScore-4.AppImage
+
+# Create a wrapper script for MuseScore to work headless
+RUN echo '#!/bin/bash\nxvfb-run -a /opt/musescore/AppRun "$@"' > /usr/local/bin/musescore && \
+    chmod +x /usr/local/bin/musescore
 
 # Copy and install custom fonts
 COPY assets/fonts.zip /tmp/fonts.zip
@@ -72,17 +71,18 @@ RUN mkdir -p /usr/share/fonts/truetype/custom && \
     fc-cache -fv && \
     rm -f /tmp/fonts.zip
 
-# Install Python deps
+# Install Python dependencies
+# Copy requirements first for better caching
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
-COPY backend/ .
-RUN chown -R myuser:myuser /app
+COPY backend .
 
-ENV PYTHONBUFFERED=1
-USER myuser
+EXPOSE 8000
 
-RUN python _scripts/setup_music21.py
+RUN useradd -m -u 1000 django && \
+    chown -R django:django /app
+
+USER django
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

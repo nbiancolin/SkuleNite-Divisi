@@ -29,6 +29,7 @@ export default function UploadArrangementVersionPage() {
 
   const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
+  const [linesPerPage, setLinesPerPage] = useState<string>("8")
 
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +104,7 @@ export default function UploadArrangementVersionPage() {
     formData.append("version_type", versionType);
     formData.append("num_measures_per_line_score", measuresPerLineScore);
     formData.append("num_measures_per_line_part", measuresPerLinePart);
+    formData.append("num_lines_per_page", linesPerPage);
     formData.append("format_parts", enableDivisiFormatting.toString())
     try {
       const response = await axios.post(`${API_BASE_URL}/upload-arrangement-version/`, formData, {
@@ -188,6 +190,13 @@ export default function UploadArrangementVersionPage() {
             onChange={(e) => setMeasuresPerLinePart(e.currentTarget.value)}
             mt="md"
           />
+          <TextInput
+            label="Lines per Page (Part)"
+            value={linesPerPage}
+            onChange={(e) => setLinesPerPage(e.currentTarget.value)}
+            mt="md"
+          />
+          
           {/* TODO: Add functionality for setting page size and stuff */}
           {/* TODO: Make the above a property of the Ensemble (that can be overrided by the arrangement) */}
             {/* Idea for that: Make a new model called "style properties", and ensembles can select the same as previous (and make their own copy) or custom make their own */}

@@ -93,6 +93,7 @@ class UploadArrangementVersionMsczView(APIView):
                 num_measures_per_line_part=serializer.validated_data[
                     "num_measures_per_line_part"
                 ],
+                num_lines_per_page=serializer.validated_data["num_lines_per_page"]
             )
 
             version.save(
