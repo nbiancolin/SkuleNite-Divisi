@@ -18,11 +18,12 @@
     "default": {
         "asgiref": {
             "hashes": [
-                "sha256:06a41250a0114d2b6f6a2cb3ab962147d355b53d1de15eebc34a9d04a7b79981",
-                "sha256:3dd2556d0f08c4fab8a010d9ab05ef8c34565f6bf32381d17505f7ca5b273767"
+                "sha256:aef8a81283a34d0ab31630c9b7dfe70c812c95eba78171367ca8745e88124734",
+                "sha256:d89f2d8cd8b56dada7d52fa7dc8075baa08fb836560710d38c292a7a3f78c04e"
             ],
+            "index": "pypi",
             "markers": "python_version >= '3.9'",
-            "version": "==3.9.0"
+            "version": "==3.10.0"
         },
         "django": {
             "hashes": [
