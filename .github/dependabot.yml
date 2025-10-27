@@ -1,6 +1,16 @@
 version: 2
 updates:
+  # --- Python (requirements.txt) ---
   - package-ecosystem: "pip"
-    directory: "/backend"
+    directory: "/"  # location of requirements.txt
     schedule:
       interval: "daily"
+    allow:
+      - dependency-type: "all"  # include both direct & transitive deps
+    commit-message:
+      prefix: "⬆️ pip"
+      include: "scope"
+    open-pull-requests-limit: 10
+    rebase-strategy: "auto"
+    reviewers:
+      - "nbiancolin"
