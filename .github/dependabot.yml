@@ -2,7 +2,7 @@ version: 2
 updates:
   # --- Python (requirements.txt) ---
   - package-ecosystem: "pip"
-    directory: "/"  # location of requirements.txt
+    directory: "/backend/"  # location of requirements.txt
     schedule:
       interval: "daily"
     allow:
