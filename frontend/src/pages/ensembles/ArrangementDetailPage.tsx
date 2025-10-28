@@ -263,8 +263,8 @@ export default function ArrangementDisplay() {
 
     try {
       setSaveLoading(true);
-      editData.style = selectedStyle
-      processMvtNo(mvtNo)
+      editData.style = selectedStyle;
+      editData.mvt_no = mvtNo;
       await apiService.updateArrangement(arrangement.id, editData);
       
       // Refresh the arrangement data

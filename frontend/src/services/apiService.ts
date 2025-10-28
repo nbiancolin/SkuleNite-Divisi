@@ -16,8 +16,6 @@ export interface Arrangement {
   subtitle: string;
   slug: string;
   composer: string | null;
-  actNumber?: number;
-  pieceNumber: number;
   mvt_no: string;
   latest_version: ArrangementVersion;
   latest_version_num: string;
@@ -36,8 +34,7 @@ export interface EditableArrangementData {
   title: string;
   subtitle: string;
   composer: string;
-  piece_number?: number;
-  act_number?: number | null;
+  mvt_no: string;
   style: string;
 }
 
@@ -186,7 +183,7 @@ export const apiService = {
   return response.json();
   },
 
-  updateArrangement: async (id: number, data: EditableArrangementData) => {
+  async updateArrangement (id: number, data: EditableArrangementData) {
     // Make API call to update arrangement
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`, {
       method: 'PUT',
@@ -196,19 +193,17 @@ export const apiService = {
     return response.json();
   },
 
-  async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, actNumber: string, pieceNumber: string, style: string){
+  async createArrangement(ensembleId: number, title: string, subtitle: string, composer: string, mvtNo: string, style: string){
     const body: Record<string, any> = {
       ensemble: ensembleId,
       title,
       subtitle,
       composer,
-      piece_number: pieceNumber,
+      mvt_no: mvtNo,
       style,
     };
 
-    if (actNumber !== "") {
-      body["act_number"] = actNumber;
-    }
+
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
         method: 'POST', 

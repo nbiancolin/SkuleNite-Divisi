@@ -60,6 +60,8 @@ class Arrangement(models.Model):
     act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(default=1, blank=True, null=True)
 
+    mvt_no = models.CharField(max_length=4, blank=True)
+
     style = models.CharField(choices=STYLE_CHOICES)
 
     def save(self, *args, **kwargs):
@@ -71,22 +73,14 @@ class Arrangement(models.Model):
 
         if self.pk is None:
             super().save(*args, **kwargs)
-            if self.piece_number is None:
-                self.piece_number = self.pk
-                super().save(update_fields=["piece_number"])
+            if self.mvt_no is None:
+                self.mvt_no = self.pk
+                super().save(update_fields=["mvt_no"])
         else:
-            if self.piece_number is None:
-                self.piece_number = self.pk
+            if self.mvt_no is None:
+                self.mvt_no = self.pk
             super().save(*args, **kwargs)
 
-    def get_mvtno(self):
-        if self.act_number is not None:
-            return f"{self.act_number}-{self.piece_number}"
-        return f"{self.piece_number}"
-
-    @property
-    def mvt_no(self):
-        return self.get_mvtno()
 
     @property
     def latest_version(self):
@@ -109,7 +103,7 @@ class Arrangement(models.Model):
         return f"({self.mvt_no}) {self.title}"
 
     class Meta:
-        ordering = ["act_number", "piece_number"]
+        ordering = ["mvt_no"]
 
 
 class ArrangementVersion(models.Model):

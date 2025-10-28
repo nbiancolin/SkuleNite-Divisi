@@ -253,7 +253,6 @@ def compute_diff(diff_id: int):
 
             from music21 import environment
 
-            #TODO: Fix this to use new musescore path
             us = environment.UserSettings()
             us['musicxmlPath'] = '/usr/local/bin/musescore'
             us['musescoreDirectPNGPath'] = '/usr/local/bin/musescore'
