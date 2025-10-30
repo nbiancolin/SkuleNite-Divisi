@@ -1,0 +1,23 @@
+-i https://pypi.org/simple
+asgiref==3.9.0; python_version >= '3.9'
+celery==5.5.3
+django==5.2.4; python_version >= '3.10'
+django-cors-headers==4.7.0; python_version >= '3.9'
+djangorestframework==3.16.0; python_version >= '3.9'
+redis==6.2.0
+sqlparse==0.5.3; python_version >= '3.8'
+tzdata==2025.2; python_version >= '2'
+psycopg2-binary
+gunicorn
+boto3
+django-storages
+music21>=9.7; python_version >= '3.10'
+numpy
+converter21>=3.5
+musicdiff
+git+https://github.com/nbiancolin/musescore-part-formatter.git@v1.0.2#egg=musescore_part_formatter
+pytest 
+pytest-django 
+pytest-cov
+factory_boy
+pytest-factoryboy
