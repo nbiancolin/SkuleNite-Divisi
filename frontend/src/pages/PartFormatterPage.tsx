@@ -175,7 +175,6 @@ export default function PartFormatterPage() {
             arranger={arranger}
             showTitle={showTitle}
             mvtNo={showNumber}
-            pieceNumber={null}
           />
           {/* <Button onClick={handleFormatRequest}>Format Musescore File</Button> */}
           <Stack mt="xl">

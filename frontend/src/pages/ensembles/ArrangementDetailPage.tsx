@@ -65,8 +65,6 @@ export default function ArrangementDisplay() {
     subtitle: '',
     style: "broadway",
     composer: '',
-    piece_number: undefined,
-    act_number: undefined,
   });
   const [saveLoading, setSaveLoading] = useState(false);
 
@@ -100,28 +98,6 @@ export default function ArrangementDisplay() {
   const [diffError, setDiffError] = useState<string>('');
 
   const navigate = useNavigate();
-
-  const processMvtNo = (mvt_no: string) => {
-    // split string at eithr - or m,
-      // if neither present, return the whole thing as a number
-    // first one is act number, second one is piece number
-
-    if(mvt_no.includes("-")){
-        const vals = mvt_no.split("-")
-        editData.act_number = +vals[0]
-        editData.piece_number = +vals[1]
-
-    } else if (mvt_no.includes("m")) {
-        const vals = mvt_no.split("m")
-        editData.act_number = +vals[0]
-        editData.piece_number = +vals[1]
-    }
-    else {
-      //wrap in trycatch
-      editData.piece_number = +mvt_no
-      editData.act_number = null
-    }
-  }
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
@@ -241,8 +217,7 @@ export default function ArrangementDisplay() {
         subtitle: data.subtitle || '',
         style: data.style,
         composer: data.composer || '',
-        piece_number: data.piece_number,
-        act_number: data.act_number,
+        mvt_no: data.mvt_no || '',
       });
 
       if (data?.latest_version?.id) {
@@ -286,8 +261,7 @@ export default function ArrangementDisplay() {
         subtitle: arrangement.subtitle || '',
         style: arrangement.style,
         composer: arrangement.composer || '',
-        piece_number: arrangement.pieceNumber,
-        act_number: arrangement.actNumber,
+        mvt_no: arrangement.mvt_no || '',
       });
     }
     setIsEditing(false);
