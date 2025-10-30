@@ -93,15 +93,38 @@ def test_arrangement_version_serializer(arrangement_versions):
 def test_arrangement_serializer_includes_latest_version(
     arrangement, arrangement_versions
 ):
+    EXPECTED_FIELDS = [
+        "id",
+        "ensemble",
+        "ensemble_name",
+        "ensemble_slug",
+        "title",
+        "slug",
+        "subtitle",
+        "composer",
+        "mvt_no",
+        "style",
+        "latest_version",
+        "latest_version_num",
+    ]
     _, latest = arrangement_versions
     data = ArrangementSerializer(arrangement).data
-    assert data["title"] == arrangement.title
-    assert data["ensemble_name"] == arrangement.ensemble.name
-    assert data["latest_version"]["version_label"] == latest.version_label
+
+    assert len(data) == len(EXPECTED_FIELDS)
+
+    # Don't want to auto-check serialized objects within serialized objects
+    assert data["ensemble"] == arrangement.ensemble.id
+    EXPECTED_FIELDS.remove("ensemble")
+    assert data["latest_version"] == ArrangementVersionSerializer(latest).data
+    EXPECTED_FIELDS.remove("latest_version")
+
+    for field in EXPECTED_FIELDS:
+        assert field in data
+        assert data[field] == getattr(arrangement, field)
 
 
 @pytest.mark.django_db
-def test_ensemble_serializer_includes_arrangements(ensemble, arrangement):
+def test_ensemble_serializer_includes_arrangements(ensemble):
     data = EnsembleSerializer(ensemble).data
     assert data["name"] == ensemble.name
     assert isinstance(data["arrangements"], list)
