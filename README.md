@@ -55,3 +55,5 @@ Backend:
 - Add yourself as an owner to a ticket
 - Create a new branch with your changes
 - Open a PR describing your changes, and request a review from me!
+
+The reason for doing it this way is because ** the main branch needs to ALWAYS be in a deployable state**. On every merge/commit to main, a new deploy is triggered. This is so that I / we can ship code quickly, and incrementally
