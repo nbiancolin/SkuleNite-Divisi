@@ -38,14 +38,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-  backend:
+ backend:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
     
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DJANGO_SETTINGS_MODULE: backend.settings
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      DATABASE_NAME: test_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
 
     steps:
       - name: Checkout repository
@@ -61,6 +82,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Run migrations
+        run: |
+          python manage.py migrate
 
       - name: Run tests
         env:
