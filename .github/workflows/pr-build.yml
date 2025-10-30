@@ -3,39 +3,64 @@ name: PR Build Check
 on:
   pull_request:
     branches:
-      - main
-      - master
-      - develop
-      - '**' # Optional: Trigger on all branches
+      - '**'
 
 jobs:
-  build:
+  backend:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: frontend
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      DJANGO_SETTINGS_MODULE: backend.settings
+      PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '20' # Change to your required Node version
+          python-version: '3.11'
 
       - name: Install dependencies
-        run: npm ci || npm install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-      - name: Run build
-        run: npm run build
+      - name: Wait for Postgres
+        run: |
+          echo "Waiting for Postgres to be ready..."
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 -U postgres && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
 
-      - name: Cache Node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Run migrations
+        working-directory: backend
+        run: python manage.py migrate --noinput
 
+      - name: Run tests
+        working-directory: backend
+        run: pytest --disable-warnings -q

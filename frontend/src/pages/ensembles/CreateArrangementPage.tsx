@@ -30,8 +30,6 @@ export default function CreateArrangementPage() {
   style: "broadway",
   slug: "",
   composer: "",
-  actNumber: 0,
-  pieceNumber: 0,
   mvt_no: "",
   latest_version: {
     id: 0,
@@ -50,11 +48,10 @@ const emptyEnsemble = (): Ensemble => ({
 })
 
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState<string>("")
-  const [subtitle, setSubtitle] = useState<string>("")
-  const [composer, setComposer] = useState<string>("")
-  const [actNumber, setActNumber] = useState<string>("")
-  const [pieceNumber, setPieceNumber] = useState<string>("")
+  const [title, setTitle] = useState<string>("");
+  const [subtitle, setSubtitle] = useState<string>("");
+  const [composer, setComposer] = useState<string>("");
+  const [mvtNo, setMvtNo] = useState<string>("");
   const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   const [ensemble, setEnsemble] = useState<Ensemble>(emptyEnsemble());
@@ -64,7 +61,6 @@ const emptyEnsemble = (): Ensemble => ({
 
   const navigate = useNavigate()
 
-  const mvtNo = (actNumber && pieceNumber) ? `${actNumber}-${pieceNumber}` : "";
 
   useEffect(() => {
       const fetchData = async () => {
@@ -92,7 +88,7 @@ const emptyEnsemble = (): Ensemble => ({
   const createArrangment = async () => {
 
     try {
-      await apiService.createArrangement(ensemble.id, title, subtitle, composer, actNumber, pieceNumber, selectedStyle)
+      await apiService.createArrangement(ensemble.id, title, subtitle, composer, mvtNo, selectedStyle)
 
       navigate(`/app/ensembles/${ensemble.slug}/arrangements`)
     } catch (err) {
@@ -169,17 +165,9 @@ const emptyEnsemble = (): Ensemble => ({
       />
       <Text mt="md"> If you're not sure what this means, don't worry about it, you can set it later.</Text>
       <TextInput
-        label="Act Number"
-        value={actNumber}
-        type="number"
-        onChange={(e) => setActNumber(e.currentTarget.value)}  //+ Operator converts from string to number (so stupid but wtv)
-      />
-      <TextInput
-        label="Piece Number"
-        value={pieceNumber}
-        onChange={(e) => setPieceNumber(e.currentTarget.value)}
-        type="number"
-        mt="md"
+        label="Score Number"
+        value={mvtNo}
+        onChange={(e) => setMvtNo(e.currentTarget.value)}  //+ Operator converts from string to number (so stupid but wtv)
       />
 
       <ScoreTitlePreview
@@ -192,7 +180,6 @@ const emptyEnsemble = (): Ensemble => ({
         arranger={null}
         mvtNo={mvtNo}
         showTitle={null}
-        pieceNumber={+pieceNumber}
       />
 
       <Button

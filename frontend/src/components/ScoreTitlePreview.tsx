@@ -46,7 +46,6 @@ interface ScoreTitlePreviewProps {
   arranger: string | null;
   showTitle: string | null;
   mvtNo: string | null;
-  pieceNumber: number | null | undefined;
 }
 
 export function ScoreTitlePreview({
@@ -59,7 +58,6 @@ export function ScoreTitlePreview({
   arranger, 
   mvtNo,
   showTitle,
-  pieceNumber
 }: ScoreTitlePreviewProps) {
 
   const previewStyleOptions: PreviewStyleOptions = {
@@ -210,7 +208,7 @@ export function ScoreTitlePreview({
               Conductor Score
             </h3>
 
-            {(mvtNo || pieceNumber || showTitle) && selectedStyle === "broadway" && (
+            {(mvtNo || showTitle) && selectedStyle === "broadway" && (
               <Box style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 {showTitle && (
                   <span style={previewStyleOptions[selectedStyle].showTitle ?? {}}>
@@ -224,7 +222,7 @@ export function ScoreTitlePreview({
                   }}
                 >
                   <h1 style={previewStyleOptions[selectedStyle].mvtNo ?? {}}>
-                    {mvtNo || pieceNumber}
+                    {mvtNo }
                   </h1>
                 </Box>
               </Box>

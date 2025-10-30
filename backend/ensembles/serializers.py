@@ -15,7 +15,6 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
 
 
 class ArrangementSerializer(serializers.ModelSerializer):
-    mvt_no = serializers.ReadOnlyField()
     latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
 
@@ -30,8 +29,6 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "slug",
             "subtitle",
             "composer",
-            "act_number",
-            "piece_number",
             "mvt_no",
             "style",
             "latest_version",
@@ -39,6 +36,8 @@ class ArrangementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "slug",
+            "ensemble_name",
+            "ensemble_slug",
         ]
 
 
