@@ -55,26 +55,35 @@ def format_arrangement_version(version_id: int):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
             tmp_out_path = tmp_out.name
 
-        # call the formatter which expects input/output paths
-        format_result = format_mscz(tmp_in_path, tmp_out_path, kwargs)
+        logger.debug("Downloaded input mscz to %s (key=%s)", tmp_in_path, version.mscz_file_key)
+        try:
+            logger.debug("Calling format_mscz(%s -> %s) with kwargs=%r", tmp_in_path, tmp_out_path, kwargs)
+            format_result = format_mscz(tmp_in_path, tmp_out_path, kwargs)
+            logger.debug("format_mscz returned: %r", format_result)
+        except Exception as fe:
+            logger.exception("format_mscz failed")
+            raise
 
-        # If your format_mscz returns structured result, check for errors
-        if isinstance(format_result, dict) and format_result.get("status") == "error":
-            return format_result
+        # verify output file was created
+        if not tmp_out_path or not os.path.exists(tmp_out_path):
+            logger.error("Formatter did not produce output file at %s", tmp_out_path)
+            raise RuntimeError("Formatter did not produce output file")
 
         # upload generated file back to storage at session.output_file_key
-        with open(tmp_out_path, "rb") as out_f:
-            django_file = File(out_f)
-            default_storage.save(version.output_file_key, django_file)
-
-        # mark session completed and return public URL
-        version.error_on_export = False
-
-        return {"status": "success", "output": default_storage.url(version.output_file_key)}
-    except Exception as e:
-        #log exception as export failure log and go from there
-        ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
-        return {"status": "error", "output": str(e)}
+        try:
+            with open(tmp_out_path, "rb") as out_f:
+                from django.core.files.base import ContentFile
+                data = out_f.read()
+                default_storage.save(version.output_file_key, ContentFile(data))
+            logger.info("Saved formatted file to storage key=%s (size=%d)", version.output_file_key, len(data))
+            # double-check
+            if default_storage.exists(version.output_file_key):
+                logger.debug("Verified storage contains %s", version.output_file_key)
+            else:
+                logger.warning("Storage does not report existence of %s after save", version.output_file_key)
+        except Exception as se:
+            logger.exception("Failed saving formatted file to storage key=%s", version.output_file_key)
+            raise
     finally:
         # cleanup temp files if created
         if tmp_in_path and os.path.exists(tmp_in_path):
