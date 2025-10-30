@@ -15,6 +15,7 @@ from django.conf import settings
 
 logger = logging.getLogger("PartFormatter")
 
+
 class UploadMsczFile(APIView):
     def post(self, request, *args, **kwargs):
         uploaded_file = request.FILES.get("file")
@@ -29,7 +30,7 @@ class UploadMsczFile(APIView):
             ip_address=request.META.get("REMOTE_ADDR"),
             file_name=uploaded_file.name,
         )
-    
+
         key = session.mscz_file_key
 
         # Save the uploaded file to the storage backend
@@ -46,54 +47,22 @@ class UploadMsczFile(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class FormatMsczFile(APIView):
     def post(self, request, *args, **kwargs):
         """
         Get style properties, format parts, and return download link.
         """
         serializer = FormatMsczFileSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
-        style = serializer.validated_data["style"]
-        show_title = serializer.validated_data["show_title"]
-        show_number = serializer.validated_data["show_number"]
-        session_id = serializer.validated_data.get("session_id")
-        num_measure_per_line = serializer.validated_data["measures_per_line"]
-        composer = serializer.validated_data.get("composer")
-        arranger = serializer.validated_data.get("arranger")
-        version_num = serializer.validated_data["version_num"]
-
-        #Classical is just broadway minus show text
-        if style == "classical":
-            style = "broadway"
-
-        if not session_id:
-            return Response(
-                {"error": "Missing session_id"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        logger.warning("In MSCZ Api View")
-        
-        part_formatter_mscz(session_id, style, show_title, show_number, num_measure_per_line, version_num, composer, arranger)
-
-        res = export_mscz_to_pdf(session_id)
-        if res["status"] == "success":
-            #do success stuff
-            session = UploadSession.objects.get(id=session_id)
-            output_path = res["output"]
-            mscz_url = session.output_file_url
-            session.completed = True
-            session.save()
-        else:
-            #do error stuff
-            return Response({"error": res["details"]}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        output_path, mscz_url = serializer.save()
 
         return Response(
             {
                 "message": "File processed successfully.",
                 "score_download_url": request.build_absolute_uri(output_path),
-                "mscz_download_url": request.build_absolute_uri(mscz_url)
+                "mscz_download_url": request.build_absolute_uri(mscz_url),
             },
             status=status.HTTP_200_OK,
         )
