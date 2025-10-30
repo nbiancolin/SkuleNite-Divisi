@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      postgres:
+      db:
         image: postgres:15
         env:
           POSTGRES_DB: test_db
@@ -57,23 +57,29 @@ jobs:
       POSTGRES_DB: test_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_HOST: postgres
+      POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       DJANGO_SETTINGS_MODULE: backend.settings
 
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      - name: Wait for Postgres to be ready
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Check Postgres service
         run: |
-          sudo apt-get update && sudo apt-get install -y postgresql-client
-          until pg_isready -h postgres -p 5432 -U postgres; do
-            echo "Waiting for Postgres..."
+          echo "Checking connection to Postgres service..."
+          docker ps
+          until pg_isready -h db -p 5432 -U postgres; do
+            echo "Waiting for Postgres at db:5432..."
             sleep 2
           done
+          echo "Postgres is ready!"
 
       - name: Install dependencies
         working-directory: backend
