@@ -68,7 +68,6 @@ export default function CreateEnsemblePage() {
         showTitle={ensembleName}
         arranger={"arranger"}
         mvtNo={"0-0"}
-        pieceNumber={0}
       />
 
       <Button

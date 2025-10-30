@@ -65,6 +65,7 @@ export default function ArrangementDisplay() {
     subtitle: '',
     style: "broadway",
     composer: '',
+    mvt_no: '',
   });
   const [saveLoading, setSaveLoading] = useState(false);
 
@@ -520,7 +521,6 @@ export default function ArrangementDisplay() {
                   arranger={null}
                   mvtNo={mvtNo}
                   showTitle={arrangement.ensemble_name}
-                  pieceNumber={null}
                   />
               ) : (
                 <div id="nickId"> 
