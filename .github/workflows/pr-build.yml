@@ -36,7 +36,6 @@ jobs:
         run: npm run build
 
   backend:
-    needs: frontend
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -65,6 +64,7 @@ jobs:
       DATABASE_PASSWORD: postgres
       DATABASE_HOST: postgres
       DATABASE_PORT: 5432
+
 
     steps:
       - name: Checkout repository
