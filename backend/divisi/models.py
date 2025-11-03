@@ -1,9 +1,6 @@
 from django.db import models
-from django.conf import settings
 from django.core.files.storage import default_storage
 
-import os
-import shutil
 import uuid
 
 import logging

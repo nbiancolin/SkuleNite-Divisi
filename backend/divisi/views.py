@@ -3,15 +3,11 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 
-from .tasks import part_formatter_mscz, export_mscz_to_pdf
-from .models import UploadSession
-from .serializers import FormatMsczFileSerializer
+from divisi.models import UploadSession
+from divisi.serializers import FormatMsczFileSerializer
 
 import logging
-
-from django.conf import settings
 
 logger = logging.getLogger("PartFormatter")
 

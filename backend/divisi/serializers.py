@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from divisi.models import UploadSession
-from divisi.tasks import part_formatter_mscz, export_mscz_to_pdf
+from divisi.tasks import format_upload_session, export_mscz_to_pdf
 
 STYLE_CHOICES = [("jazz", "Jazz"), ("broadway", "Broadway"), ("classical", "Classical")]
 
@@ -17,6 +17,8 @@ class UploadRequestSerializer(serializers.Serializer):
 
 class FormatMsczFileSerializer(serializers.Serializer):
     default_error_messages = {
+        "missing_session": "Session_id field must be provided",
+        "invalid_session": "Session id {session_id} does not exist",
         "part_formatter_error": "Error with part formatter {details}",
         "export_error": "Error with export {details}",
     }
@@ -33,6 +35,12 @@ class FormatMsczFileSerializer(serializers.Serializer):
         required=False, allow_null=True, allow_blank=True, default=None
     )
     version_num = serializers.CharField(required=False, default=None)
+
+    def validate_session_id(self, value):
+        if not value:
+            self.fail("invalid_session")
+        if not UploadSession.objects.filter(id=value).exists():
+            self.fail("invalid_session", session_id=value)
 
     def save(self, **kwargs):
         assert self.validated_data, "Must call `is_valid` first!"
@@ -51,17 +59,18 @@ class FormatMsczFileSerializer(serializers.Serializer):
             style = "broadway"
 
         try:
-            part_formatter_mscz(
+            format_upload_session(
                 session_id,
-                style,
-                show_title,
-                show_number,
-                num_measure_per_line,
-                version_num,
-                composer,
-                arranger,
+                selected_style=style,
+                show_title=show_title,
+                show_number=show_number,
+                num_measures_per_line_part=num_measure_per_line,
+                version=version_num,
+                composer=composer,
+                arranger=arranger,
             )
         except Exception as e:
+            session = UploadSession.objects.get(id=session_id)
             self.fail("part_formatter_error", details=str(e))
 
         res = export_mscz_to_pdf(session_id)
