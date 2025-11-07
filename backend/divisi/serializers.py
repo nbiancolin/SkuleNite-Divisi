@@ -59,7 +59,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
             style = "broadway"
 
         try:
-            format_upload_session(
+            res = format_upload_session(
                 session_id,
                 selected_style=style,
                 show_title=show_title,
@@ -69,6 +69,9 @@ class FormatMsczFileSerializer(serializers.Serializer):
                 composer=composer,
                 arranger=arranger,
             )
+
+            if res["status"] != "success":
+                raise Exception("Part Formatter Error")
         except Exception as e:
             session = UploadSession.objects.get(id=session_id)
             self.fail("part_formatter_error", details=str(e))
