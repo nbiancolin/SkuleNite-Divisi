@@ -68,76 +68,17 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
 class UploadArrangementVersionMsczView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = CreateArrangementVersionMsczSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
 
-        arrangement_id = serializer.validated_data["arrangement_id"]
-        try:
-            arr = Arrangement.objects.get(id=arrangement_id)
-        except Arrangement.DoesNotExist:
+        res = serializer.save()
+
+        if "error" in res.keys():
             return Response(
-                {
-                    "message": "Provided arrangement ID does not exist",
-                    "arrangement_id": arrangement_id,
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+                {"message": "Error"}
             )
-
-        with transaction.atomic():
-            version = ArrangementVersion.objects.create(
-                arrangement=arr,
-                file_name=serializer.validated_data["file"].name,
-                num_measures_per_line_score=serializer.validated_data[
-                    "num_measures_per_line_score"
-                ],
-                num_measures_per_line_part=serializer.validated_data[
-                    "num_measures_per_line_part"
-                ],
-                num_lines_per_page=serializer.validated_data["num_lines_per_page"]
-            )
-
-            version.save(
-                version_type=serializer.validated_data["version_type"],
-            )
-
-        uploaded_file = serializer.validated_data["file"]
-        if not uploaded_file:
-            return Response(
-                {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Save file to storage using the storage key
-        try:
-            # Create a file-like object from the uploaded file
-            file_content = b""
-            for chunk in uploaded_file.chunks():
-                file_content += chunk
-
-            # Save to storage using the key
-            default_storage.save(version.mscz_file_key, io.BytesIO(file_content))
-            logger.info(f"Saved file to storage: {version.mscz_file_key}")
-
-        except Exception as e:
-            logger.error(f"Failed to save file to storage: {e}")
-            # Clean up the version if file save failed
-            version.delete()
-            return Response(
-                {"error": "Failed to save file to storage"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        # Format mscz if selected by FE
-        if serializer.validated_data["format_parts"]:
-            prep_and_export_mscz.delay(version.pk)
-        else:
-            # Just export
-            export_arrangement_version.delay(version.pk)
-
-        # epxort MXL for diff calculation
-        export_arrangement_version(version.pk, action="mxl")
 
         return Response(
-            {"message": "File Uploaded Successfully", "version_id": version.pk},
+            {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
             status=status.HTTP_202_ACCEPTED,
         )
 

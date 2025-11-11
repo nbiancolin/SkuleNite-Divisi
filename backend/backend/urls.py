@@ -54,7 +54,7 @@ urlpatterns = [
     path(
         "api/get-download-links/",
         ArrangementVersionDownloadLinks.as_view(),
-        name="get arrangement version download links",
+        name="get-arrangement-version-download-links",
     ),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
     path("api/", include(router.urls)),
