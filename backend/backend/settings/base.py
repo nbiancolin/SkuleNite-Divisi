@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'ensembles',
     'storages',
     'django.contrib.staticfiles',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

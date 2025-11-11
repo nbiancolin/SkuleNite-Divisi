@@ -1,6 +1,6 @@
-from rest_framework.views import APIView
+from rest_framework import status, viewsets
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework.decorators import action
 
 from django.core.files.storage import default_storage
 
@@ -9,18 +9,19 @@ from divisi.serializers import FormatMsczFileSerializer
 
 import logging
 
-logger = logging.getLogger("PartFormatter")
+logger = logging.getLogger("Divisi-Views")
 
 
-class UploadMsczFile(APIView):
-    def post(self, request, *args, **kwargs):
+class PartFormatterViewSet(viewsets.ViewSet):
+
+    @action(detail=False, methods=["post"])
+    def upload_mscz(self, request):
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
             return Response(
                 {"error": "No file uploaded"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create a session first
         session = UploadSession.objects.create(
             user_agent=request.headers.get("User-Agent"),
             ip_address=request.META.get("REMOTE_ADDR"),
@@ -28,10 +29,7 @@ class UploadMsczFile(APIView):
         )
 
         key = session.mscz_file_key
-
-        # Save the uploaded file to the storage backend
         default_storage.save(key, uploaded_file)
-
         file_url = default_storage.url(key)
 
         return Response(
@@ -43,9 +41,8 @@ class UploadMsczFile(APIView):
             status=status.HTTP_200_OK,
         )
 
-
-class FormatMsczFile(APIView):
-    def post(self, request, *args, **kwargs):
+    @action(detail=False, methods=["post"])
+    def format_mscz(self, request):
         """
         Get style properties, format parts, and return download link.
         """

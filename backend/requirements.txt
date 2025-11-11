@@ -21,3 +21,4 @@ pytest-django
 pytest-cov
 factory_boy
 pytest-factoryboy
+django-extensions

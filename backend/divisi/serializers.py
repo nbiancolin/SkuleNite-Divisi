@@ -41,14 +41,16 @@ class FormatMsczFileSerializer(serializers.Serializer):
             self.fail("invalid_session")
         if not UploadSession.objects.filter(id=value).exists():
             self.fail("invalid_session", session_id=value)
+        return value
 
     def save(self, **kwargs):
+        #TODO: This could probably be moved to the service layer 9since its business level things)
         assert self.validated_data, "Must call `is_valid` first!"
 
         style = self.validated_data["style"]
         show_title = self.validated_data["show_title"]
         show_number = self.validated_data["show_number"]
-        session_id = self.validated_data.get("session_id")
+        session_id = self.validated_data["session_id"]
         num_measure_per_line = self.validated_data["measures_per_line"]
         composer = self.validated_data.get("composer")
         arranger = self.validated_data.get("arranger")
@@ -71,7 +73,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
             )
 
             if res["status"] != "success":
-                raise Exception("Part Formatter Error")
+                raise Exception(f"Part Formatter Error: {res['details']}")
         except Exception as e:
             session = UploadSession.objects.get(id=session_id)
             self.fail("part_formatter_error", details=str(e))
