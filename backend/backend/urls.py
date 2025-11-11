@@ -29,8 +29,6 @@ from ensembles.views import (
     ArrangementViewSet,
     ArrangementByIdViewSet,
     ArrangementVersionViewSet,
-    UploadArrangementVersionMsczView,
-    ArrangementVersionDownloadLinks,
     ComputeDiffView,
 )
 from divisi.views import PartFormatterViewSet
@@ -48,16 +46,6 @@ ensembles_router.register(r"arrangementversions", ArrangementVersionViewSet, "ar
 urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
-    path(
-        "api/upload-arrangement-version/",
-        UploadArrangementVersionMsczView.as_view(),
-        name="upload-arrangement-version",
-    ),
-    path(
-        "api/get-download-links/",
-        ArrangementVersionDownloadLinks.as_view(),
-        name="get-arrangement-version-download-links",
-    ),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
     path("api/", include((divisi_router.urls, "divisi"), namespace="divisi")),
     path("api/", include((ensembles_router.urls, "ensembles"), namespace="ensembles")),

@@ -228,7 +228,7 @@ export const apiService = {
   },
 
   async getDownloadLinksForVersion(versionId: number) {
-    const response = await fetch(`${API_BASE_URL}/get-download-links/?version_id=${versionId}`);
+    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/get_download_links/`);
     if (!response.ok){
     let errorDetails = '';
     try {
@@ -245,7 +245,6 @@ export const apiService = {
     return response.json()
   },
 
-  // NEW: Get version history for an arrangement
   async getVersionHistory(arrangementId: number): Promise<VersionHistoryItem[]> {
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/versions/`);
     if (!response.ok) {
@@ -263,7 +262,6 @@ export const apiService = {
     return response.json();
   },
 
-  // NEW: Get specific version details
   async getVersionDetails(versionId: number): Promise<ArrangementVersion> {
     const response = await fetch(`${API_BASE_URL}/versions/${versionId}/`);
     if (!response.ok) {
@@ -292,8 +290,6 @@ export const apiService = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        // Add your auth headers here if needed
-        // 'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         from_version_id: fromVersionId,
@@ -319,12 +315,7 @@ export const apiService = {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Add your auth headers here if needed
-        // 'Authorization': `Bearer ${token}`,
       },
-      // body: JSON.stringify({
-      //   diff_id: diffId,
-      // }),
     });
 
     if (!response.ok) {

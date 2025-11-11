@@ -4,10 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 
-from django.db import transaction
 from django.core.files.storage import default_storage
 
-from .tasks import prep_and_export_mscz, export_arrangement_version
 
 from .models import Arrangement, Ensemble, ArrangementVersion
 from .serializers import (
@@ -15,12 +13,9 @@ from .serializers import (
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
-    ArrangementVersionDownloadLinksSeiializer,
     ComputeDiffSerializer,
 )
 from logging import getLogger
-
-import io
 
 logger = getLogger("EnsembleViews")
 
@@ -64,41 +59,26 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
     queryset = ArrangementVersion.objects.all()
     serializer_class = ArrangementSerializer
 
-
-class UploadArrangementVersionMsczView(APIView):
-    def post(self, request, *args, **kwargs):
+    @action(detail=False, methods=["post"], url_path="upload")
+    def upload_arrangement_version(self, request):
         serializer = CreateArrangementVersionMsczSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         res = serializer.save()
-
         if "error" in res.keys():
             return Response(
-                {"message": "Error"}
+                {"message": "Error", "details": res["error"]}
             )
 
         return Response(
             {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
             status=status.HTTP_202_ACCEPTED,
         )
+    
+    @action(detail=True, methods=["get"])
+    def get_download_links(self, request, pk=None):
+        version = self.get_object()
 
-
-class ArrangementVersionDownloadLinks(APIView):
-    def get(self, request, *args, **kwargs):
-        serializer = ArrangementVersionDownloadLinksSeiializer(data=request.GET)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            version = ArrangementVersion.objects.get(
-                id=serializer.validated_data["version_id"]
-            )
-        except ArrangementVersion.DoesNotExist:
-            return Response(
-                {"message": "Provided version ID does not exist"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        # Use the new URL properties from the model
         response_data = {
             "message": "Successfully created download links",
             "is_processing": version.is_processing,
@@ -121,7 +101,6 @@ class ArrangementVersionDownloadLinks(APIView):
             response_data["score_parts_pdf_link"] = None
 
         return Response(response_data)
-
 
 class ComputeDiffView(APIView):
     def post(self, request, *args, **kwargs):

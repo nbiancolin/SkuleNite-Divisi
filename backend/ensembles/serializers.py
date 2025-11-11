@@ -138,10 +138,6 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
         return {"success": True, "version_id": version.id}
 
 
-class ArrangementVersionDownloadLinksSeiializer(serializers.Serializer):
-    version_id = serializers.IntegerField(required=True)
-
-
 class DiffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Diff
