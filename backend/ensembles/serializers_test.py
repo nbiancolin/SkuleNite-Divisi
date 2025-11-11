@@ -9,7 +9,6 @@ from ensembles.serializers import (
     ArrangementSerializer,
     EnsembleSerializer,
     CreateArrangementVersionMsczSerializer,
-    ArrangementVersionDownloadLinksSeiializer,
     DiffSerializer,
     ComputeDiffSerializer,
 )
