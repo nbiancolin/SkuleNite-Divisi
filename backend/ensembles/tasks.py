@@ -1,7 +1,6 @@
 from celery import shared_task
 
-from musescore_part_formatter import FormattingParams, format_mscz
-
+from divisi.tasks import format_arrangement_version
 from divisi.tasks.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
@@ -18,76 +17,6 @@ import musicdiff
 import traceback
 
 logger = getLogger("export_tasks")
-
-@shared_task
-def format_arrangement_version(version_id: int):
-    version = ArrangementVersion.objects.get(id=version_id)
-    arr = version.arrangement
-
-    kwargs: FormattingParams = {
-        "selected_style": arr.style,
-        "show_title": arr.ensemble_name,
-        "show_number": arr.mvt_no,
-        "num_measures_per_line_score": version.num_measures_per_line_score,
-        "num_measures_per_line_part": version.num_measures_per_line_part,
-        "num_lines_per_page": version.num_lines_per_page,
-        "version_num": version.version_label
-    }
-
-    #TODO[SC-62]: Allow for this
-    # kwargs["arranger"] = arr.composer if arr.composer is not None else "COMPOSER"
-    # if arr.composer is not None:
-    #     kwargs["composer"] = arr.composer  # Look into the payload returned from this
-
-
-    tmp_in_path = tmp_out_path = None
-    try:
-        # create temp files
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in:
-            tmp_in_path = tmp_in.name
-            # download mscz from storage into tmp_in
-            with default_storage.open(version.mscz_file_key, "rb") as stored_in:
-                shutil.copyfileobj(stored_in, tmp_in)
-                tmp_in.flush()
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
-            tmp_out_path = tmp_out.name
-
-        logger.debug("Downloaded input mscz to %s (key=%s)", tmp_in_path, version.mscz_file_key)
-        try:
-            logger.debug("Calling format_mscz(%s -> %s) with kwargs=%r", tmp_in_path, tmp_out_path, kwargs)
-            format_result = format_mscz(tmp_in_path, tmp_out_path, kwargs)
-            logger.debug("format_mscz returned: %r", format_result)
-        except Exception as fe:
-            logger.exception("format_mscz failed")
-            raise
-
-        # verify output file was created
-        if not tmp_out_path or not os.path.exists(tmp_out_path):
-            logger.error("Formatter did not produce output file at %s", tmp_out_path)
-            raise RuntimeError("Formatter did not produce output file")
-
-        # upload generated file back to storage at session.output_file_key
-        try:
-            with open(tmp_out_path, "rb") as out_f:
-                from django.core.files.base import ContentFile
-                data = out_f.read()
-                default_storage.save(version.output_file_key, ContentFile(data))
-            logger.info("Saved formatted file to storage key=%s (size=%d)", version.output_file_key, len(data))
-            # double-check
-            if default_storage.exists(version.output_file_key):
-                logger.debug("Verified storage contains %s", version.output_file_key)
-            else:
-                logger.warning("Storage does not report existence of %s after save", version.output_file_key)
-        except Exception as se:
-            logger.exception("Failed saving formatted file to storage key=%s", version.output_file_key)
-            raise
-    finally:
-        # cleanup temp files if created
-        if tmp_in_path and os.path.exists(tmp_in_path):
-            os.remove(tmp_in_path)
-        if tmp_out_path and os.path.exists(tmp_out_path):
-            os.remove(tmp_out_path)
 
 @shared_task
 def export_arrangement_version(version_id: int, action: str = "score"):
