@@ -31,12 +31,10 @@ def format_arrangement_version(version_id: int):
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
         "num_lines_per_page": version.num_lines_per_page,
-        "msv4_6_line_break_fix": False  #TODO Remove this
-        #TODO: Allow for version num
-        # "versionNum": version.version_label
+        "version_num": version.version_label
     }
 
-    #TODO: Allow for this
+    #TODO[SC-62]: Allow for this
     # kwargs["arranger"] = arr.composer if arr.composer is not None else "COMPOSER"
     # if arr.composer is not None:
     #     kwargs["composer"] = arr.composer  # Look into the payload returned from this
