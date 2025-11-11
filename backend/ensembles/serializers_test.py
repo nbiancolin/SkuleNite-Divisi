@@ -134,23 +134,23 @@ def test_ensemble_serializer_includes_arrangements(ensemble):
 # CreateArrangementVersionMsczSerializer tests
 # -------------------------------------------------------------------
 
-
-def test_create_arrangement_version_mscz_serializer_valid():
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_valid(arrangement):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,
-        "arrangement_id": 1,
+        "arrangement_id": arrangement.id,
         "version_type": "minor",
     }
     serializer = CreateArrangementVersionMsczSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
 
-
-def test_create_arrangement_version_mscz_serializer_invalid_version_type():
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_invalid_version_type(arrangement):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,
-        "arrangement_id": 1,
+        "arrangement_id": arrangement.id,
         "version_type": "invalid_type",
     }
     serializer = CreateArrangementVersionMsczSerializer(data=data)
