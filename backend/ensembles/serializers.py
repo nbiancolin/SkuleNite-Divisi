@@ -8,6 +8,11 @@ from django.core.files.storage import default_storage
 from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version, compute_diff
 
+from logging import getLogger
+
+logger = getLogger("EnsembleViews")
+
+
 VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 
