@@ -107,7 +107,7 @@ export default function UploadArrangementVersionPage() {
     formData.append("num_lines_per_page", linesPerPage);
     formData.append("format_parts", enableDivisiFormatting.toString())
     try {
-      const response = await axios.post(`${API_BASE_URL}/upload-arrangement-version/`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/arrangementversions/upload/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

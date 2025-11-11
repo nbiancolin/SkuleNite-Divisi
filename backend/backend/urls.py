@@ -29,35 +29,26 @@ from ensembles.views import (
     ArrangementViewSet,
     ArrangementByIdViewSet,
     ArrangementVersionViewSet,
-    UploadArrangementVersionMsczView,
-    ArrangementVersionDownloadLinks,
     ComputeDiffView,
 )
-from divisi.views import UploadMsczFile, FormatMsczFile
+from divisi.views import PartFormatterViewSet
 
-router = routers.DefaultRouter()
-router.register(r"ensembles", EnsembleViewSet, "ensemble")
-router.register(r"arrangements", ArrangementViewSet, "arrangement")
-router.register(r"arrangements-by-id", ArrangementByIdViewSet, "arrangement-by-id")
-router.register(r"arrangementversions", ArrangementVersionViewSet, "arrangementversion")
+divisi_router = routers.DefaultRouter()
+divisi_router.register(r"part-formatter", PartFormatterViewSet, "part-formatter")
+
+ensembles_router = routers.DefaultRouter()
+ensembles_router.register(r"ensembles", EnsembleViewSet, "ensemble")
+ensembles_router.register(r"arrangements", ArrangementViewSet, "arrangement")
+ensembles_router.register(r"arrangements-by-id", ArrangementByIdViewSet, "arrangement-by-id")
+ensembles_router.register(r"arrangementversions", ArrangementVersionViewSet, "arrangementversion")
+
 
 urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
-    path("api/upload-mscz/", UploadMsczFile.as_view(), name="upload-mscz"),
-    path("api/format-mscz/", FormatMsczFile.as_view(), name="format-mscz"),
-    path(
-        "api/upload-arrangement-version/",
-        UploadArrangementVersionMsczView.as_view(),
-        name="upload-arrangement-version",
-    ),
-    path(
-        "api/get-download-links/",
-        ArrangementVersionDownloadLinks.as_view(),
-        name="get arrangement version download links",
-    ),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
-    path("api/", include(router.urls)),
+    path("api/", include((divisi_router.urls, "divisi"), namespace="divisi")),
+    path("api/", include((ensembles_router.urls, "ensembles"), namespace="ensembles")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

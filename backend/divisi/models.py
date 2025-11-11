@@ -1,9 +1,6 @@
 from django.db import models
-from django.conf import settings
 from django.core.files.storage import default_storage
 
-import os
-import shutil
 import uuid
 
 import logging
@@ -43,13 +40,19 @@ class UploadSession(models.Model):
 
     def delete(self, **kwargs):
         # delete files when session is deleted
-        paths_to_delete = [self.mscz_file_key, self.output_file_key, self.output_file_key[:-4] + "pdf"]
+        paths_to_delete = [
+            self.mscz_file_key,
+            self.output_file_key,
+            self.output_file_key[:-4] + "pdf",
+        ]
         for path in paths_to_delete:
             default_storage.delete(path)
 
         super().delete(**kwargs)
 
 
+# TODO[]: This model is unused ... Was initially going to be used for having the standalone pat exporter export parts,
+# I dont think I will do this, but will leave it bc we dont need another migration
 class ProcessedFile(models.Model):
     session = models.ForeignKey(
         UploadSession, on_delete=models.CASCADE, related_name="files"

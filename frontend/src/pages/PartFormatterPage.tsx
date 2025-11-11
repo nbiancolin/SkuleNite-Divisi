@@ -52,7 +52,7 @@ export default function PartFormatterPage() {
     formData.append("file", file);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/upload-mscz/`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/part-formatter/upload_mscz/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -83,7 +83,7 @@ export default function PartFormatterPage() {
     setMsczUrl(null);
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/format-mscz/`, {
+      const response = await axios.post(`${API_BASE_URL}/part-formatter/format_mscz/`, {
         session_id: sessionId,
         style: selectedStyle,
         composer: composer,

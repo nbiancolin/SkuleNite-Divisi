@@ -1,16 +1,21 @@
+import tempfile
+import os
+import re
+from celery import shared_task
 import subprocess
-import os, json, base64, subprocess, binascii
+import json, base64, subprocess
 
 from django.core.files.storage import default_storage
-import re
 from django.core.files.base import ContentFile
-import tempfile
+
+from divisi.models import UploadSession
+
+
 from logging import getLogger
 
-logger = getLogger("export")
+LOGGER = getLogger("divisi_export")
 
-
-def export_mscz_to_pdf_score(input_file_path: str, output_path: str):
+def _export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     """Uses Musescore to render the provided musescore file and output a pdf of the score"""
     assert output_path.endswith(".pdf"), (
         "ERR: export_mscz_to_pdf_score was called with a non-pdf output file"
@@ -63,10 +68,10 @@ def export_mscz_to_musicxml(input_key, output_key):
             return {"status": "success", "output": output_key}
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or b"").decode("utf-8", errors="replace")
-            logger.error("MuseScore export failed: %s", stderr)
+            LOGGER.error("MuseScore export failed: %s", stderr)
             return {"status": "error", "details": stderr}
         except Exception as e:
-            logger.exception("MusicXML export error")
+            LOGGER.exception("MusicXML export error")
             return {"status": "error", "details": str(e)}
 
 
@@ -115,7 +120,7 @@ def export_score_and_parts_ms4_storage_scoreparts(
         try:
             first = base64.b64decode(candidate)
         except Exception as e:
-            logger.warning("base64 decode (first) failed: %s", e)
+            LOGGER.warning("base64 decode (first) failed: %s", e)
             return None
 
         # If we already have a PDF
@@ -155,7 +160,7 @@ def export_score_and_parts_ms4_storage_scoreparts(
             ):
                 dst.write(src.read())
         except Exception as e:
-            logger.exception("Failed to download input file from storage")
+            LOGGER.exception("Failed to download input file from storage")
             return {"status": "error", "details": f"Download error: {e}"}
 
         # run MuseScore with --score-parts-pdf
@@ -173,10 +178,10 @@ def export_score_and_parts_ms4_storage_scoreparts(
             data = json.loads(json_text)
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or b"").decode("utf-8", errors="replace")
-            logger.error("MuseScore CLI failed: %s", stderr)
+            LOGGER.error("MuseScore CLI failed: %s", stderr)
             return {"status": "error", "details": stderr}
         except Exception as e:
-            logger.exception("Failed to run MuseScore --score-parts-pdf or parse JSON")
+            LOGGER.exception("Failed to run MuseScore --score-parts-pdf or parse JSON")
             return {"status": "error", "details": f"MuseScore/JSON error: {e}"}
 
         # now decode and save PDFs
@@ -191,9 +196,9 @@ def export_score_and_parts_ms4_storage_scoreparts(
                 try:
                     default_storage.save(key, ContentFile(pdf_bytes))
                     written.append(key)
-                    logger.info("Saved score-only: %s", key)
+                    LOGGER.info("Saved score-only: %s", key)
                 except Exception as e:
-                    logger.exception("Failed to save score-only PDF")
+                    LOGGER.exception("Failed to save score-only PDF")
 
         # 2) combined score + parts: check a few possible keys (handle double-encoding bug)
         for combined_key in ("scoreFullBin", "fullScoreBin", "fullScore", "scoreFull"):
@@ -204,9 +209,9 @@ def export_score_and_parts_ms4_storage_scoreparts(
                     try:
                         default_storage.save(combined_key_name, ContentFile(pdf_bytes))
                         written.append(combined_key_name)
-                        logger.info("Saved combined score+parts: %s", combined_key_name)
+                        LOGGER.info("Saved combined score+parts: %s", combined_key_name)
                     except Exception:
-                        logger.exception("Failed to save combined PDF")
+                        LOGGER.exception("Failed to save combined PDF")
                 break
 
         # 3) individual parts: either under "parts" or "partsBin"
@@ -235,12 +240,12 @@ def export_score_and_parts_ms4_storage_scoreparts(
                     name = part[0]
                     b64 = part[1]
                 else:
-                    logger.warning("Unrecognized part format, skipping: %r", part)
+                    LOGGER.warning("Unrecognized part format, skipping: %r", part)
                     continue
 
                 pdf_bytes = _decode_pdf_from_b64(b64)
                 if not pdf_bytes:
-                    logger.warning("No PDF bytes decoded for part %s", name)
+                    LOGGER.warning("No PDF bytes decoded for part %s", name)
                     continue
 
                 safe_name = (
@@ -250,9 +255,9 @@ def export_score_and_parts_ms4_storage_scoreparts(
                 key = f"{output_prefix}{stem} - {safe_name}.pdf"
                 default_storage.save(key, ContentFile(pdf_bytes))
                 written.append(key)
-                logger.info("Saved part: %s", key)
+                LOGGER.info("Saved part: %s", key)
             except Exception:
-                logger.exception("Failed to save a part")
+                LOGGER.exception("Failed to save a part")
 
         if not written:
             return {
@@ -265,3 +270,44 @@ def export_score_and_parts_ms4_storage_scoreparts(
 
 def export_score_and_parts_ms4_storage(input_key, output_prefix):
     return export_score_and_parts_ms4_storage_scoreparts(input_key, output_prefix)
+
+
+
+
+
+@shared_task
+def export_mscz_to_pdf(uuid: int):
+    """
+    Export MSCZ to PDF, store it back into storage, and return the URL.
+    """
+    session = UploadSession.objects.get(id=uuid)
+
+    # Build output key (replace .mscz with .pdf)
+    output_key = session.output_file_key.rsplit(".", 1)[0] + ".pdf"
+
+    # Create temp files for input and output
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in, \
+         tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
+
+        tmp_in_path = tmp_in.name
+        tmp_out_path = tmp_out.name
+
+        # Download from storage into tmp_in
+        with default_storage.open(session.output_file_key, "rb") as f:
+            tmp_in.write(f.read())
+            tmp_in.flush()
+
+        # Run musescore on temp files
+        res = _export_mscz_to_pdf_score(tmp_in_path, tmp_out_path)
+        if res["status"] == "error":
+            return res
+
+        # Upload generated PDF to storage
+        with open(tmp_out_path, "rb") as pdf_file:
+            default_storage.save(output_key, pdf_file)
+
+    # Clean up temp files
+    os.remove(tmp_in_path)
+    os.remove(tmp_out_path)
+
+    return {"status": "success", "output": default_storage.url(output_key)}
