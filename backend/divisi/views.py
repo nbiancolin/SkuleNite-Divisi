@@ -32,6 +32,8 @@ class PartFormatterViewSet(viewsets.ViewSet):
         default_storage.save(key, uploaded_file)
         file_url = default_storage.url(key)
 
+        #TODO: Have it extract the title from the file and display it on the FE
+
         return Response(
             {
                 "message": "File uploaded successfully",
@@ -49,13 +51,13 @@ class PartFormatterViewSet(viewsets.ViewSet):
         serializer = FormatMsczFileSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        output_path, mscz_url = serializer.save()
+        res = serializer.save()
 
         return Response(
             {
                 "message": "File processed successfully.",
-                "score_download_url": request.build_absolute_uri(output_path),
-                "mscz_download_url": request.build_absolute_uri(mscz_url),
+                "score_download_url": request.build_absolute_uri(res["output_path"]),
+                "mscz_download_url": request.build_absolute_uri(res["mscz_url"]),
             },
             status=status.HTTP_200_OK,
         )

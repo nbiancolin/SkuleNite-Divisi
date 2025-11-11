@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework.exceptions import APIException
 from divisi.models import UploadSession
 from divisi.tasks import format_upload_session, export_mscz_to_pdf
 
@@ -19,8 +20,6 @@ class FormatMsczFileSerializer(serializers.Serializer):
     default_error_messages = {
         "missing_session": "Session_id field must be provided",
         "invalid_session": "Session id {session_id} does not exist",
-        "part_formatter_error": "Error with part formatter {details}",
-        "export_error": "Error with export {details}",
     }
 
     session_id = serializers.UUIDField(required=True)
@@ -75,13 +74,13 @@ class FormatMsczFileSerializer(serializers.Serializer):
             if res["status"] != "success":
                 raise Exception(f"Part Formatter Error: {res['details']}")
         except Exception as e:
-            session = UploadSession.objects.get(id=session_id)
-            self.fail("part_formatter_error", details=str(e))
+            raise APIException(detail=f"Part formatter failed: {str(e)}")
 
         res = export_mscz_to_pdf(session_id)
 
         if res["status"] != "success":
-            self.fail("export_error", details=res["details"])
+            raise APIException(detail=f"Export failed: {res.get('details')}")
+
 
         # do success stuff
         session = UploadSession.objects.get(id=session_id)

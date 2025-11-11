@@ -30,11 +30,11 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: Format
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
             tmp_out_path = tmp_out.name
 
-        format_result = format_mscz(tmp_in_path, tmp_out_path, formatting_params)
+        success = format_mscz(tmp_in_path, tmp_out_path, formatting_params)
 
-        if format_result.get("status") == "error":
-            LOGGER.error("Error from musescore_part_formatter", extra=format_result)
-            return format_result
+        if success is False:
+            LOGGER.error("Error from musescore_part_formatter")
+            return {"status": "error", "details": "unknown part formatter error"}
 
         # upload generated file back to storage at session.output_file_key
         with open(tmp_out_path, "rb") as out_f:
@@ -44,7 +44,7 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: Format
         LOGGER.info(f"Successfully formatted file: {output_key}")
         return {"status": "success", "output": output_key}
     except Exception as e:
-        LOGGER.error(f"Error on formatting file f{input_key}, {str(e)}")
+        LOGGER.error(f"Error on formatting file {input_key}, {str(e)}", exc_info=True)
         return {"status": "error", "details": str(e)}
     finally:
         # cleanup temp files if created

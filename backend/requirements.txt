@@ -15,7 +15,7 @@ music21>=9.7; python_version >= '3.10'
 numpy
 converter21>=3.5
 musicdiff
-git+https://github.com/nbiancolin/musescore-part-formatter.git@v1.0.2#egg=musescore_part_formatter
+git+https://github.com/nbiancolin/musescore-part-formatter.git@v1.0.3#egg=musescore_part_formatter
 pytest 
 pytest-django 
 pytest-cov
