@@ -18,7 +18,7 @@ class ArrangementFactory(DjangoModelFactory):
     title = factory.Sequence(lambda n: f"Arrangement {n}")
     subtitle = "Test Subtitle"
     composer = "Composer Name"
-    mvt_no = "I"
+    mvt_no = "1"
     style = "Jazz"
 
 

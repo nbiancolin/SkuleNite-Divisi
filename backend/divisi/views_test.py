@@ -5,15 +5,9 @@
 import pytest
 from unittest.mock import patch
 
-from rest_framework.test import APIClient
 from django.urls import reverse
 
 from divisi.models import UploadSession
-
-@pytest.fixture(scope="module")
-def client():
-    yield APIClient()
-
 
 def get_format_payload(session_id):
     return {
