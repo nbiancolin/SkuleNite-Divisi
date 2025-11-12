@@ -52,8 +52,6 @@ class ArrangementSerializer(serializers.ModelSerializer):
 class EnsembleSerializer(serializers.ModelSerializer):
     # TODO[Eventually]: Add an "owner" field to say who owns the ensemble
 
-    arrangements = ArrangementSerializer(many=True, read_only=True)
-
     class Meta:
         model = Ensemble
         fields = ["id", "name", "slug", "arrangements"]

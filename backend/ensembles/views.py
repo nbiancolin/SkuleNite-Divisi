@@ -16,8 +16,7 @@ from .serializers import (
     ComputeDiffSerializer,
 )
 from logging import getLogger
-
-logger = getLogger("EnsembleViews")
+from django.db.models.expressions import RawSQL
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -29,7 +28,20 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     def arrangements(self, request, slug=None):
         """Return all arrangements for a specific ensemble."""
         ensemble = self.get_object()
-        arrangements = ensemble.arrangements.all()
+        arrangements = (
+            ensemble.arrangements
+            .annotate(
+                first_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
+                    []
+                ),
+                second_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
+                    []
+                ),
+            )
+            .order_by("first_num", "second_num", "mvt_no")
+        )
         serializer = ArrangementSerializer(arrangements, many=True)
         return Response(serializer.data)
 
