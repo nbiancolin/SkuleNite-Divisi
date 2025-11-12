@@ -33,11 +33,12 @@ const ArrangementsPage = () => {
       try {
         setLoading(true);
         // Fetch both ensemble details and arrangements
-        const [ensembleData] = await Promise.all([
+        const [ensembleData, arrangementData] = await Promise.all([
           apiService.getEnsemble(slug),
+          apiService.getEnsembleArrangements(slug),
         ]);
         setEnsemble(ensembleData);
-        setArrangements(ensembleData.arrangements);
+        setArrangements(arrangementData);
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
