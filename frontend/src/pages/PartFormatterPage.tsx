@@ -41,6 +41,15 @@ export default function PartFormatterPage() {
   const handleUpload = async () => {
     if (!file) return;
 
+    const allowedTypes = [".mscz"];
+    const fileExtension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+
+    if (!allowedTypes.includes(fileExtension)) {
+      setError("Invalid file type. Please upload a .mscz file.");
+      setIsUploading(false);
+      return;
+    }
+
     setIsUploading(true);
     setError(null);
     setDownloadUrl(null);
