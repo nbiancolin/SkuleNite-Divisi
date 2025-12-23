@@ -113,6 +113,19 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             response_data["score_parts_pdf_link"] = None
 
         return Response(response_data)
+    
+    @action(detail=True, methods=["post"])
+    def trigger_audio_export(self, request, pk=None):
+        version = self.get_object()
+
+        if version.audio_state == ArrangementVersion.AudioStatus.PROCESSING:
+            return Response({}, status=status.HTTP_102_PROCESSING)
+
+        assert version.audio_state == ArrangementVersion.AudioStatus.NONE
+
+        # Trigger the export
+
+        #If the endpoint is hit a
 
 class ComputeDiffView(APIView):
     def post(self, request, *args, **kwargs):

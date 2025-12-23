@@ -29,6 +29,7 @@ import {
   IconRefresh, 
   IconArrowLeft, 
   IconDownload, 
+  IconMusic,
   IconUpload, 
   IconEdit, 
   IconCheck, 
@@ -72,6 +73,7 @@ export default function ArrangementDisplay() {
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [audioUrl, setAudioUrl] = useState<string>("");
   const [exportLoading, setExportLoading] = useState<boolean>(true);
   const [exportError, setExportError] = useState<boolean>(false);
 
@@ -108,6 +110,7 @@ export default function ArrangementDisplay() {
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
+      setAudioUrl(data.mp3_link)
       setExportLoading(data.is_processing)
       setExportError(data.error);
     } catch (err) {
@@ -544,6 +547,21 @@ export default function ArrangementDisplay() {
                     {arrangement.latest_version && !exportLoading && !exportError && (
                       <>
                       <Button
+                      component={Link}
+                      target="_blank"
+                      to={scoreUrl} //TODO: This
+                      onClick={(e) => {
+                        //if state is ready, proceed to link
+                        //if state is none, trigger export
+                        //if state is processing, show processing
+                      }}
+                      variant="filled"
+                      size="sm"
+                      rightSection={<IconMusic size={16} />} 
+                    >
+                      Play Midi Track
+                    </Button>
+                    <Button
                       component={Link}
                       target="_blank"
                       to={scoreUrl}

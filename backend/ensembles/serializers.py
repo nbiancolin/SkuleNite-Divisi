@@ -17,9 +17,12 @@ VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
+
+    audio_status = serializers.CharField(source='get_audio_status_display', read_only=True)
+
     class Meta:
         model = ArrangementVersion
-        fields = ["id", "version_label", "timestamp", "is_latest"]
+        fields = ["id", "version_label", "timestamp", "is_latest", "audio_status"]
 
 
 class ArrangementSerializer(serializers.ModelSerializer):
