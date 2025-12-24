@@ -18,6 +18,8 @@ from .serializers import (
 from logging import getLogger
 from django.db.models.expressions import RawSQL
 
+from ensembles.tasks import export_arrangement_version
+
 
 class EnsembleViewSet(viewsets.ModelViewSet):
     queryset = Ensemble.objects.all()
@@ -100,6 +102,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "score_parts_pdf_link": request.build_absolute_uri(
                 version.score_parts_pdf_url
             ),
+            "mp3_link": request.build_absolute_uri(version.audio_file_url)
         }
 
         # Only include URLs for files that actually exist
@@ -117,15 +120,21 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def trigger_audio_export(self, request, pk=None):
         version = self.get_object()
+        
+        match version.audio_state:
+            case ArrangementVersion.AudioStatus.NONE:
+                # Trigger export
+                version.audio_state = ArrangementVersion.AudioStatus.PROCESSING
+                version.save(update_fields=["audio_state"])
+                export_arrangement_version.delay(version.id, action="mp3")
+                return Response({}, status=status.HTTP_202_ACCEPTED)
+            case ArrangementVersion.AudioStatus.PROCESSING:
+                return Response({}, status=status.HTTP_102_PROCESSING)
+            case ArrangementVersion.AudioStatus.COMPLETE:
+                return Response({"mp3_link": request.build_absolute_uri(version.audio_file_url)})
+            case ArrangementVersion.AudioStatus.ERROR:
+                return Response({"error": "Error on export of audio file"}, status=500)
 
-        if version.audio_state == ArrangementVersion.AudioStatus.PROCESSING:
-            return Response({}, status=status.HTTP_102_PROCESSING)
-
-        assert version.audio_state == ArrangementVersion.AudioStatus.NONE
-
-        # Trigger the export
-
-        #If the endpoint is hit a
 
 class ComputeDiffView(APIView):
     def post(self, request, *args, **kwargs):

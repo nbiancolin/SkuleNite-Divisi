@@ -29,6 +29,44 @@ def _export_mscz_to_pdf_score(input_file_path: str, output_path: str):
         return {"status": "error", "details": str(e)}
 
 
+def export_mscz_to_mp3(input_key, output_key):
+    env = os.environ.copy()
+    env.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # Download input
+            temp_input = os.path.join(temp_dir, "input.mscz")
+            with (
+                default_storage.open(input_key, "rb") as src,
+                open(temp_input, "wb") as dst,
+            ):
+                dst.write(src.read())
+
+            # Output path in temp
+            temp_output = os.path.join(temp_dir, "output.mp3")
+
+            # Run MuseScore
+            subprocess.run(
+                ["musescore", temp_input, "-o", temp_output],
+                check=True,
+                capture_output=True,
+                env=env,
+            )
+
+            # Save to storage
+            with open(temp_output, "rb") as f:
+                default_storage.save(output_key, ContentFile(f.read()))
+
+            return {"status": "success", "output": output_key}
+        except subprocess.CalledProcessError as e:
+            stderr = (e.stderr or b"").decode("utf-8", errors="replace")
+            LOGGER.error("MuseScore export failed: %s", stderr)
+            return {"status": "error", "details": stderr}
+        except Exception as e:
+            LOGGER.exception("Mp3 export error")
+            return {"status": "error", "details": str(e)}
+
 def export_mscz_to_musicxml(input_key, output_key):
     """
     Export a MusicXML file from MuseScore and save it to Django storage.
