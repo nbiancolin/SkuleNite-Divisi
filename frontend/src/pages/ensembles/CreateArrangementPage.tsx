@@ -35,7 +35,8 @@ export default function CreateArrangementPage() {
     id: 0,
     arrangementId: 0,
     versionNum: "0.0.0",
-    timestamp: ""
+    timestamp: "",
+    audio_state: "none",
   },
   latest_version_num: "N/A",
 })

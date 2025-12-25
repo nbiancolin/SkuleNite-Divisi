@@ -25,7 +25,7 @@ from ensembles.factories import (
 
 @pytest.mark.django_db
 def test_arrangement_version_serializer(arrangement_versions):
-    EXPECTED_FIELDS = ["id", "version_label", "timestamp", "is_latest"]
+    EXPECTED_FIELDS = ["id", "version_label", "timestamp", "is_latest", "audio_state"]
 
     v1, _ = arrangement_versions
     data = ArrangementVersionSerializer(v1).data
