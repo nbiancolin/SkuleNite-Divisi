@@ -35,6 +35,8 @@ def test_arrangement_version_serializer(arrangement_versions):
     EXPECTED_FIELDS.remove("timestamp")
     assert "timestamp" in data.keys()
     assert parse_datetime(data["timestamp"]) == v1.timestamp
+    assert data["audio_state"] == "none"
+    EXPECTED_FIELDS.remove("audio_state")
 
     for field in EXPECTED_FIELDS:
         assert field in data
