@@ -74,6 +74,7 @@ export default function ArrangementDisplay() {
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
   const [audioUrl, setAudioUrl] = useState<string>("");
+  const [audioActionLoading, setAudioActionLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState<boolean>(true);
   const [exportError, setExportError] = useState<boolean>(false);
 
@@ -100,7 +101,53 @@ export default function ArrangementDisplay() {
   const [diffUrl, setDiffUrl] = useState<string>('');
   const [diffError, setDiffError] = useState<string>('');
 
+  const audioState = arrangement?.latest_version?.audio_state ?? "none";
+
   const navigate = useNavigate();
+
+  const pollAudioState = async (arrangementId: number) => {
+    let done = false;
+
+    while (!done) {
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const data = await apiService.getArrangementById(arrangementId);
+
+      const state = data.latest_version?.audio_state;
+
+      if (state === "complete" || state === "error") {
+        setArrangement(data); // update React once at the end
+        done = true;
+      }
+    }
+  };
+
+
+  const handleAudioButtonClick = async () => {
+    if (!arrangement?.latest_version) return;
+
+    const { id, audio_state } = arrangement.latest_version;
+
+    if (audio_state === "none") {
+      setAudioActionLoading(true);
+      await apiService.triggerAudioExport(id);
+      await pollAudioState(arrangement.id);
+      setAudioActionLoading(false);
+      return;
+    }
+
+    if (audio_state === "complete") {
+      window.open(audioUrl, "_blank");
+      return;
+    }
+
+    if (audio_state === "error") {
+      alert("There was an error exporting audio. Tell Nick!");
+    }
+  };
+
+
+
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
@@ -545,69 +592,50 @@ export default function ArrangementDisplay() {
                     </Button>
 
                     {arrangement.latest_version && !exportLoading && !exportError && (
-                      <>
+                    <>
                       <Button
-                      onClick={(e) => {
-                        e.preventDefault();
-                        switch(arrangement.latest_version.audio_state) {
-                          case "none":
-                            //trigger export
-                            apiService.triggerAudioExport(arrangement.latest_version.id)
-                            fetchArrangement(arrangement.id)
-                            while (arrangement.latest_version.audio_state === "processing") {
-                              //sleep
-                              fetchArrangement(arrangement.id)
-                            }
-                            break;
-                          case "processing":
-                            //gray out button and show processing text
-                            //poll until state is complete
-                            break;
-                          case "complete":
-                            window.open(audioUrl, '_blank');
-                            break;
-                          case "error":
-                            //gray out button and show error
-                            alert("There was an error exporting. Tell Nick!")
-                        }
-                      }}
-                      variant="filled"
-                      size="sm"
-                      rightSection={<IconMusic size={16} />} 
-                      disabled={arrangement.latest_version.audio_state === "processing" || arrangement.latest_version.audio_state == "error"}
-                    >
-                      Play Midi Track
-                    </Button>
-                    <Button
-                      component={Link}
-                      target="_blank"
-                      to={scoreUrl}
-                      variant="filled"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />} 
-                    >
-                      Download Score & Parts
-                    </Button>
-                    <Button
-                      component={Link}
-                      target="_blank"
-                      to={msczUrl}
-                      variant="filled"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />} 
-                    >
-                      Download Formatted MSCZ file
-                    </Button>
-                    <Button
-                      component={Link}
-                      target="_blank"
-                      to={rawMsczUrl}
-                      variant="subtle"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />}
-                    >
-                      Download Raw MSCZ file
-                    </Button>
+                        onClick={handleAudioButtonClick}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconMusic size={16} />}
+                        loading={audioState === "processing" || audioActionLoading}
+                        disabled={audioState === "processing" || audioState === "error"}
+                      >
+                        {audioState === "none" && "Generate Audio"}
+                        {audioState === "processing" && "Generating Audio…"}
+                        {audioState === "complete" && "Play Midi Track"}
+                        {audioState === "error" && "Audio Error"}
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={scoreUrl}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />} 
+                      >
+                        Download Score & Parts
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={msczUrl}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />} 
+                      >
+                        Download Formatted MSCZ file
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={rawMsczUrl}
+                        variant="subtle"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />}
+                      >
+                        Download Raw MSCZ file
+                      </Button>
                     </>
                     )}
 

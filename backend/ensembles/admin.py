@@ -21,7 +21,7 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
         for obj in queryset:
             obj.delete()
 
-    list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp")
+    list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp", "audio_state")
 
     actions = (
         "re_export_version",
