@@ -17,9 +17,12 @@ VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
+
+    audio_state = serializers.CharField(source='get_audio_state_display', read_only=True)
+
     class Meta:
         model = ArrangementVersion
-        fields = ["id", "version_label", "timestamp", "is_latest"]
+        fields = ["id", "version_label", "timestamp", "is_latest", "audio_state"]
 
 
 class ArrangementSerializer(serializers.ModelSerializer):
@@ -51,6 +54,8 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
 class EnsembleSerializer(serializers.ModelSerializer):
     # TODO[Eventually]: Add an "owner" field to say who owns the ensemble
+
+    arrangements = ArrangementSerializer(many=True, read_only=True)
 
     class Meta:
         model = Ensemble

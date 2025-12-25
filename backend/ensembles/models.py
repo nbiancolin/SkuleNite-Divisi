@@ -115,8 +115,19 @@ class ArrangementVersion(models.Model):
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
+    
+    #TODO[SC-241]: Convert these fields to a state field
     is_processing = models.BooleanField(default=True)
     error_on_export = models.BooleanField(default=False)
+
+    class AudioStatus(models.TextChoices):
+        NONE = "N", "none"
+        PROCESSING = "P", "processing"
+        COMPLETE = "C", "complete"
+        ERROR = "E", "error"
+
+
+    audio_state = models.CharField(max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE)
 
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
@@ -139,6 +150,11 @@ class ArrangementVersion(models.Model):
     def mxl_file_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.musicxml"
+    
+    @property
+    def audio_file_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.mp3"
 
     @property
     def score_parts_pdf_key(self) -> str:
@@ -161,6 +177,10 @@ class ArrangementVersion(models.Model):
     @property
     def score_parts_pdf_url(self) -> str:
         return default_storage.url(self.score_parts_pdf_key)
+
+    @property
+    def audio_file_url(self) -> str:
+        return default_storage.url(self.audio_file_key)
 
     def _bump_version_label(self, version_type, old_version_label):
         major, minor, patch = map(int, old_version_label.split("."))

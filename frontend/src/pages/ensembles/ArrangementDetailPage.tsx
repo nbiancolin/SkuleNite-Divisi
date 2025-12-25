@@ -29,6 +29,7 @@ import {
   IconRefresh, 
   IconArrowLeft, 
   IconDownload, 
+  IconMusic,
   IconUpload, 
   IconEdit, 
   IconCheck, 
@@ -72,6 +73,8 @@ export default function ArrangementDisplay() {
   const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [audioUrl, setAudioUrl] = useState<string>("");
+  const [audioActionLoading, setAudioActionLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState<boolean>(true);
   const [exportError, setExportError] = useState<boolean>(false);
 
@@ -98,7 +101,53 @@ export default function ArrangementDisplay() {
   const [diffUrl, setDiffUrl] = useState<string>('');
   const [diffError, setDiffError] = useState<string>('');
 
+  const audioState = arrangement?.latest_version?.audio_state ?? "none";
+
   const navigate = useNavigate();
+
+  const pollAudioState = async (arrangementId: number) => {
+    let done = false;
+
+    while (!done) {
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const data = await apiService.getArrangementById(arrangementId);
+
+      const state = data.latest_version?.audio_state;
+
+      if (state === "complete" || state === "error") {
+        setArrangement(data); // update React once at the end
+        done = true;
+      }
+    }
+  };
+
+
+  const handleAudioButtonClick = async () => {
+    if (!arrangement?.latest_version) return;
+
+    const { id, audio_state } = arrangement.latest_version;
+
+    if (audio_state === "none") {
+      setAudioActionLoading(true);
+      await apiService.triggerAudioExport(id);
+      await pollAudioState(arrangement.id);
+      setAudioActionLoading(false);
+      return;
+    }
+
+    if (audio_state === "complete") {
+      window.open(audioUrl, "_blank");
+      return;
+    }
+
+    if (audio_state === "error") {
+      alert("There was an error exporting audio. Tell Nick!");
+    }
+  };
+
+
+
 
   const getDownloadLinks = async (arrangementVersionId: number) => {
     try {
@@ -108,6 +157,7 @@ export default function ArrangementDisplay() {
       setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
+      setAudioUrl(data.mp3_link)
       setExportLoading(data.is_processing)
       setExportError(data.error);
     } catch (err) {
@@ -542,37 +592,50 @@ export default function ArrangementDisplay() {
                     </Button>
 
                     {arrangement.latest_version && !exportLoading && !exportError && (
-                      <>
+                    <>
                       <Button
-                      component={Link}
-                      target="_blank"
-                      to={scoreUrl}
-                      variant="filled"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />} 
-                    >
-                      Download Score & Parts
-                    </Button>
-                    <Button
-                      component={Link}
-                      target="_blank"
-                      to={msczUrl}
-                      variant="filled"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />} 
-                    >
-                      Download Formatted MSCZ file
-                    </Button>
-                    <Button
-                      component={Link}
-                      target="_blank"
-                      to={rawMsczUrl}
-                      variant="subtle"
-                      size="sm"
-                      rightSection={<IconDownload size={16} />}
-                    >
-                      Download Raw MSCZ file
-                    </Button>
+                        onClick={handleAudioButtonClick}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconMusic size={16} />}
+                        loading={audioState === "processing" || audioActionLoading}
+                        disabled={audioState === "processing" || audioState === "error"}
+                      >
+                        {audioState === "none" && "Generate Audio"}
+                        {audioState === "processing" && "Generating Audio…"}
+                        {audioState === "complete" && "Play Midi Track"}
+                        {audioState === "error" && "Audio Error"}
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={scoreUrl}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />} 
+                      >
+                        Download Score & Parts
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={msczUrl}
+                        variant="filled"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />} 
+                      >
+                        Download Formatted MSCZ file
+                      </Button>
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={rawMsczUrl}
+                        variant="subtle"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />}
+                      >
+                        Download Raw MSCZ file
+                      </Button>
                     </>
                     )}
 

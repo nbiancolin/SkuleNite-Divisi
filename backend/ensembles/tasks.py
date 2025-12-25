@@ -4,6 +4,7 @@ from divisi.tasks import format_arrangement_version
 from divisi.tasks.export import (
     export_score_and_parts_ms4_storage,
     export_mscz_to_musicxml,
+    export_mscz_to_mp3,
 )
 from .models import ArrangementVersion, Diff, ExportFailureLog
 from logging import getLogger
@@ -17,6 +18,8 @@ import musicdiff
 import traceback
 
 logger = getLogger("export_tasks")
+
+#TODO[SC-XXX]: Move Musescore export tasks to a common "lib" location (divisi/lib/musescore_api.py or smth)
 
 @shared_task
 def export_arrangement_version(version_id: int, action: str = "score"):
@@ -129,6 +132,52 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 
                 return {"status": "error", "details": str(e)}
 
+        case "mp3":
+            try:
+                input_key = version.mscz_file_key
+                if not default_storage.exists(input_key):
+                    logger.error(f"No input file found for version {version_id}")
+                    version.audio_state = ArrangementVersion.AudioStatus.ERROR
+                    version.save(update_fields=["audio_state"])
+
+                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
+                    return {
+                        "status": "error",
+                        "details": "No input file found when exporting MP3",
+                    }
+
+                output_key = version.audio_file_key
+                if default_storage.exists(output_key):
+                    logger.info(f"[EXPORT] - mp3 file already exists for version id {version_id}, returning.")
+                    return {}
+
+                version.audio_state = ArrangementVersion.AudioStatus.PROCESSING
+                version.save(update_fields=["audio_state"])
+                res = export_mscz_to_mp3(input_key, output_key)
+
+                if res["status"] != "error":
+                    version.audio_state = ArrangementVersion.AudioStatus.COMPLETE
+                    version.save(update_fields=["audio_state"])
+                    print("Status was Success")
+                else:
+                    version.audio_state = ArrangementVersion.AudioStatus.ERROR
+                    version.save(update_fields=["audio_state"])
+                    print("Status was not success")
+                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=res["details"])
+                
+                return res
+                
+
+            except Exception as e:
+                logger.error(
+                    f"Unexpected error exporting version {version_id}: {str(e)}"
+                )
+                version.audio_state = ArrangementVersion.AudioStatus.ERROR
+                version.save(update_fields=["audio_state"])
+
+                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+
+                return {"status": "error", "details": str(e)}
 
 @shared_task
 def prep_and_export_mscz(version_id):
