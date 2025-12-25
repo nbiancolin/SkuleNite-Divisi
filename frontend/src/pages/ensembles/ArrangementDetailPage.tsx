@@ -547,17 +547,34 @@ export default function ArrangementDisplay() {
                     {arrangement.latest_version && !exportLoading && !exportError && (
                       <>
                       <Button
-                      component={Link}
-                      target="_blank"
-                      to={scoreUrl} //TODO: This
                       onClick={(e) => {
-                        //if state is ready, proceed to link
-                        //if state is none, trigger export
-                        //if state is processing, show processing
+                        e.preventDefault();
+                        switch(arrangement.latest_version.audio_state) {
+                          case "none":
+                            //trigger export
+                            apiService.triggerAudioExport(arrangement.latest_version.id)
+                            fetchArrangement(arrangement.id)
+                            while (arrangement.latest_version.audio_state === "processing") {
+                              //sleep
+                              fetchArrangement(arrangement.id)
+                            }
+                            break;
+                          case "processing":
+                            //gray out button and show processing text
+                            //poll until state is complete
+                            break;
+                          case "complete":
+                            window.open(audioUrl, '_blank');
+                            break;
+                          case "error":
+                            //gray out button and show error
+                            alert("There was an error exporting. Tell Nick!")
+                        }
                       }}
                       variant="filled"
                       size="sm"
                       rightSection={<IconMusic size={16} />} 
+                      disabled={arrangement.latest_version.audio_state === "processing" || arrangement.latest_version.audio_state == "error"}
                     >
                       Play Midi Track
                     </Button>

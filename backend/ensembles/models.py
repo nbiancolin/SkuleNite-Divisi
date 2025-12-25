@@ -121,10 +121,10 @@ class ArrangementVersion(models.Model):
     error_on_export = models.BooleanField(default=False)
 
     class AudioStatus(models.TextChoices):
-        NONE = "N", "None"
-        PROCESSING = "P", "Processing"
-        COMPLETE = "C", "Complete"
-        ERROR = "E", "Error"
+        NONE = "N", "none"
+        PROCESSING = "P", "processing"
+        COMPLETE = "C", "complete"
+        ERROR = "E", "error"
 
 
     audio_state = models.CharField(max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE)

@@ -5,6 +5,7 @@ export interface ArrangementVersion {
   arrangementId: number;
   versionNum: string;
   timestamp: string;
+  audio_state: 'none' | 'processing' | 'complete' | 'error';
 }
 
 export interface Arrangement {
@@ -354,4 +355,19 @@ export const apiService = {
     return await response.json();
   },
 
+  async triggerAudioExport(versionId: number) {
+    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/trigger_audio_export/`, {
+      method: 'POST',
+      
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
 };
+

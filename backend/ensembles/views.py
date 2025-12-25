@@ -71,7 +71,7 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
 
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
     queryset = ArrangementVersion.objects.all()
-    serializer_class = ArrangementSerializer
+    serializer_class = ArrangementVersionSerializer
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_arrangement_version(self, request):

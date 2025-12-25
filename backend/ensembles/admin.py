@@ -63,7 +63,7 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
     @admin.action(description="Manually Export MusicXML file")
     def manually_export_musicxml(self, request, queryset):
         for v in queryset:
-            export_arrangement_version(v.id, action="mxl")
+            export_arrangement_version.delay(v.id, action="mxl")
         messages.success(request, f"Queued {queryset.count()} versions for MXL export")
 
     @admin.action(description="Manually compute diff of two scores")
@@ -99,6 +99,20 @@ class ArrangementVersionAdmin(admin.ModelAdmin):
 
         res = compute_diff(d.id)
         messages.success(request, f"Res: {res}")
+
+    @admin.action(description="Re-trigger audio export of version")
+    def re_export_audio(self, request, queryset):
+        if len(queryset) != 1:
+            messages.warning(
+                request, "Can only export audio of one score at a time."
+            )
+            return
+        
+        export_arrangement_version.delay(queryset[0].pk, action="mp3")
+        messages.success(
+                request,
+                f'Successfully re-triggered audio export for "{queryset[0].arrangement.title}" v{queryset[0].version_label}',
+            )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
