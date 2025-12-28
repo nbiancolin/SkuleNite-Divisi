@@ -76,6 +76,22 @@ export default function UploadArrangementVersionPage() {
     return `${major}.${minor}.${patch}`;
   };
 
+  function getCsrfToken(): string | null {
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
   useEffect(() => {
       const fetchData = async () => {
         try {
@@ -106,10 +122,12 @@ export default function UploadArrangementVersionPage() {
     formData.append("num_measures_per_line_part", measuresPerLinePart);
     formData.append("num_lines_per_page", linesPerPage);
     formData.append("format_parts", enableDivisiFormatting.toString())
+    const csrf = getCsrfToken();
     try {
       const response = await axios.post(`${API_BASE_URL}/arrangementversions/upload/`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
+          'X-CSRFToken': csrf,
         },
       });
       console.log(response)
