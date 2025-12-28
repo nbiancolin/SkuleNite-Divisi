@@ -71,14 +71,16 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
                 request.session['login_redirect_url'] = next_url
         return user
     
-    def authentication_error(self, request, provider_id, error=None, exception=None, extra_context=None):
+    def on_authentication_error(self, request, provider_id, error=None, exception=None, extra_context=None):
         """
         Override to handle authentication errors and still redirect properly.
+        This replaces the deprecated authentication_error() method.
         """
         # Even if there's an error, try to redirect to frontend
         redirect_url = request.session.get('login_redirect_url')
         if redirect_url:
             from django.shortcuts import redirect
             return redirect(redirect_url)
-        return super().authentication_error(request, provider_id, error, exception, extra_context)
+        # Call the parent method which will handle the error appropriately
+        return super().on_authentication_error(request, provider_id, error, exception, extra_context)
 
