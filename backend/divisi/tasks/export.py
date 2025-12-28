@@ -10,6 +10,8 @@ from django.core.files.base import ContentFile
 
 from divisi.models import UploadSession
 
+from divisi.lib import render_score
+
 
 from logging import getLogger
 
@@ -23,7 +25,8 @@ def _export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     env = os.environ.copy()
     env.setdefault("QT_QPA_PLATFORM", "offscreen")
     try:
-        subprocess.run(["musescore", input_file_path, "-o", output_path], check=True)
+        # subprocess.run(["musescore", input_file_path, "-o", output_path], check=True) TODO remove
+        render_score(input_file_path, output_path)
         return {"status": "success", "output": output_path}
     except subprocess.CalledProcessError as e:
         return {"status": "error", "details": str(e)}
@@ -47,12 +50,14 @@ def export_mscz_to_mp3(input_key, output_key):
             temp_output = os.path.join(temp_dir, "output.mp3")
 
             # Run MuseScore
-            subprocess.run(
-                ["musescore", temp_input, "-o", temp_output],
-                check=True,
-                capture_output=True,
-                env=env,
-            )
+            render_score(temp_input, temp_output)
+            #TODO Remove
+            # subprocess.run(
+            #     ["musescore", temp_input, "-o", temp_output],
+            #     check=True,
+            #     capture_output=True,
+            #     env=env,
+            # )
 
             # Save to storage
             with open(temp_output, "rb") as f:
@@ -92,12 +97,14 @@ def export_mscz_to_musicxml(input_key, output_key):
             temp_output = os.path.join(temp_dir, "output.musicxml")
 
             # Run MuseScore
-            subprocess.run(
-                ["musescore", temp_input, "-o", temp_output],
-                check=True,
-                capture_output=True,
-                env=env,
-            )
+            render_score(temp_input, temp_output)
+            #TODO Remove
+            # subprocess.run(
+            #     ["musescore", temp_input, "-o", temp_output],
+            #     check=True,
+            #     capture_output=True,
+            #     env=env,
+            # )
 
             # Save to storage
             with open(temp_output, "rb") as f:
@@ -203,15 +210,24 @@ def export_score_and_parts_ms4_storage_scoreparts(
 
         # run MuseScore with --score-parts-pdf
         try:
+            cmd = [
+                "docker", "exec",
+                "musescore-renderer",
+                "timeout", "300",
+                "musescore",
+                "--score-parts-pdf",
+                temp_input,
+                "--exit-after-export",
+            ]
+
             proc = subprocess.run(
-                ["musescore", "--score-parts-pdf", temp_input],
+                cmd,
                 check=True,
                 capture_output=True,
-                env=env,
-                timeout=300,
+                text=True,      # avoids manual decode
             )
-            stdout_bytes = proc.stdout or b""
-            stdout_text = stdout_bytes.decode("utf-8", errors="replace")
+
+            stdout_text = proc.stdout or ""
             json_text = _extract_json_from_text(stdout_text)
             data = json.loads(json_text)
         except subprocess.CalledProcessError as e:

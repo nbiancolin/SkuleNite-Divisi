@@ -1,0 +1,1 @@
+from .musescore_headless import render_score

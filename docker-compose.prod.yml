@@ -17,5 +17,13 @@ services:
       - "127.0.0.1:6379:6379"
     restart: always
 
+  musescore-headless:
+    image: musescore.Dockerfile
+    restart: unless-stopped
+    volumes:
+      - /srv/divisi-app:/srv/divisi-app
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+    command: ["sleep", "infinity"]
 volumes:
   postgres_data:
