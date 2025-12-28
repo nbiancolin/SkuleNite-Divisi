@@ -8,7 +8,10 @@ DEBUG = False
 ALLOWED_HOSTS = ["146.190.255.211", "divisi.nbiancolin.ca"]
 CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS
 SESSION_COOKIE_DOMAIN = "divisi.nbiancolin.ca"
-CSRF_COOKIE_DOMAIN = "divisi.nbiancolin.ca"  # Match session cookie domain
+# Don't set CSRF_COOKIE_DOMAIN - let it default to None so it works with the request domain
+# This ensures cookies work properly when frontend and backend are on the same domain
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_PATH = "/"  # Ensure cookie is available for all paths
 SECURE_SSL_REDIRECT = False  # TODO: enable in production
 
 # Trust proxy headers (nginx is forwarding these)

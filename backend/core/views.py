@@ -9,6 +9,7 @@ from core.models import SiteWarning
 from django.shortcuts import redirect
 from django.conf import settings
 from django.views import View
+from django.middleware.csrf import get_token
 from urllib.parse import urlencode
 
 User = get_user_model()
@@ -21,6 +22,16 @@ class GetWarningsView(APIView):
     def get(self, request):
         warnings = SiteWarning.objects.filter(is_visible=True)
         return Response([{'text': w.text} for w in warnings])
+
+
+class GetCsrfTokenView(APIView):
+    """Get CSRF token - ensures cookie is set"""
+    permission_classes = [AllowAny]
+    
+    def get(self, request):
+        # This will ensure the CSRF cookie is set
+        token = get_token(request)
+        return Response({'csrfToken': token})
 
 
 class CurrentUserView(APIView):
