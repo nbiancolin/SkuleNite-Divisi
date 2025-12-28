@@ -5,13 +5,11 @@ from ensembles.factories import (
     ArrangementFactory,
     ArrangementVersionFactory,
     DiffFactory,
+    UserFactory,
+    EnsembleUsershipFactory
 )
 
 from rest_framework.test import APIClient
-
-@pytest.fixture(scope="module")
-def client():
-    yield APIClient()
 
 
 
@@ -58,3 +56,15 @@ def diff(arrangement_versions, django_db_blocker):
         )
 
     yield diff
+
+@pytest.fixture(scope="module")
+def user(ensemble, django_db_blocker):
+    with django_db_blocker.unblock():
+        ship = EnsembleUsershipFactory(ensemble=ensemble)
+    yield ship.user
+
+    
+
+@pytest.fixture(scope="module")
+def client():
+    yield APIClient()
