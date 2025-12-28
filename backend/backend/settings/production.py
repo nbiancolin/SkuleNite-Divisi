@@ -6,9 +6,20 @@ import os
 # -------------------------------
 DEBUG = False
 ALLOWED_HOSTS = ["146.190.255.211", "divisi.nbiancolin.ca"]
-CSRF_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS
 SESSION_COOKIE_DOMAIN = "divisi.nbiancolin.ca"
 SECURE_SSL_REDIRECT = False  # TODO: enable in production
+
+# CSRF Trusted Origins - required for Django 4.0+
+CSRF_TRUSTED_ORIGINS = [
+    'https://divisi.nbiancolin.ca',
+    'http://divisi.nbiancolin.ca',  # Remove this when SSL is enabled
+]
+
+# CSRF Cookie settings - allow JavaScript to read the cookie
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token from cookie
+CSRF_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests with credentials
+
 
 # -------------------------------
 # Logging

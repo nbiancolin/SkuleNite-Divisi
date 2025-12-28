@@ -3,11 +3,13 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
+from django.db.models import Q
 
-
-from .models import Arrangement, Ensemble, ArrangementVersion
+from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -22,14 +24,36 @@ from ensembles.tasks import export_arrangement_version
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
-    queryset = Ensemble.objects.all()
     serializer_class = EnsembleSerializer
     lookup_field = "slug"  # use slug instead of pk
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter ensembles to only those the user has access to"""
+        user = self.request.user
+        if not user.is_authenticated:
+            return Ensemble.objects.none()
+        
+        # Get ensembles where user is owner or has usership
+        return Ensemble.objects.filter(
+            Q(owner=user) | Q(userships__user=user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        """Set the owner when creating an ensemble"""
+        serializer.save(owner=self.request.user)
 
     @action(detail=True, methods=["get"], url_path="arrangements")
     def arrangements(self, request, slug=None):
         """Return all arrangements for a specific ensemble."""
         ensemble = self.get_object()
+        # Verify user has access
+        if not self._has_access(ensemble, request.user):
+            return Response(
+                {"detail": "You do not have access to this ensemble."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         arrangements = (
             ensemble.arrangements
             .annotate(
@@ -47,10 +71,40 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         serializer = ArrangementSerializer(arrangements, many=True)
         return Response(serializer.data)
 
+    def _has_access(self, ensemble, user):
+        """Check if user has access to ensemble"""
+        return ensemble.owner == user or EnsembleUsership.objects.filter(
+            ensemble=ensemble, user=user
+        ).exists()
+
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):
-    queryset = Arrangement.objects.all()
     serializer_class = ArrangementSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter arrangements to only those in ensembles the user has access to"""
+        user = self.request.user
+        if not user.is_authenticated:
+            return Arrangement.objects.none()
+        
+        # Get arrangements from ensembles where user is owner or has usership
+        return Arrangement.objects.filter(
+            Q(ensemble__owner=user) | Q(ensemble__userships__user=user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        """Verify user has access to the ensemble before creating arrangement"""
+        ensemble = serializer.validated_data['ensemble']
+        user = self.request.user
+        
+        if ensemble.owner != user and not EnsembleUsership.objects.filter(
+            ensemble=ensemble, user=user
+        ).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You do not have access to this ensemble.")
+        
+        serializer.save()
 
     @action(detail=True, methods=["get"], url_path="versions")
     def versions(self, request, *args, **kwargs):
@@ -70,8 +124,19 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
 
 
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
-    queryset = ArrangementVersion.objects.all()
     serializer_class = ArrangementVersionSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        """Filter versions to only those in ensembles the user has access to"""
+        user = self.request.user
+        if not user.is_authenticated:
+            return ArrangementVersion.objects.none()
+        
+        # Get versions from arrangements in ensembles where user is owner or has usership
+        return ArrangementVersion.objects.filter(
+            Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
+        ).distinct()
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_arrangement_version(self, request):

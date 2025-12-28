@@ -35,6 +35,13 @@ class Ensemble(models.Model):
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(choices=STYLE_CHOICES)
+    owner = models.ForeignKey(
+        'auth.User',
+        related_name='owned_ensembles',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
 
     @property
     def num_arrangements(self):
@@ -47,6 +54,28 @@ class Ensemble(models.Model):
         if not self.slug:
             self.slug = generate_unique_slug(Ensemble, self.name, instance=self)
         super().save(*args, **kwargs)
+
+
+class EnsembleUsership(models.Model):
+    """Model to track which users have access to which ensembles"""
+    user = models.ForeignKey(
+        'auth.User',
+        related_name='ensemble_userships',
+        on_delete=models.CASCADE
+    )
+    ensemble = models.ForeignKey(
+        Ensemble,
+        related_name='userships',
+        on_delete=models.CASCADE
+    )
+    date_joined = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'ensemble')
+        ordering = ['-date_joined']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.ensemble.name}"
 
 
 class Arrangement(models.Model):

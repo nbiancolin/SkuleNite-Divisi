@@ -39,8 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sites',
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.discord',
     'core',
     'divisi',
     'ensembles',
@@ -57,7 +63,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
+    'corsheaders.middleware.CorsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -178,4 +185,55 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# Django Allauth Configuration
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Discord OAuth2 Configuration
+DISCORD_CLIENT_ID = os.environ.get('DISCORD_CLIENT_ID', '')
+DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '')
+
+if not DISCORD_CLIENT_ID or not DISCORD_CLIENT_SECRET:
+    import logging
+    logger = logging.getLogger(__name__)
+    if not DEBUG:  # Only warn in production, allow empty in dev for testing
+        logger.warning("DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not set. Discord OAuth will not work.")
+
+SOCIALACCOUNT_PROVIDERS = {
+    'discord': {
+        'APP': {
+            'client_id': DISCORD_CLIENT_ID,
+            'secret': DISCORD_CLIENT_SECRET,
+            'key': ''
+        },
+        'SCOPE': [
+            'identify',
+            'email',
+        ],
+    }
+}
+
+# Allauth settings
+ACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
