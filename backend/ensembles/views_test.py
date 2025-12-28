@@ -3,8 +3,8 @@ from unittest.mock import patch
 
 from django.urls import reverse
 
-from ensembles.models import ArrangementVersion
-from ensembles.factories import ArrangementFactory, ArrangementVersionFactory
+from ensembles.models import ArrangementVersion, EnsembleUsership
+from ensembles.factories import ArrangementFactory, ArrangementVersionFactory, EnsembleUsershipFactory
 
 
 @pytest.mark.django_db
@@ -74,3 +74,18 @@ def test_trigger_audio_arrangement_version(mock_export, arrangement, client):
     assert r.status_code == 202
     mock_export.assert_called_once_with(version.id, action="mp3")
     assert version.audio_state == ArrangementVersion.AudioStatus.PROCESSING
+
+
+@pytest.mark.django_db
+def test_remove_user_from_ensemble(ensemble, user, client):
+    new_ship = EnsembleUsershipFactory(ensemble=ensemble)
+
+    ensemble.owner = user
+    ensemble.save()
+
+    url = reverse("ensembles:ensemble-remove-user", kwargs={"slug": ensemble.slug})
+
+    r = client.post(url, data={"user_id": new_ship.user.id}, content_type="application/json")
+    
+    assert r.status_code == 200, r.content
+    assert not EnsembleUsership.objects.filter(user=new_ship.user).exists()

@@ -12,6 +12,7 @@ import {UploadPartsForm} from './pages/testing/UploadPartsForm'
 import PartFormatterPage from './pages/PartFormatterPage'
 import HomePage from './pages/ensembles/HomePage';
 import JoinEnsemblePage from './pages/ensembles/JoinEnsemblePage';
+import EnsembleDisplay from './pages/ensembles/EnsembleDetailPage';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/app" element={<HomePage />} />
         <Route path="/app/ensembles" element={<EnsemblesPage />} />
         <Route path="/app/ensembles/create" element={<CreateEnsemblePage />} />
+        <Route path="/app/ensembles/:slug" element={<EnsembleDisplay />} />
         <Route path="/app/ensembles/:slug/arrangements" element={<ArrangementsPage />} />
         <Route path="/app/ensembles/:slug/create-arrangement" element={<CreateArrangementPage />} />
         {/* Future routes */}

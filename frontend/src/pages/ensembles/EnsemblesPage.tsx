@@ -86,7 +86,9 @@ const EnsemblesPage = () => {
               <Stack gap="md" h="100%">
                 <Group gap="xs">
                   <IconMusic size={20} color="var(--mantine-color-blue-6)" />
+                  <Link to={`/app/ensembles/${ensemble.slug}`}>
                   <Title order={3}>{ensemble.name}</Title>
+                  </Link>
                 </Group>
 
                 <Text c="dimmed" size="sm" flex={1}>
