@@ -317,7 +317,7 @@ export default function EnsembleDisplay() {
 
       <Modal opened={confirmRemoveOpen} onClose={cancelRemove} title="Confirm remove user">
         <Text>Remove {removeCandidate?.username}? This action will remove them from the ensemble.</Text>
-        <Group position="right" mt="md">
+        <Group mt="md">
           <Button variant="outline" onClick={cancelRemove}>Cancel</Button>
           <Button color="red" onClick={confirmRemove} loading={saving}>Remove</Button>
         </Group>
