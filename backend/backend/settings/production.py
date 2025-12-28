@@ -85,3 +85,11 @@ STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
 # Media Files Configuration
 # -------------------------------
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
+
+# -------------------------------
+# Frontend URL for redirects
+# -------------------------------
+# Override FRONTEND_URL from base.py for production
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://divisi.nbiancolin.ca')
+LOGIN_REDIRECT_URL = FRONTEND_URL
+ACCOUNT_LOGOUT_REDIRECT_URL = FRONTEND_URL

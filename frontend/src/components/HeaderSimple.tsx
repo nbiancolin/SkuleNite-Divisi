@@ -67,7 +67,7 @@ export function HeaderSimple() {
   }, []);
 
   const handleLogin = () => {
-    window.location.href = apiService.getDiscordLoginUrl();
+    window.location.href = apiService.getDiscordLoginUrl("/app/ensembles");
   };
 
   const handleLogout = async () => {

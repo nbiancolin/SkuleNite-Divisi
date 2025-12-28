@@ -6,6 +6,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from allauth.socialaccount.models import SocialAccount
 from core.models import SiteWarning
+from django.shortcuts import redirect
+from django.conf import settings
+from django.views import View
+from urllib.parse import urlencode
 
 User = get_user_model()
 
@@ -66,3 +70,24 @@ class LogoutView(APIView):
         from django.contrib.auth import logout
         logout(request)
         return Response({'message': 'Successfully logged out'}, status=status.HTTP_200_OK)
+
+
+class DirectDiscordLoginView(View):
+    """
+    View that redirects directly to Discord OAuth, skipping the allauth login page.
+    Preserves the 'next' parameter to redirect back to the original page after login.
+    """
+    def get(self, request):
+        # Get the 'next' parameter from the request (where to redirect after login)
+        next_url = request.GET.get('next', '')
+        
+        # Build the Discord login URL with process=login to skip the intermediate page
+        discord_login_url = '/api/accounts/discord/login/?process=login'
+        
+        # If we have a next URL, preserve it through the OAuth flow
+        # We'll store it in the session so it's available after OAuth callback
+        if next_url:
+            request.session['login_redirect_url'] = next_url
+        
+        # Redirect directly to Discord OAuth (this will skip the allauth login page)
+        return redirect(discord_login_url)

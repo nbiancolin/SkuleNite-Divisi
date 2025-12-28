@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const DISCORD_LOGIN_URL = `${API_BASE_URL}/auth/discord/login/`
 
 export interface User {
   id: number;
@@ -135,10 +136,13 @@ export const apiService = {
   },
 
   /**
-   * Get Discord OAuth login URL
+   * Get Discord OAuth login URL with optional next parameter
+   * @param nextUrl - Optional URL to redirect to after login (defaults to current page)
    */
-  getDiscordLoginUrl(): string {
-    return `${API_BASE_URL}/accounts/discord/login/?process=login`;
+  getDiscordLoginUrl(nextUrl?: string): string {
+    const next = `${import.meta.env.VITE_FE_URL}${nextUrl}` || window.location.href;
+    const separator = DISCORD_LOGIN_URL.includes('?') ? '&' : '?';
+    return `${DISCORD_LOGIN_URL}${separator}next=${encodeURIComponent(next)}`;
   },
 
   async getWarnings() {

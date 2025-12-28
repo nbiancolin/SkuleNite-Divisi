@@ -184,6 +184,11 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
+        'allauth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
 }
 
@@ -196,6 +201,16 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 # Discord OAuth2 Configuration
+# 
+# IMPORTANT: This project uses SETTINGS-BASED configuration for Discord OAuth.
+# Discord credentials are configured here via SOCIALACCOUNT_PROVIDERS, NOT in the database.
+# 
+# DO NOT create SocialApp entries in the database via Django admin - this will cause
+# MultipleObjectsReturned errors. If you have existing database entries, remove them with:
+#   python manage.py fix_discord_socialapps
+#
+# See DISCORD_SETUP.md for full setup instructions.
+
 DISCORD_CLIENT_ID = os.environ.get('DISCORD_CLIENT_ID', '')
 DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '')
 
@@ -226,6 +241,17 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+
+# Custom adapters for redirects to frontend
+ACCOUNT_ADAPTER = 'core.adapters.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'core.adapters.CustomSocialAccountAdapter'
+
+# Login redirect settings
+# Default redirect after login (if no 'next' parameter is provided)
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+LOGIN_REDIRECT_URL = FRONTEND_URL
+# Redirect after logout
+ACCOUNT_LOGOUT_REDIRECT_URL = FRONTEND_URL
 
 # REST Framework Configuration
 REST_FRAMEWORK = {
