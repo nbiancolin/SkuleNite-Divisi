@@ -32,7 +32,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 
 import type { Ensemble } from '../../services/apiService';
 
@@ -199,16 +199,16 @@ export default function EnsembleDisplay() {
   return (
     <Container size="md" py="xl">
       <Paper shadow="sm" p="xl" radius="md">
-        <Group position="apart" align="center" mb="md">
+        <Group align="center" mb="md">
           <Group align="center">
             <Title order={2}>{ensemble.name}</Title>
             <Badge color="gray" variant="outline">{ensemble.slug}</Badge>
             {ensemble.is_owner && <Badge color="teal">Owner</Badge>}
           </Group>
           <Group>
-            <Button component={Link} to="/app/ensembles" variant="subtle" leftIcon={<IconArrowLeft size={16} />}>Back</Button>
+            <Button component={Link} to="/app/ensembles" variant="subtle">Back</Button>
             {isOwner && (
-              <Button leftIcon={<IconEdit size={16} />} onClick={() => setEditing((s) => !s)}>
+              <Button onClick={() => setEditing((s) => !s)}>
                 {editing ? 'Cancel' : 'Edit'}
               </Button>
             )}
@@ -220,9 +220,9 @@ export default function EnsembleDisplay() {
             <Stack>
               <TextInput label="Ensemble name" value={nameDraft} onChange={(e) => setNameDraft(e.currentTarget.value)} />
               <TextInput label="Join link (preview)" value={joinLinkDraft ?? ''} onChange={(e) => setJoinLinkDraft(e.currentTarget.value)} />
-              <Group position="right" spacing="sm">
-                <Button leftIcon={<IconCheck size={16} />} onClick={handleSaveEnsemble} loading={saving}>Save</Button>
-                <Button variant="outline" leftIcon={<IconX size={16} />} onClick={() => { setEditing(false); setNameDraft(ensemble.name); setJoinLinkDraft(ensemble.join_link); }}>Cancel</Button>
+              <Group>
+                <Button onClick={handleSaveEnsemble} loading={saving}>Save</Button>
+                <Button variant="outline" onClick={() => { setEditing(false); setNameDraft(ensemble.name); setJoinLinkDraft(ensemble.join_link); }}>Cancel</Button>
               </Group>
             </Stack>
           </Card>
@@ -231,8 +231,8 @@ export default function EnsembleDisplay() {
         <Grid>
           <Grid.Col span={6}>
             <Card withBorder mb="md">
-              <Group position="apart" mb="xs">
-                <Text weight={600}>Arrangements</Text>
+              <Group mb="xs">
+                <Text>Arrangements</Text>
                 <Badge>{ensemble.arrangements?.length ?? 0}</Badge>
               </Group>
               <Divider />
@@ -241,13 +241,13 @@ export default function EnsembleDisplay() {
                   {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
                     ensemble.arrangements.map((arr: any) => (
                       <Card key={arr.id} withBorder radius="sm" p="sm">
-                        <Group position="apart">
+                        <Group>
                           <div>
-                            <Text weight={600}>{arr.title}{arr.subtitle ? ` — ${arr.subtitle}` : ''}</Text>
+                            <Text>{arr.title}{arr.subtitle ? ` — ${arr.subtitle}` : ''}</Text>
                             <Text size="sm" color="dimmed">{arr.composer ?? ''} {arr.mvt_no ? `· Mvt ${arr.mvt_no}` : ''}</Text>
                           </div>
                           <Group>
-                            <Button component={Link} to={`/arrangements/${arr.slug}`} size="xs" variant="outline" leftIcon={<IconEye size={14} />}>View</Button>
+                            <Button component={Link} to={`/arrangements/${arr.slug}`} size="xs" variant="outline">View</Button>
                           </Group>
                         </Group>
                       </Card>
@@ -262,8 +262,8 @@ export default function EnsembleDisplay() {
 
           <Grid.Col span={6}>
             <Card withBorder mb="md">
-              <Group position="apart" mb="xs">
-                <Text weight={600}>Members</Text>
+              <Group mb="xs">
+                <Text>Members</Text>
                 <Badge>{ensemble.userships?.length ?? 0}</Badge>
               </Group>
               <Divider />
@@ -299,7 +299,7 @@ export default function EnsembleDisplay() {
 
             <Card withBorder>
               <Text size="sm" color="dimmed">Invite link</Text>
-              <Group position="apart" mt="xs">
+              <Group mt="xs">
                 <Text size="sm" truncate>{ensemble.join_link ?? 'No invite link'}</Text>
                 {isOwner && (
                   <Button size="xs" variant="outline" onClick={async () => {
