@@ -31,9 +31,5 @@ from allauth.socialaccount.models import SocialApp, SocialAccount, SocialToken
 admin.site.unregister(SocialApp)
 admin.site.unregister(SocialAccount)
 admin.site.unregister(SocialToken)
-#and auth token model
-# from rest_framework.authtoken.models import Token
-# admin.site.unregister(Token)
-#and email addresses
 from allauth.account.models import EmailAddress
 admin.site.unregister(EmailAddress)
