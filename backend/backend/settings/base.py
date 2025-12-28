@@ -241,6 +241,8 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+# Skip the intermediate page when process=login is used
+SOCIALACCOUNT_QUERY_EMAIL = True
 
 # Custom adapters for redirects to frontend
 ACCOUNT_ADAPTER = 'core.adapters.CustomAccountAdapter'

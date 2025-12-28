@@ -1,5 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
-const DISCORD_LOGIN_URL = `${API_BASE_URL}/auth/discord/login/`
+const DISCORD_LOGIN_URL = `${API_BASE_URL}/accounts/discord/login/?process=login`
 
 export interface User {
   id: number;
@@ -119,6 +119,30 @@ export const apiService = {
       throw new Error(`Failed to get current user (status: ${response.status})`);
     }
     return response.json();
+  },
+
+  /**
+   * Handle login requests
+   */
+  handleLogin() {
+    const url = apiService.getDiscordLoginUrl("/app/ensembles");
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.style.display = 'none';
+
+    // include CSRF token as hidden form field (Django expects 'csrfmiddlewaretoken')
+    const csrf = getCsrfToken();
+    if (csrf) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'csrfmiddlewaretoken';
+      input.value = csrf;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
   },
 
   /**

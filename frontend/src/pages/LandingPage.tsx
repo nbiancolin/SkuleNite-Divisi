@@ -115,8 +115,7 @@ export default function LandingPage() {
                   boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                 }}
-                component={Link}
-                to="/app/ensembles/create"
+                onClick={apiService.handleLogin}
               >
                 Get Started Free
               </Button>
@@ -304,8 +303,7 @@ export default function LandingPage() {
                   style={{
                     boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
                   }}
-                  component="a"
-                  href={apiService.getDiscordLoginUrl("/app/ensembles")}
+                  onClick={apiService.handleLogin}
                 >
                   Start Using Divisi
                 </Button>

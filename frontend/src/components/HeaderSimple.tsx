@@ -66,10 +66,6 @@ export function HeaderSimple() {
     return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
-  const handleLogin = () => {
-    window.location.href = apiService.getDiscordLoginUrl("/app/ensembles");
-  };
-
   const handleLogout = async () => {
     try {
       await apiService.logout();
@@ -130,7 +126,7 @@ return (
                     </Menu.Dropdown>
                   </Menu>
                 ) : (
-                  <Button onClick={handleLogin} variant="filled" color="blue">
+                  <Button onClick={apiService.handleLogin} variant="filled" color="blue">
                     Login with Discord
                   </Button>
                 )}

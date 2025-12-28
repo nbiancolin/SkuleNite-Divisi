@@ -58,4 +58,27 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         next_url = request.GET.get('next') or request.session.get('login_redirect_url')
         if next_url:
             request.session['login_redirect_url'] = next_url
+    
+    def save_user(self, request, sociallogin, form=None):
+        """
+        Override to ensure the user is saved properly and redirect URL is preserved.
+        """
+        user = super().save_user(request, sociallogin, form)
+        # Ensure redirect URL is still in session after user is saved
+        if 'login_redirect_url' not in request.session:
+            next_url = request.GET.get('next')
+            if next_url:
+                request.session['login_redirect_url'] = next_url
+        return user
+    
+    def authentication_error(self, request, provider_id, error=None, exception=None, extra_context=None):
+        """
+        Override to handle authentication errors and still redirect properly.
+        """
+        # Even if there's an error, try to redirect to frontend
+        redirect_url = request.session.get('login_redirect_url')
+        if redirect_url:
+            from django.shortcuts import redirect
+            return redirect(redirect_url)
+        return super().authentication_error(request, provider_id, error, exception, extra_context)
 
