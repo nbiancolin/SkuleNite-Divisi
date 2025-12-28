@@ -43,6 +43,10 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Set the owner when creating an ensemble"""
         serializer.save(owner=self.request.user)
+        EnsembleUsership.objects.create(
+            ensemble=serializer.instance,
+            user=self.request.user
+        )
 
     @action(detail=True, methods=["get"], url_path="arrangements")
     def arrangements(self, request, slug=None):
