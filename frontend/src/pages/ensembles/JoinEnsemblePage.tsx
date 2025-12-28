@@ -60,8 +60,7 @@ const JoinEnsemblePage = () => {
   const handleLogin = () => {
     // Redirect to login with the join URL as the next parameter
     const currentUrl = window.location.href;
-    const loginUrl = apiService.getDiscordLoginUrl(currentUrl);
-    window.location.href = loginUrl;
+    apiService.handleLogin(currentUrl)
   };
 
   const handleJoin = async () => {
