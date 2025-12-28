@@ -59,6 +59,10 @@ jobs:
 
         cd /srv/divisi-app
 
+        set -a
+        source backend/.env
+        set +a
+
         echo "[INFO] Updating backend code"
         git fetch origin main
         git reset --hard origin/main
