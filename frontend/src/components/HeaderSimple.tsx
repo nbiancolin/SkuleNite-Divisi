@@ -126,7 +126,7 @@ return (
                     </Menu.Dropdown>
                   </Menu>
                 ) : (
-                  <Button onClick={apiService.handleLogin} variant="filled" color="blue">
+                  <Button onClick={() => apiService.handleLogin()} variant="filled" color="blue">
                     Login with Discord
                   </Button>
                 )}

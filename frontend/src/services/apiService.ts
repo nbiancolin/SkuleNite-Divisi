@@ -45,7 +45,9 @@ export interface Ensemble {
   id: number,
   name: string,
   slug: string,
-  arrangements: [Arrangement]
+  arrangements: [Arrangement],
+  join_link?: string | null,
+  is_owner?: boolean
 }
 
 export interface EditableArrangementData {
@@ -109,6 +111,25 @@ function getHeadersWithCsrf(contentType: string = 'application/json'): HeadersIn
 
 export const apiService = {
   /**
+   * Fetch CSRF token from backend - ensures cookie is set
+   * Call this on app initialization
+   */
+  async fetchCsrfToken(): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/get-csrf-token/`, {
+        method: 'GET',
+        credentials: 'include', // Important: include cookies
+      });
+      if (!response.ok) {
+        console.warn('Failed to fetch CSRF token:', response.status);
+      }
+      // The cookie is set automatically by Django, we don't need the response body
+    } catch (error) {
+      console.warn('Error fetching CSRF token:', error);
+    }
+  },
+
+  /**
    * Get the current authenticated user
    */
   async getCurrentUser(): Promise<AuthResponse> {
@@ -124,8 +145,8 @@ export const apiService = {
   /**
    * Handle login requests
    */
-  handleLogin() {
-    const url = apiService.getDiscordLoginUrl("/app/ensembles");
+  handleLogin(targetUrl = "/app/ensembles") {
+    const url = apiService.getDiscordLoginUrl(targetUrl);
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = url;
@@ -144,6 +165,32 @@ export const apiService = {
     document.body.appendChild(form);
     form.submit();
   },
+  
+  /**
+   * Get Discord OAuth login URL with optional next parameter
+   * @param nextUrl - Optional URL (absolute or path) to redirect to after login
+   */
+  getDiscordLoginUrl(nextUrl?: string): string {
+    const feBase = (import.meta.env.VITE_FE_URL && import.meta.env.VITE_FE_URL.replace(/\/$/, '')) || window.location.origin;
+    let next: string;
+
+    if (nextUrl) {
+      // If nextUrl is already an absolute URL, use it; otherwise make it absolute relative to FE base
+      try {
+        const maybeAbsolute = new URL(nextUrl, feBase);
+        next = maybeAbsolute.href;
+      } catch {
+        // Fallback: join manually
+        next = nextUrl.startsWith('/') ? `${feBase}${nextUrl}` : `${feBase}/${nextUrl}`;
+      }
+    } else {
+      // Default to current location
+      next = `${feBase}${window.location.pathname}${window.location.search}`;
+    }
+
+    const separator = DISCORD_LOGIN_URL.includes('?') ? '&' : '?';
+    return `${DISCORD_LOGIN_URL}${separator}next=${encodeURIComponent(next)}`;
+  },
 
   /**
    * Logout the current user
@@ -157,16 +204,6 @@ export const apiService = {
     if (!response.ok) {
       throw new Error(`Failed to logout (status: ${response.status})`);
     }
-  },
-
-  /**
-   * Get Discord OAuth login URL with optional next parameter
-   * @param nextUrl - Optional URL to redirect to after login (defaults to current page)
-   */
-  getDiscordLoginUrl(nextUrl?: string): string {
-    const next = `${import.meta.env.VITE_FE_URL}${nextUrl}` || window.location.href;
-    const separator = DISCORD_LOGIN_URL.includes('?') ? '&' : '?';
-    return `${DISCORD_LOGIN_URL}${separator}next=${encodeURIComponent(next)}`;
   },
 
   async getWarnings() {
@@ -498,6 +535,81 @@ export const apiService = {
     }
 
     return await response.json();
+  },
+
+  /**
+   * Get or generate invite link for an ensemble
+   * @param slug - Ensemble slug
+   * @returns Promise with invite link information
+   */
+  async getInviteLink(slug: string) {
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/invite-link/`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to get invite link (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  /**
+   * Get ensemble info from invite token (for preview before joining)
+   * @param token - Invite token
+   * @returns Promise with ensemble information
+   */
+  async getEnsembleByToken(token: string) {
+    const response = await fetch(`${API_BASE_URL}/join/?token=${encodeURIComponent(token)}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to get ensemble info (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  /**
+   * Join an ensemble using an invite token
+   * @param token - Invite token
+   * @returns Promise with ensemble information
+   */
+  async joinEnsemble(token: string) {
+    const response = await fetch(`${API_BASE_URL}/join/`, {
+      method: 'POST',
+      headers: getHeadersWithCsrf(),
+      body: JSON.stringify({ token }),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to join ensemble (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
   }
 
 };

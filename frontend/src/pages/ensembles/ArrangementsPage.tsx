@@ -15,18 +15,22 @@ import {
   Anchor,
   Table,
   ActionIcon,
-  Tooltip
+  Tooltip,
+  TextInput
 } from '@mantine/core';
-import { IconMusic, IconArrowLeft, IconEdit, IconUpload } from '@tabler/icons-react';
-import { apiService } from '../../services/apiService';
+import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck } from '@tabler/icons-react';
+import { apiService, type Ensemble } from '../../services/apiService';
 
 const ArrangementsPage = () => {
   const { slug = "NA"} = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
-  const [ensemble, setEnsemble] = useState<any>(null);
+  const [ensemble, setEnsemble] = useState<Ensemble | null>(null);
   const [arrangements, setArrangements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +59,31 @@ const ArrangementsPage = () => {
 
   const handleBackClick = () => {
     navigate('/app/ensembles');
+  };
+
+  const handleGetInviteLink = async () => {
+    if (!ensemble) return;
+    try {
+      setInviteLinkLoading(true);
+      const data = await apiService.getInviteLink(ensemble.slug);
+      setInviteLink(data.join_url);
+      setEnsemble({ ...ensemble, join_link: data.join_url });
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      }
+    } finally {
+      setInviteLinkLoading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    const linkToCopy = inviteLink || ensemble?.join_link;
+    if (linkToCopy) {
+      await navigator.clipboard.writeText(linkToCopy);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) {
@@ -133,6 +162,39 @@ const ArrangementsPage = () => {
           <Text c="dimmed">
             {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
           </Text>
+          {ensemble.is_owner && (
+            <Group gap="xs">
+              {ensemble.join_link || inviteLink ? (
+                <Group gap="xs">
+                  <TextInput
+                    value={inviteLink || ensemble.join_link || ''}
+                    readOnly
+                    size="sm"
+                    style={{ width: '300px' }}
+                  />
+                  <Tooltip label={copied ? "Copied!" : "Copy link"}>
+                    <ActionIcon
+                      variant="light"
+                      color={copied ? "green" : "blue"}
+                      onClick={handleCopyLink}
+                    >
+                      {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
+              ) : (
+                <Button
+                  variant="light"
+                  size="sm"
+                  leftSection={<IconLink size={16} />}
+                  onClick={handleGetInviteLink}
+                  loading={inviteLinkLoading}
+                >
+                  Get Invite Link
+                </Button>
+              )}
+            </Group>
+          )}
           <Button
             component={Link}
             to={`/app/ensembles/${ensemble.slug}/create-arrangement`}

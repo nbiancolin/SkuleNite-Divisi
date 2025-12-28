@@ -30,10 +30,11 @@ from ensembles.views import (
     ArrangementByIdViewSet,
     ArrangementVersionViewSet,
     ComputeDiffView,
+    JoinEnsembleView,
 )
 from divisi.views import PartFormatterViewSet
 
-from core.views import CurrentUserView, LogoutView, DirectDiscordLoginView
+from core.views import CurrentUserView, LogoutView, DirectDiscordLoginView, GetCsrfTokenView
 
 divisi_router = routers.DefaultRouter()
 divisi_router.register(r"part-formatter", PartFormatterViewSet, "part-formatter")
@@ -48,7 +49,9 @@ ensembles_router.register(r"arrangementversions", ArrangementVersionViewSet, "ar
 urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
+    path("api/get-csrf-token/", GetCsrfTokenView.as_view(), name="get-csrf-token"),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
+    path("api/join/", JoinEnsembleView.as_view(), name="join-ensemble"),
     path("api/auth/current-user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),
     # Direct Discord login (skips allauth login page)

@@ -56,11 +56,30 @@ class EnsembleSerializer(serializers.ModelSerializer):
     # TODO[Eventually]: Add an "owner" field to say who owns the ensemble
 
     arrangements = ArrangementSerializer(many=True, read_only=True)
+    join_link = serializers.SerializerMethodField()
+    is_owner = serializers.SerializerMethodField()
 
     class Meta:
         model = Ensemble
-        fields = ["id", "name", "slug", "arrangements"]
-        read_only_fields = ["slug"]
+        fields = ["id", "name", "slug", "arrangements", "join_link", "is_owner"]
+        read_only_fields = ["slug", "join_link", "is_owner"]
+
+    def get_is_owner(self, obj):
+        """Check if the current user is the owner"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.owner == request.user
+        return False
+
+    def get_join_link(self, obj):
+        """Generate join link if user is owner"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and obj.owner == request.user:
+            token = obj.get_or_create_invite_token()
+            from django.conf import settings
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+            return f"{frontend_url}/join/{token}"
+        return None
 
 
 class CreateArrangementVersionMsczSerializer(serializers.Serializer):
