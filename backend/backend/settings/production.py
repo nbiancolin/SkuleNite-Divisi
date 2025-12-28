@@ -8,7 +8,13 @@ DEBUG = False
 ALLOWED_HOSTS = ["146.190.255.211", "divisi.nbiancolin.ca"]
 CSRF_COOKIE_SECURE = False  # Set to True when using HTTPS
 SESSION_COOKIE_DOMAIN = "divisi.nbiancolin.ca"
+CSRF_COOKIE_DOMAIN = "divisi.nbiancolin.ca"  # Match session cookie domain
 SECURE_SSL_REDIRECT = False  # TODO: enable in production
+
+# Trust proxy headers (nginx is forwarding these)
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+SECURE_PROXY_SSL_HEADER = None  # Set to ('HTTP_X_FORWARDED_PROTO', 'https') when using HTTPS
 
 # CSRF Trusted Origins - required for Django 4.0+
 CSRF_TRUSTED_ORIGINS = [
@@ -19,6 +25,25 @@ CSRF_TRUSTED_ORIGINS = [
 # CSRF Cookie settings - allow JavaScript to read the cookie
 CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to read CSRF token from cookie
 CSRF_COOKIE_SAMESITE = 'Lax'  # Allow cross-site requests with credentials
+CSRF_USE_SESSIONS = False  # Use cookies for CSRF token (default)
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    'https://divisi.nbiancolin.ca',
+    'http://divisi.nbiancolin.ca',  # Remove this when SSL is enabled
+]
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 
 # -------------------------------
