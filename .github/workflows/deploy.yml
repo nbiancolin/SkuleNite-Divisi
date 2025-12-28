@@ -45,7 +45,7 @@ jobs:
         rsync -avz --delete \
           -e "ssh -o StrictHostKeyChecking=no" \
           frontend/dist/ \
-          ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}:/var/www/your-app/frontend/
+          ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }}:/var/www/divisi-app/frontend/
 
 
     # ----------------------------
