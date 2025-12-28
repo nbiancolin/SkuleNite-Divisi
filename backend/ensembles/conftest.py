@@ -66,5 +66,7 @@ def user(ensemble, django_db_blocker):
     
 
 @pytest.fixture(scope="module")
-def client():
-    yield APIClient()
+def client(user):
+    client = APIClient()
+    client.force_authenticate(user=user)
+    yield client
