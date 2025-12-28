@@ -2,6 +2,8 @@ import factory
 from factory.django import DjangoModelFactory
 from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff
 
+from django.contrib.auth import get_user_model
+
 
 class EnsembleFactory(DjangoModelFactory):
     class Meta:
@@ -44,3 +46,19 @@ class DiffFactory(DjangoModelFactory):
     to_version = factory.SubFactory(ArrangementVersionFactory)
     file_name = "comp-diff.pdf"
     status = "pending"
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = get_user_model()
+
+    username = factory.Sequence(lambda n: f"user{n}")
+    email = factory.LazyAttribute(lambda n: f"user{n}@gmail.com")
+    password = factory.PostGenerationMethodCall('set_password', 'password123')
+
+class EnsembleUsershipFactory(DjangoModelFactory):
+    class Meta:
+        model = 'ensembles.EnsembleUsership'
+
+    user = factory.SubFactory(UserFactory)
+    ensemble = factory.SubFactory(EnsembleFactory)
+    # role = 'member' TODO: Add roles to userships

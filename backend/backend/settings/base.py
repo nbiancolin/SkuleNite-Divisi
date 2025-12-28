@@ -39,8 +39,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.sites',
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.discord',
     'core',
     'divisi',
     'ensembles',
@@ -57,7 +63,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
+    'corsheaders.middleware.CorsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -177,5 +184,84 @@ LOGGING = {
             'level': 'ERROR',
             'propagate': False,
         },
+        'allauth': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
     },
+}
+
+# Django Allauth Configuration
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+# Discord OAuth2 Configuration
+# 
+# IMPORTANT: This project uses SETTINGS-BASED configuration for Discord OAuth.
+# Discord credentials are configured here via SOCIALACCOUNT_PROVIDERS, NOT in the database.
+# 
+# DO NOT create SocialApp entries in the database via Django admin - this will cause
+# MultipleObjectsReturned errors. If you have existing database entries, remove them with:
+#   python manage.py fix_discord_socialapps
+#
+# See DISCORD_SETUP.md for full setup instructions.
+
+DISCORD_CLIENT_ID = os.environ.get('DISCORD_CLIENT_ID', '')
+DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '')
+
+if not DISCORD_CLIENT_ID or not DISCORD_CLIENT_SECRET:
+    import logging
+    logger = logging.getLogger(__name__)
+    if not DEBUG:  # Only warn in production, allow empty in dev for testing
+        logger.warning("DISCORD_CLIENT_ID or DISCORD_CLIENT_SECRET not set. Discord OAuth will not work.")
+
+SOCIALACCOUNT_PROVIDERS = {
+    'discord': {
+        'APP': {
+            'client_id': DISCORD_CLIENT_ID,
+            'secret': DISCORD_CLIENT_SECRET,
+            'key': ''
+        },
+        'SCOPE': [
+            'identify',
+            'email',
+        ],
+    }
+}
+
+# Allauth settings
+ACCOUNT_EMAIL_REQUIRED = False
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+# Skip the intermediate page when process=login is used
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Custom adapters for redirects to frontend
+ACCOUNT_ADAPTER = 'core.adapters.CustomAccountAdapter'
+SOCIALACCOUNT_ADAPTER = 'core.adapters.CustomSocialAccountAdapter'
+
+# Login redirect settings
+# Default redirect after login (if no 'next' parameter is provided)
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
+LOGIN_REDIRECT_URL = FRONTEND_URL
+# Redirect after logout
+ACCOUNT_LOGOUT_REDIRECT_URL = FRONTEND_URL
+
+# REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }

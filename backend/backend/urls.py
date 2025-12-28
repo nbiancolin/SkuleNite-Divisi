@@ -33,6 +33,8 @@ from ensembles.views import (
 )
 from divisi.views import PartFormatterViewSet
 
+from core.views import CurrentUserView, LogoutView, DirectDiscordLoginView
+
 divisi_router = routers.DefaultRouter()
 divisi_router.register(r"part-formatter", PartFormatterViewSet, "part-formatter")
 
@@ -47,8 +49,14 @@ urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
+    path("api/auth/current-user/", CurrentUserView.as_view(), name="current-user"),
+    path("api/auth/logout/", LogoutView.as_view(), name="logout"),
+    # Direct Discord login (skips allauth login page)
+    path("api/auth/discord/login/", DirectDiscordLoginView.as_view(), name="direct-discord-login"),
     path("api/", include((divisi_router.urls, "divisi"), namespace="divisi")),
     path("api/", include((ensembles_router.urls, "ensembles"), namespace="ensembles")),
+    # Django Allauth URLs for Discord OAuth (mounted under /api for consistency)
+    path("api/accounts/", include("allauth.urls")),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,4 +1,22 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const DISCORD_LOGIN_URL = `${API_BASE_URL}/accounts/discord/login/?process=login`
+
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  discord?: {
+    id: string;
+    username: string;
+    discriminator: string;
+    avatar: string | null;
+  };
+}
+
+export interface AuthResponse {
+  is_authenticated: boolean;
+  user: User | null;
+}
 
 export interface ArrangementVersion {
   id: number;
@@ -57,10 +75,104 @@ export interface DiffData {
   error_msg: string;
 }
 
+// Helper function to get CSRF token from cookies
+function getCsrfToken(): string | null {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Helper to get headers with CSRF token for POST/PUT/DELETE requests
+function getHeadersWithCsrf(contentType: string = 'application/json'): HeadersInit {
+  const headers: HeadersInit = {
+    'Accept': 'application/json',
+    'Content-Type': contentType,
+  };
+  
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    headers['X-CSRFToken'] = csrfToken;
+  }
+  
+  return headers;
+}
+
 export const apiService = {
+  /**
+   * Get the current authenticated user
+   */
+  async getCurrentUser(): Promise<AuthResponse> {
+    const response = await fetch(`${API_BASE_URL}/auth/current-user/`, {
+      credentials: 'include', // Include cookies for session auth
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to get current user (status: ${response.status})`);
+    }
+    return response.json();
+  },
+
+  /**
+   * Handle login requests
+   */
+  handleLogin() {
+    const url = apiService.getDiscordLoginUrl("/app/ensembles");
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = url;
+    form.style.display = 'none';
+
+    // include CSRF token as hidden form field (Django expects 'csrfmiddlewaretoken')
+    const csrf = getCsrfToken();
+    if (csrf) {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'csrfmiddlewaretoken';
+      input.value = csrf;
+      form.appendChild(input);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+  },
+
+  /**
+   * Logout the current user
+   */
+  async logout(): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/auth/logout/`, {
+      method: 'POST',
+      headers: getHeadersWithCsrf(),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to logout (status: ${response.status})`);
+    }
+  },
+
+  /**
+   * Get Discord OAuth login URL with optional next parameter
+   * @param nextUrl - Optional URL to redirect to after login (defaults to current page)
+   */
+  getDiscordLoginUrl(nextUrl?: string): string {
+    const next = `${import.meta.env.VITE_FE_URL}${nextUrl}` || window.location.href;
+    const separator = DISCORD_LOGIN_URL.includes('?') ? '&' : '?';
+    return `${DISCORD_LOGIN_URL}${separator}next=${encodeURIComponent(next)}`;
+  },
 
   async getWarnings() {
-    const response = await fetch(`${API_BASE_URL}/get-warnings/`);
+    const response = await fetch(`${API_BASE_URL}/get-warnings/`, {
+      credentials: 'include',
+    });
     if( !response.ok) {
       let errorDetails = '';
       try {
@@ -77,7 +189,9 @@ export const apiService = {
   },
 
   async getEnsembles() {
-    const response = await fetch(`${API_BASE_URL}/ensembles/`);
+    const response = await fetch(`${API_BASE_URL}/ensembles/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
     let errorDetails = '';
     try {
@@ -97,8 +211,9 @@ export const apiService = {
     const response = await fetch(`${API_BASE_URL}/ensembles/`, 
       {
         method: 'POST', 
-        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify({"name": name, "default_style": selected_style})
+        headers: getHeadersWithCsrf(), 
+        body: JSON.stringify({"name": name, "default_style": selected_style}),
+        credentials: 'include',
       }
     )
     if (!response.ok) {
@@ -117,7 +232,9 @@ export const apiService = {
   },
 
   async getEnsemble(slug: string) {
-    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/`);
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
     let errorDetails = '';
     try {
@@ -134,7 +251,9 @@ export const apiService = {
   },
 
   async getEnsembleArrangements(slug: string) {
-    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/arrangements/`);
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/arrangements/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
     let errorDetails = '';
     try {
@@ -151,7 +270,9 @@ export const apiService = {
   },
 
   async getArrangement(slug: string) {
-    const response = await fetch(`${API_BASE_URL}/arrangements/${slug}/`);
+    const response = await fetch(`${API_BASE_URL}/arrangements/${slug}/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
     let errorDetails = '';
     try {
@@ -168,7 +289,9 @@ export const apiService = {
   },
 
   async getArrangementById(id: number) {
-    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`);
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
     let errorDetails = '';
     try {
@@ -188,8 +311,9 @@ export const apiService = {
     // Make API call to update arrangement
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${id}/`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getHeadersWithCsrf(),
       body: JSON.stringify(data),
+      credentials: 'include',
     });
     return response.json();
   },
@@ -208,8 +332,9 @@ export const apiService = {
     const response = await fetch(`${API_BASE_URL}/arrangements/`, 
       {
         method: 'POST', 
-        headers: {'Accept': 'application/json', 'Content-Type': 'application/json'}, 
-        body: JSON.stringify(body)
+        headers: getHeadersWithCsrf(), 
+        body: JSON.stringify(body),
+        credentials: 'include',
       }
     )
     if (!response.ok) {
@@ -229,7 +354,9 @@ export const apiService = {
   },
 
   async getDownloadLinksForVersion(versionId: number) {
-    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/get_download_links/`);
+    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/get_download_links/`, {
+      credentials: 'include',
+    });
     if (!response.ok){
     let errorDetails = '';
     try {
@@ -247,7 +374,9 @@ export const apiService = {
   },
 
   async getVersionHistory(arrangementId: number): Promise<VersionHistoryItem[]> {
-    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/versions/`);
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/versions/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
       let errorDetails = '';
       try {
@@ -264,7 +393,9 @@ export const apiService = {
   },
 
   async getVersionDetails(versionId: number): Promise<ArrangementVersion> {
-    const response = await fetch(`${API_BASE_URL}/versions/${versionId}/`);
+    const response = await fetch(`${API_BASE_URL}/versions/${versionId}/`, {
+      credentials: 'include',
+    });
     if (!response.ok) {
       let errorDetails = '';
       try {
@@ -289,13 +420,12 @@ export const apiService = {
   async computeDiff(fromVersionId: number, toVersionId: number): Promise<DiffData> {
     const response = await fetch(`${API_BASE_URL}/diffs/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getHeadersWithCsrf(),
       body: JSON.stringify({
         from_version_id: fromVersionId,
         to_version_id: toVersionId,
       }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -317,6 +447,7 @@ export const apiService = {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -338,13 +469,12 @@ export const apiService = {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        // Add your auth headers here if needed
-        // 'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
         from_version_id: fromVersionId,
         to_version_id: toVersionId,
       }),
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -358,7 +488,8 @@ export const apiService = {
   async triggerAudioExport(versionId: number) {
     const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/trigger_audio_export/`, {
       method: 'POST',
-      
+      headers: getHeadersWithCsrf(),
+      credentials: 'include',
     })
 
     if (!response.ok) {

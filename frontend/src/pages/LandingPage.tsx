@@ -25,6 +25,7 @@ import {
   IconDeviceDesktop,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
+import { apiService } from '../services/apiService';
 
 export default function LandingPage() {
   const features = [
@@ -114,8 +115,7 @@ export default function LandingPage() {
                   boxShadow: '0 8px 25px rgba(0,0,0,0.2)',
                   transition: 'transform 0.2s ease, box-shadow 0.2s ease'
                 }}
-                component={Link}
-                to="/app/ensembles/create"
+                onClick={apiService.handleLogin}
               >
                 Get Started Free
               </Button>
@@ -303,15 +303,14 @@ export default function LandingPage() {
                   style={{
                     boxShadow: '0 8px 25px rgba(0,0,0,0.3)'
                   }}
-                  component={Link}
-                  to="/app/ensembles"
+                  onClick={apiService.handleLogin}
                 >
                   Start Using Divisi
                 </Button>
-                <Button 
-                  size="xl" 
-                  radius="xl" 
-                  variant="outline" 
+                <Button
+                  size="xl"
+                  radius="xl"
+                  variant="outline"
                   color="white"
                   component="a"
                   href="https://github.com/nbiancolin/SkuleNite-Divisi"
