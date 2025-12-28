@@ -24,11 +24,6 @@ import {
 } from '@mantine/core';
 import { 
   IconAlertCircle, 
-  IconArrowLeft, 
-  IconEdit, 
-  IconCheck, 
-  IconX, 
-  IconEye,
   IconTrash,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
@@ -237,7 +232,7 @@ export default function EnsembleDisplay() {
               </Group>
               <Divider />
               <ScrollArea style={{ maxHeight: 300 }}>
-                <Stack spacing="xs" mt="md">
+                <Stack mt="md">
                   {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
                     ensemble.arrangements.map((arr: any) => (
                       <Card key={arr.id} withBorder radius="sm" p="sm">
