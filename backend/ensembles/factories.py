@@ -52,7 +52,7 @@ class UserFactory(DjangoModelFactory):
         model = get_user_model()
 
     username = factory.Sequence(lambda n: f"user{n}")
-    email = factory.LazyAttribute(lambda obj: f"user{n}@gmail.com")
+    email = factory.LazyAttribute(lambda n: f"user{n}@gmail.com")
     password = factory.PostGenerationMethodCall('set_password', 'password123')
 
 class EnsembleUsershipFactory(DjangoModelFactory):

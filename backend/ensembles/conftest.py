@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ensemble(django_db_blocker):
     with django_db_blocker.unblock():
         ensemble = EnsembleFactory(name="Test Ensemble")

@@ -1,6 +1,7 @@
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
 
 from django.core.files.storage import default_storage
 
@@ -13,6 +14,11 @@ logger = logging.getLogger("Divisi-Views")
 
 
 class PartFormatterViewSet(viewsets.ViewSet):
+    """
+    ViewSet for part formatter endpoints.
+    These endpoints do not require authentication.
+    """
+    permission_classes = [AllowAny]
 
     @action(detail=False, methods=["post"])
     def upload_mscz(self, request):
