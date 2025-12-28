@@ -103,6 +103,39 @@ class EnsembleViewSet(viewsets.ModelViewSet):
             "ensemble_name": ensemble.name,
             "ensemble_slug": ensemble.slug,
         })
+    
+    @action(detail=True, methods=["post"], url_path="remove-user")
+    def remove_user(self, request, slug=None):
+        """Remove a user from the ensemble using their user ID"""
+        ensemble = self.get_object()
+        user = request.user
+        
+        # Only owner can remove users
+        if ensemble.owner != user:
+            return Response(
+                {"detail": "Only the ensemble owner can remove users."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"detail": "User ID is required to remove a user."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            usership = EnsembleUsership.objects.get(ensemble=ensemble, user__id=user_id)
+            usership.delete()
+            return Response(
+                {"detail": "User removed from ensemble."},
+                status=status.HTTP_200_OK
+            )
+        except EnsembleUsership.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this ensemble."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):

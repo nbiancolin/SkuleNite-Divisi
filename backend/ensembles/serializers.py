@@ -5,8 +5,10 @@ from rest_framework import status
 from django.db import transaction
 from django.core.files.storage import default_storage
 
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, Diff
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version, compute_diff
+
+from django.contrib.auth import get_user_model
 
 from logging import getLogger
 
@@ -53,16 +55,16 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
-    # TODO[Eventually]: Add an "owner" field to say who owns the ensemble
 
     arrangements = ArrangementSerializer(many=True, read_only=True)
     join_link = serializers.SerializerMethodField()
     is_owner = serializers.SerializerMethodField()
+    userships = serializers.SerializerMethodField()
 
     class Meta:
         model = Ensemble
-        fields = ["id", "name", "slug", "arrangements", "join_link", "is_owner"]
-        read_only_fields = ["slug", "join_link", "is_owner"]
+        fields = ["id", "name", "slug", "arrangements", "join_link", "is_owner", "userships"]
+        read_only_fields = ["slug", "join_link", "is_owner", "userships"]
 
     def get_is_owner(self, obj):
         """Check if the current user is the owner"""
@@ -80,6 +82,26 @@ class EnsembleSerializer(serializers.ModelSerializer):
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
             return f"{frontend_url}/join/{token}"
         return None
+    
+    def get_userships(self, obj):
+        """Get userships details"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return [
+                {
+                    "user": UserSerializer(usership.user).data,
+                    # "role": usership.role, #TODO[SC-255]: Add this field
+                    "date_joined": usership.date_joined,
+                }
+                for usership in EnsembleUsership.objects.filter(ensemble=obj)
+            ]
+        return None
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "username", "email"]
 
 
 class CreateArrangementVersionMsczSerializer(serializers.Serializer):

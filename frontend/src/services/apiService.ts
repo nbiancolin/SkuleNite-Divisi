@@ -41,6 +41,12 @@ export interface Arrangement {
   style: string;
 }
 
+export interface UserObj {
+  id: number;
+  username: string;
+  email: string;
+}
+
 export interface Ensemble {
   id: number,
   name: string,
@@ -48,6 +54,7 @@ export interface Ensemble {
   arrangements: [Arrangement],
   join_link?: string | null,
   is_owner?: boolean
+  userships?:[UserObj]
 }
 
 export interface EditableArrangementData {
@@ -230,6 +237,49 @@ export const apiService = {
       credentials: 'include',
     });
     if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch ensembles (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+  return response.json();
+  },
+
+  async getEnsemble(slug: string) {
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch ensemble (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+  return response.json();
+  },
+
+  async removeUserFromEnsemble(user_id: number, ensemble: string){
+    const response = await fetch(`${API_BASE_URL}/ensembles/${ensemble}/remove-user`, 
+      {
+        method: 'POST', 
+        headers: getHeadersWithCsrf(), 
+        body: JSON.stringify({"user_id": user_id}),
+        credentials: 'include',
+      }
+    )
+    if (!response.ok) {
     let errorDetails = '';
     try {
       const errorData = await response.json();
@@ -238,7 +288,7 @@ export const apiService = {
       errorDetails = await response.text();
     }
     throw new Error(
-      `Failed to fetch ensembles (status: ${response.status}) - ${errorDetails}`
+      `Failed to create ensemble (status: ${response.status}) - ${errorDetails}`
     );
   }
   return response.json();
