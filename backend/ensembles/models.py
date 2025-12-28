@@ -3,6 +3,7 @@ from django.utils.text import slugify
 from django.core.files.storage import default_storage
 
 import os
+import secrets
 from logging import getLogger
 
 logger = getLogger("app")
@@ -42,10 +43,27 @@ class Ensemble(models.Model):
         null=True,
         blank=True
     )
+    invite_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
 
     @property
     def num_arrangements(self):
         return Arrangement.objects.filter(ensemble__id=self.pk).count()
+
+    def generate_invite_token(self):
+        """Generate a secure random token for inviting users"""
+        token = secrets.token_urlsafe(32)  # 32 bytes = 43 characters in URL-safe base64
+        # Ensure uniqueness
+        while Ensemble.objects.filter(invite_token=token).exists():
+            token = secrets.token_urlsafe(32)
+        self.invite_token = token
+        self.save(update_fields=['invite_token'])
+        return token
+
+    def get_or_create_invite_token(self):
+        """Get existing invite token or create a new one"""
+        if not self.invite_token:
+            self.generate_invite_token()
+        return self.invite_token
 
     def __str__(self):
         return self.name

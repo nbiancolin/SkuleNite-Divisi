@@ -11,12 +11,14 @@ import ArrangementDisplay from './pages/ensembles/ArrangementDetailPage';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
 import PartFormatterPage from './pages/PartFormatterPage'
 import HomePage from './pages/ensembles/HomePage';
+import JoinEnsemblePage from './pages/ensembles/JoinEnsemblePage';
 
 function App() {
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/join/:token" element={<JoinEnsemblePage />} />
         <Route path="/app" element={<HomePage />} />
         <Route path="/app/ensembles" element={<EnsemblesPage />} />
         <Route path="/app/ensembles/create" element={<CreateEnsemblePage />} />

@@ -3,11 +3,12 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
 from django.db.models import Q
+from django.conf import settings
 
 from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership
 from .serializers import (
@@ -76,6 +77,32 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         return ensemble.owner == user or EnsembleUsership.objects.filter(
             ensemble=ensemble, user=user
         ).exists()
+
+    @action(detail=True, methods=["get", "post"], url_path="invite-link")
+    def invite_link(self, request, slug=None):
+        """Generate or retrieve the invite link for an ensemble"""
+        ensemble = self.get_object()
+        user = request.user
+        
+        # Only owner can generate invite links
+        if ensemble.owner != user:
+            return Response(
+                {"detail": "Only the ensemble owner can generate invite links."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Generate token if it doesn't exist
+        token = ensemble.get_or_create_invite_token()
+        
+        # Build the join URL
+        join_url = request.build_absolute_uri(f"/join/{token}")
+        
+        return Response({
+            "invite_token": token,
+            "join_url": join_url,
+            "ensemble_name": ensemble.name,
+            "ensemble_slug": ensemble.slug,
+        })
 
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):
@@ -225,3 +252,109 @@ class ComputeDiffView(APIView):
             return Response(res, status=status.HTTP_200_OK)
         else:
             return Response(res, status=status.HTTP_202_ACCEPTED)
+
+
+class JoinEnsembleView(APIView):
+    """View to join an ensemble using an invite token"""
+    permission_classes = [AllowAny]  # Default to allow any, check auth in methods
+    
+    def post(self, request, *args, **kwargs):
+        # Require authentication for POST
+        if not request.user.is_authenticated:
+            return Response(
+                {"detail": "Authentication required to join an ensemble."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        token = request.data.get('token') or kwargs.get('token')
+        
+        if not token:
+            return Response(
+                {"detail": "Invite token is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            ensemble = Ensemble.objects.get(invite_token=token)
+        except Ensemble.DoesNotExist:
+            return Response(
+                {"detail": "Invalid invite token."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        user = request.user
+        
+        # Check if user already has access
+        if ensemble.owner == user:
+            return Response(
+                {
+                    "detail": "You are already the owner of this ensemble.",
+                    "ensemble": {
+                        "id": ensemble.id,
+                        "name": ensemble.name,
+                        "slug": ensemble.slug,
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        if EnsembleUsership.objects.filter(ensemble=ensemble, user=user).exists():
+            return Response(
+                {
+                    "detail": "You are already a member of this ensemble.",
+                    "ensemble": {
+                        "id": ensemble.id,
+                        "name": ensemble.name,
+                        "slug": ensemble.slug,
+                    }
+                },
+                status=status.HTTP_200_OK
+            )
+        
+        # Create the usership
+        usership = EnsembleUsership.objects.create(ensemble=ensemble, user=user)
+        
+        return Response(
+            {
+                "detail": "Successfully joined the ensemble.",
+                "ensemble": {
+                    "id": ensemble.id,
+                    "name": ensemble.name,
+                    "slug": ensemble.slug,
+                }
+            },
+            status=status.HTTP_201_CREATED
+        )
+    
+    def get(self, request, *args, **kwargs):
+        """Get ensemble info from token without joining (for preview)"""
+        token = request.query_params.get('token') or kwargs.get('token')
+        
+        if not token:
+            return Response(
+                {"detail": "Invite token is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            ensemble = Ensemble.objects.get(invite_token=token)
+        except Ensemble.DoesNotExist:
+            return Response(
+                {"detail": "Invalid invite token."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return ensemble info (user doesn't need to be authenticated for this)
+        return Response({
+            "ensemble": {
+                "id": ensemble.id,
+                "name": ensemble.name,
+                "slug": ensemble.slug,
+            },
+            "is_authenticated": request.user.is_authenticated,
+            "already_member": (
+                request.user.is_authenticated and (
+                    ensemble.owner == request.user or
+                    EnsembleUsership.objects.filter(ensemble=ensemble, user=request.user).exists()
+                )
+            ) if request.user.is_authenticated else False,
+        })

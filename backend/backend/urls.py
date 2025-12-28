@@ -30,6 +30,7 @@ from ensembles.views import (
     ArrangementByIdViewSet,
     ArrangementVersionViewSet,
     ComputeDiffView,
+    JoinEnsembleView,
 )
 from divisi.views import PartFormatterViewSet
 
@@ -49,6 +50,7 @@ urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
     path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
+    path("api/join/", JoinEnsembleView.as_view(), name="join-ensemble"),
     path("api/auth/current-user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),
     # Direct Discord login (skips allauth login page)

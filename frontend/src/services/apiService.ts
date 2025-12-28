@@ -45,7 +45,9 @@ export interface Ensemble {
   id: number,
   name: string,
   slug: string,
-  arrangements: [Arrangement]
+  arrangements: [Arrangement],
+  join_link?: string | null,
+  is_owner?: boolean
 }
 
 export interface EditableArrangementData {
@@ -498,6 +500,81 @@ export const apiService = {
     }
 
     return await response.json();
+  },
+
+  /**
+   * Get or generate invite link for an ensemble
+   * @param slug - Ensemble slug
+   * @returns Promise with invite link information
+   */
+  async getInviteLink(slug: string) {
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/invite-link/`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to get invite link (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  /**
+   * Get ensemble info from invite token (for preview before joining)
+   * @param token - Invite token
+   * @returns Promise with ensemble information
+   */
+  async getEnsembleByToken(token: string) {
+    const response = await fetch(`${API_BASE_URL}/join/?token=${encodeURIComponent(token)}`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to get ensemble info (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  /**
+   * Join an ensemble using an invite token
+   * @param token - Invite token
+   * @returns Promise with ensemble information
+   */
+  async joinEnsemble(token: string) {
+    const response = await fetch(`${API_BASE_URL}/join/`, {
+      method: 'POST',
+      headers: getHeadersWithCsrf(),
+      body: JSON.stringify({ token }),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to join ensemble (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
   }
 
 };
