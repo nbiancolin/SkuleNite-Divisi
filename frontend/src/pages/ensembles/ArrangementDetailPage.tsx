@@ -38,8 +38,9 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
-  IconGitCompare,
-  IconEye,
+  //TODO[SC-262]: Uncomment these for the diff viewer
+  // IconGitCompare,
+  // IconEye,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
