@@ -41,6 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgpg-error0 \
     python3 \
     python3-pip \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------------------------
@@ -55,7 +56,14 @@ RUN wget -O MuseScore.AppImage \
     mv squashfs-root musescore && \
     rm MuseScore.AppImage
 
-#TODO: Add fonts
+# --------------------------------------------------
+# Install Fonts
+# --------------------------------------------------
+COPY assets/fonts.zip /tmp/fonts.zip
+RUN mkdir -p /usr/share/fonts/truetype/custom && \
+    unzip /tmp/fonts.zip -d /usr/share/fonts/truetype/custom && \
+    fc-cache -fv && \
+    rm -f /tmp/fonts.zip
 
 # --------------------------------------------------
 # Headless wrapper
