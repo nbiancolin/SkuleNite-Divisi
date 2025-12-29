@@ -29,7 +29,6 @@ from ensembles.views import (
     ArrangementViewSet,
     ArrangementByIdViewSet,
     ArrangementVersionViewSet,
-    ComputeDiffView,
     JoinEnsembleView,
 )
 from divisi.views import PartFormatterViewSet
@@ -50,7 +49,6 @@ urlpatterns = [
     path("restricted/admin/", admin.site.urls),
     path("api/get-warnings/", GetWarningsView.as_view(), name="get-warnings"),
     path("api/get-csrf-token/", GetCsrfTokenView.as_view(), name="get-csrf-token"),
-    path("api/diffs/", ComputeDiffView.as_view(), name="diffs"),
     path("api/join/", JoinEnsembleView.as_view(), name="join-ensemble"),
     path("api/auth/current-user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),

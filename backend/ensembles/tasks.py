@@ -3,19 +3,12 @@ from celery import shared_task
 from divisi.tasks import format_arrangement_version
 from divisi.tasks.export import (
     export_score_and_parts_ms4_storage,
-    export_mscz_to_musicxml,
     export_mscz_to_mp3,
 )
-from .models import ArrangementVersion, Diff, ExportFailureLog
+from .models import ArrangementVersion, ExportFailureLog
 from logging import getLogger
 from django.core.files.storage import default_storage
-from django.core.files import File
-from django.core.files.base import ContentFile
 import os
-import shutil
-import tempfile
-import musicdiff
-import traceback
 
 logger = getLogger("export_tasks")
 
@@ -92,45 +85,6 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
 
                 return {"status": "error", "details": str(e)}
-        case "mxl":
-            try:
-                input_key = version.output_file_key
-                if not default_storage.exists(input_key):
-                    logger.warning(
-                        f"Couldn't Find Processed file for mxl export -- doesn't exist, using raw file: {version.mscz_file_key}"
-                    )
-                    input_key = version.mscz_file_key
-
-                if not default_storage.exists(input_key):
-                    logger.error(f"No input file found for version {version_id}")
-                    version.error_on_export = True
-                    version.is_processing = False
-                    version.save()
-
-                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
-
-                    return {
-                        "status": "error",
-                        "details": "No input file found when exporting MXL",
-                    }
-
-                output_key = version.mxl_file_key
-                if default_storage.exists(output_key):
-                    logger.info(f"[EXPORT] - Mxl file already exists for version id {version_id}, returning.")
-                    return {}
-                return export_mscz_to_musicxml(input_key, output_key)
-
-            except Exception as e:
-                logger.error(
-                    f"Unexpected error exporting version {version_id}: {str(e)}"
-                )
-                version.error_on_export = True
-                version.is_processing = False
-                version.save()
-
-                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
-
-                return {"status": "error", "details": str(e)}
 
         case "mp3":
             try:
@@ -190,82 +144,3 @@ def prep_and_export_mscz(version_id):
     v.save(update_fields=["is_processing", "error_on_export"])
 
     return res
-
-
-@shared_task
-def compute_diff(diff_id: int):
-    env = os.environ.copy()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
-    
-    diff = Diff.objects.get(id=diff_id)
-    diff.status = "in_progress"
-    diff.save()
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            # Download inputs
-            try:
-                temp_input_1 = os.path.join(temp_dir, "input1.musicxml")
-                with (
-                    default_storage.open(diff.from_version.mxl_file_key, "rb") as src,
-                    open(temp_input_1, "wb") as dst,
-                ):
-                    dst.write(src.read())
-            except FileNotFoundError:
-                export_arrangement_version(diff.from_version.id, action="mxl")
-                temp_input_1 = os.path.join(temp_dir, "input1.musicxml")
-                with (
-                    default_storage.open(diff.from_version.mxl_file_key, "rb") as src,
-                    open(temp_input_1, "wb") as dst,
-                ):
-                    dst.write(src.read())
-
-            try:
-                temp_input_2 = os.path.join(temp_dir, "input2.musicxml")
-                with (
-                    default_storage.open(diff.to_version.mxl_file_key, "rb") as src,
-                    open(temp_input_2, "wb") as dst,
-                ):
-                    dst.write(src.read())
-            except FileNotFoundError:
-                export_arrangement_version(diff.to_version.id, action="mxl")
-                temp_input_2 = os.path.join(temp_dir, "input2.musicxml")
-                with (
-                    default_storage.open(diff.to_version.mxl_file_key, "rb") as src,
-                    open(temp_input_2, "wb") as dst,
-                ):
-                    dst.write(src.read())
-
-            from music21 import environment
-
-            us = environment.UserSettings()
-            us['musicxmlPath'] = '/usr/local/bin/musescore'
-            us['musescoreDirectPNGPath'] = '/usr/local/bin/musescore'
-                
-            # Run MusicDiff
-            
-            temp_output_1 = os.path.join(temp_dir, "output.pdf")
-            temp_output_2 = os.path.join(temp_dir, "output2.pdf")
-            musicdiff.diff(temp_input_1, temp_input_2, temp_output_1, temp_output_2, visualize_diffs=True,)
-
-            # Output path in temp
-
-            # Save to storage
-            try:
-                with open(temp_output_2, "rb") as f:
-                    default_storage.save(diff.file_key, ContentFile(f.read()))
-            except Exception:
-                diff.status = "failed"
-                diff.error_msg = "Scores are Identical -- no diff created"
-                diff.save()
-                return {"status": "error", "details": "Scores are identical, no diff created"}
-
-            diff.status = "completed"
-            diff.save()
-            return {"status": "success", "output": diff.file_key}
-        except Exception as e:
-            logger.exception("MusicDiff error")
-            diff.status = "failed"
-            diff.error_msg = f"MusicDiff error: {traceback.format_exc()}"
-            diff.save()
-            return {"status": "error", "details": str(e)}

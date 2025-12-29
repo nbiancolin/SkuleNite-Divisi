@@ -192,11 +192,6 @@ class ArrangementVersion(models.Model):
     def score_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
-
-    @property
-    def mxl_file_key(self) -> str:
-        filename_without_ext = os.path.splitext(self.file_name)[0]
-        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.musicxml"
     
     @property
     def audio_file_key(self) -> str:
@@ -319,7 +314,7 @@ class ExportFailureLog(models.Model):
     def arrangement_version__str__(self):
         return self.arrangement_version.__str__()
 
-
+#TODO: Remove
 class Diff(models.Model):
     from_version = models.ForeignKey(
         ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_source"

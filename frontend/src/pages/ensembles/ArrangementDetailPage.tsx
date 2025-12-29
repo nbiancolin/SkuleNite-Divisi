@@ -93,13 +93,14 @@ export default function ArrangementDisplay() {
     exportError: false
   });
 
+  //TODO[SC-262]: uncomment when new score diff is ready
   // Diff functionality states
-  const [diffModal, setDiffModal] = useState(false);
-  const [selectedFromVersion, setSelectedFromVersion] = useState<number | null>(null);
-  const [selectedToVersion, setSelectedToVersion] = useState<number | null>(null);
-  const [diffLoading, setDiffLoading] = useState(false);
-  const [diffUrl, setDiffUrl] = useState<string>('');
-  const [diffError, setDiffError] = useState<string>('');
+  // const [diffModal, setDiffModal] = useState(false);
+  // const [selectedFromVersion, setSelectedFromVersion] = useState<number | null>(null);
+  // const [selectedToVersion, setSelectedToVersion] = useState<number | null>(null);
+  // const [diffLoading, setDiffLoading] = useState(false);
+  // const [diffUrl, setDiffUrl] = useState<string>('');
+  // const [diffError, setDiffError] = useState<string>('');
 
   const audioState = arrangement?.latest_version?.audio_state ?? "none";
 
@@ -200,58 +201,58 @@ export default function ArrangementDisplay() {
     }
   };
 
-  const handleComputeDiff = async () => {
-    if (!selectedFromVersion || !selectedToVersion) {
-      setDiffError('Please select both versions to compare');
-      return;
-    }
+  // const handleComputeDiff = async () => {
+  //   if (!selectedFromVersion || !selectedToVersion) {
+  //     setDiffError('Please select both versions to compare');
+  //     return;
+  //   }
 
-    if (selectedFromVersion === selectedToVersion) {
-      setDiffError('Please select two different versions');
-      return;
-    }
+  //   if (selectedFromVersion === selectedToVersion) {
+  //     setDiffError('Please select two different versions');
+  //     return;
+  //   }
 
-    try {
-      setDiffLoading(true);
-      setDiffError('');
-      const diffData = await apiService.computeDiff(selectedFromVersion, selectedToVersion);
+  //   try {
+  //     setDiffLoading(true);
+  //     setDiffError('');
+  //     const diffData = await apiService.computeDiff(selectedFromVersion, selectedToVersion);
       
-      // Poll for completion if diff is still processing
-      if (diffData.status === 'pending' || diffData.status === 'in_progress') {
-        const pollForDiff = async () => {
-          const updatedDiff = await apiService.getDiff(diffData.id);
-          if (updatedDiff.status === 'completed') {
-            setDiffUrl(updatedDiff.file_url);
-            setDiffLoading(false);
-          } else if (updatedDiff.status === 'failed') {
-            setDiffError(`Failed to compute diff: ${updatedDiff.error_msg}`);
-            setDiffLoading(false);
-          } else {
-            // Continue polling
-            setTimeout(pollForDiff, 1000);
-          }
-        };
-        setTimeout(pollForDiff, 1000);
-      } else if (diffData.status === 'completed') {
-        setDiffUrl(diffData.file_url);
-        setDiffLoading(false);
-      } else if (diffData.status === 'failed') {
-        setDiffError(`Failed to compute diff: ${diffData.error_msg}`);
-        setDiffLoading(false);
-      }
-    } catch (err) {
-      setDiffError(err instanceof Error ? err.message : 'Failed to compute diff - An unknown error occurred');
-      setDiffLoading(false);
-    } 
-  };
+  //     // Poll for completion if diff is still processing
+  //     if (diffData.status === 'pending' || diffData.status === 'in_progress') {
+  //       const pollForDiff = async () => {
+  //         const updatedDiff = await apiService.getDiff(diffData.id);
+  //         if (updatedDiff.status === 'completed') {
+  //           setDiffUrl(updatedDiff.file_url);
+  //           setDiffLoading(false);
+  //         } else if (updatedDiff.status === 'failed') {
+  //           setDiffError(`Failed to compute diff: ${updatedDiff.error_msg}`);
+  //           setDiffLoading(false);
+  //         } else {
+  //           // Continue polling
+  //           setTimeout(pollForDiff, 1000);
+  //         }
+  //       };
+  //       setTimeout(pollForDiff, 1000);
+  //     } else if (diffData.status === 'completed') {
+  //       setDiffUrl(diffData.file_url);
+  //       setDiffLoading(false);
+  //     } else if (diffData.status === 'failed') {
+  //       setDiffError(`Failed to compute diff: ${diffData.error_msg}`);
+  //       setDiffLoading(false);
+  //     }
+  //   } catch (err) {
+  //     setDiffError(err instanceof Error ? err.message : 'Failed to compute diff - An unknown error occurred');
+  //     setDiffLoading(false);
+  //   } 
+  // };
 
-  const handleShowDiff = () => {
-    setDiffModal(true);
-    setSelectedFromVersion(null);
-    setSelectedToVersion(null);
-    setDiffUrl('');
-    setDiffError('');
-  };
+  // const handleShowDiff = () => {
+  //   setDiffModal(true);
+  //   setSelectedFromVersion(null);
+  //   setSelectedToVersion(null);
+  //   setDiffUrl('');
+  //   setDiffError('');
+  // };
 
   const fetchArrangement = async (id: number) => {
     try {
@@ -717,6 +718,7 @@ export default function ArrangementDisplay() {
               </Badge>
             </Group>
             <Group>
+              {/* //TODO[SC-262]: Uncomment to add back diff functionality
               <Button
                 variant="light"
                 color="orange"
@@ -726,6 +728,7 @@ export default function ArrangementDisplay() {
               >
                 Compare Versions
               </Button>
+              */}
               <Button
                 variant="subtle"
                 rightSection={showVersionHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
@@ -854,6 +857,7 @@ export default function ArrangementDisplay() {
         </Modal>
 
         {/* Diff Comparison Modal */}
+        {/*}
         <Modal
           opened={diffModal}
           onClose={() => setDiffModal(false)}
@@ -951,6 +955,7 @@ export default function ArrangementDisplay() {
             )}
           </Stack>
         </Modal>
+        */}
 
         <Card shadow="xs" padding="lg" radius="md" withBorder>
           <Title order={3} mb="md">Download Parts</Title>

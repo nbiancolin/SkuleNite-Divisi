@@ -56,44 +56,6 @@ def export_mscz_to_mp3(input_key, output_key):
             LOGGER.exception("Mp3 export error")
             return {"status": "error", "details": str(e)}
 
-def export_mscz_to_musicxml(input_key, output_key):
-    """
-    Export a MusicXML file from MuseScore and save it to Django storage.
-
-    Args:
-        input_key (str): storage key for the input .mscz file
-        output_key (str): storage key to save the resulting .musicxml
-    """
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-        try:
-            # Download input
-            temp_input = os.path.join(temp_dir, "input.mscz")
-            with (
-                default_storage.open(input_key, "rb") as src,
-                open(temp_input, "wb") as dst,
-            ):
-                dst.write(src.read())
-
-            # Output path in temp
-            temp_output = os.path.join(temp_dir, "output.musicxml")
-
-            # Run MuseScore
-            render_mscz(temp_input, temp_output)
-
-            # Save to storage
-            with open(temp_output, "rb") as f:
-                default_storage.save(output_key, ContentFile(f.read()))
-
-            return {"status": "success", "output": output_key}
-        except subprocess.CalledProcessError as e:
-            stderr = (e.stderr or b"").decode("utf-8", errors="replace")
-            LOGGER.error("MuseScore export failed: %s", stderr)
-            return {"status": "error", "details": stderr}
-        except Exception as e:
-            LOGGER.exception("MusicXML export error")
-            return {"status": "error", "details": str(e)}
-
 
 def export_score_and_parts_ms4_storage_scoreparts(
     input_key,
