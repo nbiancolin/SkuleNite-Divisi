@@ -5,7 +5,7 @@ from rest_framework import status
 from django.db import transaction
 from django.core.files.storage import default_storage
 
-from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, Diff
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
 from django.contrib.auth import get_user_model
