@@ -1,4 +1,6 @@
-# app.py
+"""
+FastAPI App to interface with the musescore docker container
+"""
 import asyncio
 import subprocess
 import tempfile
