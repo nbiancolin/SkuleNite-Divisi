@@ -10,7 +10,7 @@ from django.core.files.base import ContentFile
 
 from divisi.models import UploadSession
 
-from divisi.lib import render_score
+from divisi.lib import render_mscz, render_score_parts
 
 
 from logging import getLogger
@@ -22,20 +22,11 @@ def _export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     assert output_path.endswith(".pdf"), (
         "ERR: export_mscz_to_pdf_score was called with a non-pdf output file"
     )
-    env = os.environ.copy()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
-    try:
-        # subprocess.run(["musescore", input_file_path, "-o", output_path], check=True) TODO remove
-        render_score(input_file_path, output_path)
-        return {"status": "success", "output": output_path}
-    except subprocess.CalledProcessError as e:
-        return {"status": "error", "details": str(e)}
+    render_mscz(input_file_path, output_path)
+    return {"status": "success", "output": output_path}
 
 
 def export_mscz_to_mp3(input_key, output_key):
-    env = os.environ.copy()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
-
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
             # Download input
@@ -50,14 +41,7 @@ def export_mscz_to_mp3(input_key, output_key):
             temp_output = os.path.join(temp_dir, "output.mp3")
 
             # Run MuseScore
-            render_score(temp_input, temp_output)
-            #TODO Remove
-            # subprocess.run(
-            #     ["musescore", temp_input, "-o", temp_output],
-            #     check=True,
-            #     capture_output=True,
-            #     env=env,
-            # )
+            render_mscz(temp_input, temp_output)
 
             # Save to storage
             with open(temp_output, "rb") as f:
@@ -80,8 +64,6 @@ def export_mscz_to_musicxml(input_key, output_key):
         input_key (str): storage key for the input .mscz file
         output_key (str): storage key to save the resulting .musicxml
     """
-    env = os.environ.copy()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -97,14 +79,7 @@ def export_mscz_to_musicxml(input_key, output_key):
             temp_output = os.path.join(temp_dir, "output.musicxml")
 
             # Run MuseScore
-            render_score(temp_input, temp_output)
-            #TODO Remove
-            # subprocess.run(
-            #     ["musescore", temp_input, "-o", temp_output],
-            #     check=True,
-            #     capture_output=True,
-            #     env=env,
-            # )
+            render_mscz(temp_input, temp_output)
 
             # Save to storage
             with open(temp_output, "rb") as f:
@@ -134,8 +109,6 @@ def export_score_and_parts_ms4_storage_scoreparts(
     Returns:
         dict: {"status": "success"|"error", "written": [saved_keys], "details": "..."}
     """
-    env = os.environ.copy()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     def _extract_json_from_text(text):
         """Find the first complete JSON object in text by balancing braces."""
@@ -210,25 +183,8 @@ def export_score_and_parts_ms4_storage_scoreparts(
 
         # run MuseScore with --score-parts-pdf
         try:
-            cmd = [
-                "docker", "exec",
-                "musescore-renderer",
-                "timeout", "300",
-                "musescore",
-                "--score-parts-pdf",
-                temp_input,
-                "--exit-after-export",
-            ]
-
-            proc = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                text=True,      # avoids manual decode
-            )
-
-            stdout_text = proc.stdout or ""
-            json_text = _extract_json_from_text(stdout_text)
+            stdout_text = render_score_parts(temp_input)
+            json_text = _extract_json_from_text(stdout_text.decode("utf-8"))
             data = json.loads(json_text)
         except subprocess.CalledProcessError as e:
             stderr = (e.stderr or b"").decode("utf-8", errors="replace")

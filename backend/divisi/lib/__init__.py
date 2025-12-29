@@ -1,1 +1,1 @@
-from .musescore_headless import render_score
+from .musescore_headless import render_mscz, render_score_parts

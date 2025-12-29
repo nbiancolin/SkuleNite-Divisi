@@ -4,22 +4,17 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV QT_QPA_PLATFORM=offscreen
 
 # --------------------------------------------------
-# Install runtime dependencies required by MuseScore
+# MuseScore runtime deps
 # --------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # Core system
-    ca-certificates \
     bash \
+    ca-certificates \
     curl \
     wget \
-    xz-utils \
-    # X / headless rendering
     xvfb \
     xauth \
     x11-xserver-utils \
-    # AppImage support
     libfuse2 \
-    # Qt / XCB deps
     libxkbcommon-x11-0 \
     libxcb1 \
     libxcb-xinerama0 \
@@ -29,30 +24,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-image0 \
     libxcb-keysyms1 \
     libxcb-randr0 \
-    # OpenGL / EGL
     libopengl0 \
     libgl1 \
     libglx0 \
     libegl1 \
     libglu1-mesa \
-    # Audio (MuseScore expects these even headless)
     libasound2 \
     libjack-jackd2-0 \
-    # Fonts
     fontconfig \
     fonts-dejavu-core \
     fonts-liberation \
     fonts-noto \
     fonts-freefont-ttf \
-    # Misc
     libglib2.0-0 \
     libnss3 \
     libgpg-error0 \
-    unzip \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # --------------------------------------------------
-# Install MuseScore 4 AppImage
+# Install MuseScore
 # --------------------------------------------------
 WORKDIR /opt
 
@@ -63,6 +55,8 @@ RUN wget -O MuseScore.AppImage \
     mv squashfs-root musescore && \
     rm MuseScore.AppImage
 
+#TODO: Add fonts
+
 # --------------------------------------------------
 # Headless wrapper
 # --------------------------------------------------
@@ -71,15 +65,21 @@ RUN echo '#!/bin/bash\nexec xvfb-run -a /opt/musescore/AppRun "$@"' \
     chmod +x /usr/local/bin/musescore
 
 # --------------------------------------------------
-# Optional: non-root user (recommended)
+# FastAPI
+# --------------------------------------------------
+RUN pip3 install --no-cache-dir --break-system-packages fastapi uvicorn python-multipart
+
+WORKDIR /app
+COPY musescore-headless/app.py .
+
+# --------------------------------------------------
+# Non-root user
 # --------------------------------------------------
 RUN useradd -m -u 1000 musescore
 USER musescore
-WORKDIR /home/musescore
 
-# Prime font cache (avoids first-run hangs)
 RUN fc-cache -f -v
 
-# Default command
-ENTRYPOINT ["musescore"]
-CMD ["--help"]
+EXPOSE 8000
+
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "1234"]

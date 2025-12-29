@@ -18,12 +18,13 @@ services:
     restart: always
 
   musescore-headless:
-    image: musescore.Dockerfile
+    build:
+      context: .
+      dockerfile: musescore-headless/musescore.Dockerfile
     restart: unless-stopped
-    volumes:
-      - /srv/divisi-app:/srv/divisi-app
     environment:
       - QT_QPA_PLATFORM=offscreen
-    command: ["sleep", "infinity"]
+    ports:
+      - "1234:1234"
 volumes:
   postgres_data:
