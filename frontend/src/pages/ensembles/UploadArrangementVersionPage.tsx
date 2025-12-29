@@ -125,6 +125,7 @@ export default function UploadArrangementVersionPage() {
     const csrf = getCsrfToken();
     try {
       const response = await axios.post(`${API_BASE_URL}/arrangementversions/upload/`, formData, {
+        withCredentials: true,
         headers: {
           "Content-Type": "multipart/form-data",
           'X-CSRFToken': csrf,

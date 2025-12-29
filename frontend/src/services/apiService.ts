@@ -73,16 +73,16 @@ export interface VersionHistoryItem {
   is_latest: boolean;
 }
 
-export interface DiffData {
-  id: number;
-  from_version: number;
-  to_version: number;
-  file_name: string;
-  timestamp: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  file_url: string;
-  error_msg: string;
-}
+// export interface DiffData {
+//   id: number;
+//   from_version: number;
+//   to_version: number;
+//   file_name: string;
+//   timestamp: string;
+//   status: 'pending' | 'in_progress' | 'completed' | 'failed';
+//   file_url: string;
+//   error_msg: string;
+// }
 
 // Helper function to get CSRF token from cookies
 function getCsrfToken(): string | null {
@@ -479,79 +479,82 @@ export const apiService = {
     return response.json();
   },
 
-  /**
-   * Compute a diff between two arrangement versions
-   * @param fromVersionId - ID of the source version
-   * @param toVersionId - ID of the target version
-   * @returns Promise<DiffData>
-   */
-  async computeDiff(fromVersionId: number, toVersionId: number): Promise<DiffData> {
-    const response = await fetch(`${API_BASE_URL}/diffs/`, {
-      method: 'POST',
-      headers: getHeadersWithCsrf(),
-      body: JSON.stringify({
-        from_version_id: fromVersionId,
-        to_version_id: toVersionId,
-      }),
-      credentials: 'include',
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+  //TODO[SC-262]: When new diff functionality is set up (with new git-based arrangementversions), uncomment this and have it use new endpoints
 
-    return await response.json();
-  },
+  // /**
+  //  * Compute a diff between two arrangement versions
+  //  * @param fromVersionId - ID of the source version
+  //  * @param toVersionId - ID of the target version
+  //  * @returns Promise<DiffData>
+  //  */
+  // async computeDiff(fromVersionId: number, toVersionId: number): Promise<DiffData> {
+  //   const response = await fetch(`${API_BASE_URL}/diffs/`, {
+  //     method: 'POST',
+  //     headers: getHeadersWithCsrf(),
+  //     body: JSON.stringify({
+  //       from_version_id: fromVersionId,
+  //       to_version_id: toVersionId,
+  //     }),
+  //     credentials: 'include',
+  //   });
 
-  /**
-   * Get an existing diff by ID
-   * @param diffId - ID of the diff
-   * @returns Promise<DiffData>
-   */
-  async getDiff(diffId: number): Promise<DiffData> {
-    const response = await fetch(`${API_BASE_URL}/diffs/?diff_id=${diffId}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    });
+  //   if (!response.ok) {
+  //     const errorData = await response.json().catch(() => ({}));
+  //     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  //   }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+  //   return await response.json();
+  // },
 
-    return await response.json();
-  },
+  // /**
+  //  * Get an existing diff by ID
+  //  * @param diffId - ID of the diff
+  //  * @returns Promise<DiffData>
+  //  */
+  // async getDiff(diffId: number): Promise<DiffData> {
+  //   const response = await fetch(`${API_BASE_URL}/diffs/?diff_id=${diffId}`, {
+  //     method: 'GET',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     credentials: 'include',
+  //   });
 
-  /**
-   * Alternative method to get diff by version IDs (if it already exists)
-   * @param fromVersionId - ID of the source version
-   * @param toVersionId - ID of the target version
-   * @returns Promise<DiffData>
-   */
-  async getDiffByVersions(fromVersionId: number, toVersionId: number): Promise<DiffData> {
-    const response = await fetch(`${API_BASE_URL}/diffs/`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from_version_id: fromVersionId,
-        to_version_id: toVersionId,
-      }),
-      credentials: 'include',
-    });
+  //   if (!response.ok) {
+  //     const errorData = await response.json().catch(() => ({}));
+  //     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  //   }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
+  //   return await response.json();
+  // },
 
-    return await response.json();
-  },
+  // /**
+  //  * Alternative method to get diff by version IDs (if it already exists)
+  //  * @param fromVersionId - ID of the source version
+  //  * @param toVersionId - ID of the target version
+  //  * @returns Promise<DiffData>
+  //  */
+  // async getDiffByVersions(fromVersionId: number, toVersionId: number): Promise<DiffData> {
+  //   const response = await fetch(`${API_BASE_URL}/diffs/`, {
+  //     method: 'GET',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify({
+  //       from_version_id: fromVersionId,
+  //       to_version_id: toVersionId,
+  //     }),
+  //     credentials: 'include',
+  //   });
+
+  //   if (!response.ok) {
+  //     const errorData = await response.json().catch(() => ({}));
+  //     throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+  //   }
+
+  //   return await response.json();
+  // },
 
   async triggerAudioExport(versionId: number) {
     const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/trigger_audio_export/`, {

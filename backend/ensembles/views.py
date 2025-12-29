@@ -16,7 +16,6 @@ from .serializers import (
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
-    ComputeDiffSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
@@ -263,32 +262,6 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 return Response({"mp3_link": request.build_absolute_uri(version.audio_file_url)})
             case ArrangementVersion.AudioStatus.ERROR:
                 return Response({"error": "Error on export of audio file"}, status=500)
-
-
-class ComputeDiffView(APIView):
-    def post(self, request, *args, **kwargs):
-        serializer = ComputeDiffSerializer(data=request.data)
-        if not serializer.is_valid(raise_exception=True):
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        res = serializer.save()
-        res["file_url"] = request.build_absolute_uri(res["file_url"])
-        if res["status"] == "completed":
-            return Response(res, status=status.HTTP_200_OK)
-        else:
-            return Response(res, status=status.HTTP_202_ACCEPTED)
-
-    def get(self, request, *args, **kwargs):
-        serializer = ComputeDiffSerializer(data=request.query_params)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        res = serializer.save()
-        res["file_url"] = request.build_absolute_uri(res["file_url"])
-        if res["status"] == "completed":
-            return Response(res, status=status.HTTP_200_OK)
-        else:
-            return Response(res, status=status.HTTP_202_ACCEPTED)
 
 
 class JoinEnsembleView(APIView):

@@ -79,9 +79,6 @@ jobs:
         echo "[INFO] Collecting static files"
         python backend/manage.py collectstatic --noinput
 
-        echo "[INFO] Running Music21 setup"
-        python backend/_scripts/setup_music21.py
-
         echo "[INFO] Restarting services"
         sudo systemctl restart gunicorn
         sudo systemctl restart celery

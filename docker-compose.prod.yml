@@ -17,5 +17,14 @@ services:
       - "127.0.0.1:6379:6379"
     restart: always
 
+  musescore-headless:
+    build:
+      context: .
+      dockerfile: musescore-headless/musescore.Dockerfile
+    restart: unless-stopped
+    environment:
+      - QT_QPA_PLATFORM=offscreen
+    ports:
+      - "1234:1234"
 volumes:
   postgres_data:

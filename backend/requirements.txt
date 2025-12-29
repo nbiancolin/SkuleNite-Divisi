@@ -11,10 +11,6 @@ psycopg2-binary
 gunicorn
 boto3
 django-storages
-music21>=9.7; python_version >= '3.10'
-numpy
-converter21>=3.5
-musicdiff
 git+https://github.com/nbiancolin/musescore-part-formatter.git@v1.1.0#egg=musescore_part_formatter
 pytest 
 pytest-django 
@@ -23,3 +19,4 @@ factory_boy
 pytest-factoryboy
 django-extensions
 django-allauth
+requests
