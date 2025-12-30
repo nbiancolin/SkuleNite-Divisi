@@ -45,6 +45,12 @@ class Ensemble(models.Model):
     )
     invite_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
 
+    userships = models.ManyToManyField(
+        'auth.User',
+        through='EnsembleUsership',
+        related_name='ensembles'
+    )
+
     @property
     def num_arrangements(self):
         return Arrangement.objects.filter(ensemble__id=self.pk).count()
@@ -73,9 +79,19 @@ class Ensemble(models.Model):
             self.slug = generate_unique_slug(Ensemble, self.name, instance=self)
         super().save(*args, **kwargs)
 
+class EnsembleQuerySet(models.QuerySet):
+    def user_is_admin(self, user):
+        return self.filter(
+            userships__user=user,
+            userships__role=EnsembleUsership.Role.ADMIN
+        )
+
 
 class EnsembleUsership(models.Model):
     """Model to track which users have access to which ensembles"""
+
+    objects = EnsembleQuerySet.as_manager()
+
     user = models.ForeignKey(
         'auth.User',
         related_name='ensemble_userships',
@@ -87,6 +103,12 @@ class EnsembleUsership(models.Model):
         on_delete=models.CASCADE
     )
     date_joined = models.DateTimeField(auto_now_add=True)
+
+    class Role(models.TextChoices):
+        MEMBER = "M", "member"
+        ADMIN = "A", "admin"
+
+    role = models.CharField(max_length=1, choices=Role.choices, default=Role.MEMBER)
 
     class Meta:
         unique_together = ('user', 'ensemble')

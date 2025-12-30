@@ -76,11 +76,16 @@ class EnsembleSerializer(serializers.ModelSerializer):
     def get_join_link(self, obj):
         """Generate join link if user is owner"""
         request = self.context.get('request')
-        if request and request.user.is_authenticated and obj.owner == request.user:
+        if request and request.user.is_authenticated:
+            try:
+                ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
+                if ship.role != EnsembleUsership.Role.ADMIN:
+                    return None
+            except EnsembleUsership.DoesNotExist:
+                return None
+            
             token = obj.get_or_create_invite_token()
-            from django.conf import settings
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            return f"{frontend_url}/join/{token}"
+            return request.build_absolute_uri(f"/join/{token}")
         return None
     
     def get_userships(self, obj):
@@ -90,7 +95,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             return [
                 {
                     "user": UserSerializer(usership.user).data,
-                    # "role": usership.role, #TODO[SC-255]: Add this field
+                    "role": usership.role,
                     "date_joined": usership.date_joined,
                 }
                 for usership in EnsembleUsership.objects.filter(ensemble=obj)

@@ -88,9 +88,16 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         user = request.user
         
         # Only owner can generate invite links
-        if ensemble.owner != user:
+        try:
+            ship = EnsembleUsership.objects.get(ensemble=ensemble, user=user)
+            if ship.role != EnsembleUsership.Role.ADMIN:
+                return Response(
+                    {"detail": "Only ensemble admins can generate invite links."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        except EnsembleUsership.DoesNotExist:
             return Response(
-                {"detail": "Only the ensemble owner can generate invite links."},
+                {"detail": "Only ensemble admins can generate invite links."},
                 status=status.HTTP_403_FORBIDDEN
             )
         
@@ -112,7 +119,15 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         """Remove a user from the ensemble using their user ID"""
         ensemble = self.get_object()
         user = request.user
-        
+        try:
+            ship = EnsembleUsership.objects.get(ensemble=ensemble, user=user)
+        except EnsembleUsership.DoesNotExist:
+            if user != ensemble.owner:
+                return Response(
+                    {"detail": "Only admins can remove users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
         # Only owner can remove users
         if ensemble.owner != user:
             return Response(
