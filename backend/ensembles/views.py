@@ -118,7 +118,7 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         ensemble = self.get_object()
         user = request.user
 
-        if user.get_ensemble_role(ensemble) != EnsembleUsership.Role.ADMIN:
+        if user.is_ensemble_admin(ensemble) is False:
             return Response(
                     {"detail": "Only admins can remove users."},
                     status=status.HTTP_403_FORBIDDEN

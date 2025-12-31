@@ -45,6 +45,7 @@ const emptyEnsemble = (): Ensemble => ({
   id: 0,
   name: '',
   slug: '',
+  is_admin: false,
   arrangements: [emptyArrangement()],
 })
 
