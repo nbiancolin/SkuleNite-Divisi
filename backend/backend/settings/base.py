@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'storages',
     'django.contrib.staticfiles',
     'django_extensions',
+    "users.apps.UsersConfig",
 ]
 
 MIDDLEWARE = [

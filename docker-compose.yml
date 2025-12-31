@@ -40,7 +40,7 @@ services:
     tty: true
 
   db:
-    image: postgres
+    image: postgres:17
     environment:
       POSTGRES_DB: mydb
       POSTGRES_USER: user
