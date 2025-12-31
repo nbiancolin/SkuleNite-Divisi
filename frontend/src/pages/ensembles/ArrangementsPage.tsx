@@ -162,7 +162,7 @@ const ArrangementsPage = () => {
           <Text c="dimmed">
             {arrangements.length} arrangement{arrangements.length !== 1 ? 's' : ''}
           </Text>
-          {ensemble.is_owner && (
+          {ensemble.is_admin && (
             <Group gap="xs">
               {ensemble.join_link || inviteLink ? (
                 <Group gap="xs">

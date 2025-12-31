@@ -189,7 +189,7 @@ export default function EnsembleDisplay() {
     );
   }
 
-  const isOwner = !!ensemble.is_owner;
+  const isAdmin = !!ensemble.is_admin;
 
   return (
     <Container size="md" py="xl">
@@ -198,11 +198,11 @@ export default function EnsembleDisplay() {
           <Group align="center">
             <Title order={2}>{ensemble.name}</Title>
             <Badge color="gray" variant="outline">{ensemble.slug}</Badge>
-            {ensemble.is_owner && <Badge color="teal">Owner</Badge>}
+            {ensemble.is_admin && <Badge color="teal">Owner</Badge>}
           </Group>
           <Group>
             <Button component={Link} to="/app/ensembles" variant="subtle">Back</Button>
-            {isOwner && (
+            {isAdmin && (
               <Button onClick={() => setEditing((s) => !s)}>
                 {editing ? 'Cancel' : 'Edit'}
               </Button>
@@ -275,7 +275,7 @@ export default function EnsembleDisplay() {
                           <Text size="xs" color="dimmed">{ship.user.email}</Text>
                         </td>
                         <td style={{ textAlign: 'right' }}>
-                          {isOwner && (
+                          {isAdmin && (
                             <Tooltip label="Remove user" position="left" withArrow>
                               <ActionIcon color="red" onClick={() => handleRemoveUserClick(ship.id, ship.user.username)}>
                                 <IconTrash size={16} />
@@ -296,7 +296,7 @@ export default function EnsembleDisplay() {
               <Text size="sm" color="dimmed">Invite link</Text>
               <Group mt="xs">
                 <Text size="sm" truncate>{ensemble.join_link ?? 'No invite link'}</Text>
-                {isOwner && (
+                {isAdmin && (
                   <Button size="xs" variant="outline" onClick={async () => {
                     try {
                       const data = await apiService.getInviteLink(ensemble.slug);

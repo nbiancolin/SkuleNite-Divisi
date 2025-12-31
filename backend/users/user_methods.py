@@ -3,7 +3,7 @@ from ensembles.models import EnsembleUsership
 
 User = get_user_model()
 
-def is_ensemble_admin(self, ensemble):
+def is_ensemble_admin(self, ensemble) -> bool:
     return EnsembleUsership.objects.filter(
         user=self,
         ensemble=ensemble,

@@ -53,7 +53,7 @@ export interface Ensemble {
   slug: string,
   arrangements: [Arrangement],
   join_link?: string | null,
-  is_owner?: boolean
+  is_admin: boolean, //if the requesting user is an admin in the esnemble
   userships?:[UserObj]
 }
 

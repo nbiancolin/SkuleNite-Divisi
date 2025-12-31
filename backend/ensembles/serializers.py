@@ -19,8 +19,9 @@ VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
-
-    audio_state = serializers.CharField(source='get_audio_state_display', read_only=True)
+    audio_state = serializers.CharField(
+        source="get_audio_state_display", read_only=True
+    )
 
     class Meta:
         model = ArrangementVersion
@@ -55,27 +56,32 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
-
     arrangements = ArrangementSerializer(many=True, read_only=True)
     join_link = serializers.SerializerMethodField()
-    is_owner = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
     userships = serializers.SerializerMethodField()
 
     class Meta:
         model = Ensemble
-        fields = ["id", "name", "slug", "arrangements", "join_link", "is_owner", "userships"]
-        read_only_fields = ["slug", "join_link", "is_owner", "userships"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "arrangements",
+            "join_link",
+            "is_admin",
+            "userships",
+        ]
+        read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
-    def get_is_owner(self, obj):
-        """Check if the current user is the owner"""
-        request = self.context.get('request')
+    def get_is_admin(self, obj):
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return obj.owner == request.user
-        return False
+            return request.user.is_ensemble_admin(obj)
 
     def get_join_link(self, obj):
         """Generate join link if user is owner"""
-        request = self.context.get('request')
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
             try:
                 ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
@@ -83,14 +89,14 @@ class EnsembleSerializer(serializers.ModelSerializer):
                     return None
             except EnsembleUsership.DoesNotExist:
                 return None
-            
+
             token = obj.get_or_create_invite_token()
             return request.build_absolute_uri(f"/join/{token}")
         return None
-    
+
     def get_userships(self, obj):
         """Get userships details"""
-        request = self.context.get('request')
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
             return [
                 {
