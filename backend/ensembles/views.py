@@ -44,7 +44,8 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         serializer.save(owner=self.request.user)
         EnsembleUsership.objects.create(
             ensemble=serializer.instance,
-            user=self.request.user
+            user=self.request.user,
+            role=EnsembleUsership.Role.ADMIN,
         )
 
     @action(detail=True, methods=["get"], url_path="arrangements")
@@ -87,18 +88,22 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         ensemble = self.get_object()
         user = request.user
         
-        # Only owner can generate invite links
-        if user.get_ensemble_role(ensemble) != EnsembleUsership.Role.ADMIN:
+        # Check if user is owner or has admin role
+        is_owner = ensemble.owner == user
+        is_admin = user.get_ensemble_role(ensemble) == EnsembleUsership.Role.ADMIN
+        
+        if not is_owner and not is_admin:
             return Response(
-                    {"detail": "Only ensemble admins can generate invite links."},
+                    {"detail": "Only ensemble owners and admins can generate invite links."},
                     status=status.HTTP_403_FORBIDDEN
                 )
         
         # Generate token if it doesn't exist
         token = ensemble.get_or_create_invite_token()
         
-        # Build the join URL
-        join_url = request.build_absolute_uri(f"/join/{token}")
+        # Build the join URL using frontend URL
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+        join_url = f"{frontend_url.rstrip('/')}/join/{token}"
         
         return Response({
             "invite_token": token,
@@ -132,6 +137,55 @@ class EnsembleViewSet(viewsets.ModelViewSet):
             usership.delete()
             return Response(
                 {"detail": "User removed from ensemble."},
+                status=status.HTTP_200_OK
+            )
+        except EnsembleUsership.DoesNotExist:
+            return Response(
+                {"detail": "User is not a member of this ensemble."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=["post"], url_path="change-user-role")
+    def change_user_role(self, request, slug=None):
+        """Change a user's role in the ensemble"""
+        ensemble = self.get_object()
+        user = request.user
+
+        if user.get_ensemble_role(ensemble) != EnsembleUsership.Role.ADMIN:
+            return Response(
+                    {"detail": "Only admins can change user roles."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+        
+        user_id = request.data.get("user_id")
+        new_role = request.data.get("role")
+        
+        if not user_id:
+            return Response(
+                {"detail": "User ID is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if not new_role:
+            return Response(
+                {"detail": "Role is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate role
+        valid_roles = [choice[0] for choice in EnsembleUsership.Role.choices]
+        if new_role not in valid_roles:
+            return Response(
+                {"detail": f"Invalid role. Must be one of: {', '.join(valid_roles)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            usership = EnsembleUsership.objects.get(ensemble=ensemble, user__id=user_id)
+            usership.role = new_role
+            usership.save(update_fields=['role'])
+            return Response(
+                {"detail": "User role updated successfully.", "role": usership.role},
                 status=status.HTTP_200_OK
             )
         except EnsembleUsership.DoesNotExist:

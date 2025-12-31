@@ -47,6 +47,13 @@ export interface UserObj {
   email: string;
 }
 
+export interface EnsembleUsership {
+  id: number;
+  user: UserObj;
+  role: 'M' | 'A'; // 'M' for member, 'A' for admin
+  date_joined: string;
+}
+
 export interface Ensemble {
   id: number,
   name: string,
@@ -54,7 +61,7 @@ export interface Ensemble {
   arrangements: [Arrangement],
   join_link?: string | null,
   is_admin: boolean, //if the requesting user is an admin in the esnemble
-  userships?:[UserObj]
+  userships?: EnsembleUsership[]
 }
 
 export interface EditableArrangementData {
@@ -270,6 +277,30 @@ export const apiService = {
     }
     throw new Error(
       `Failed to create ensemble (status: ${response.status}) - ${errorDetails}`
+    );
+  }
+  return response.json();
+  },
+
+  async changeUserRole(user_id: number, ensemble: string, role: 'M' | 'A'){
+    const response = await fetch(`${API_BASE_URL}/ensembles/${ensemble}/change-user-role/`, 
+      {
+        method: 'POST', 
+        headers: getHeadersWithCsrf(), 
+        body: JSON.stringify({"user_id": user_id, "role": role}),
+        credentials: 'include',
+      }
+    )
+    if (!response.ok) {
+    let errorDetails = '';
+    try {
+      const errorData = await response.json();
+      errorDetails = errorData.detail || JSON.stringify(errorData);
+    } catch {
+      errorDetails = await response.text();
+    }
+    throw new Error(
+      `Failed to change user role (status: ${response.status}) - ${errorDetails}`
     );
   }
   return response.json();

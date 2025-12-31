@@ -4,6 +4,9 @@ from ensembles.models import EnsembleUsership
 User = get_user_model()
 
 def is_ensemble_admin(self, ensemble) -> bool:
+    # Check if user is owner or has admin role in usership
+    if ensemble.owner == self:
+        return True
     return EnsembleUsership.objects.filter(
         user=self,
         ensemble=ensemble,

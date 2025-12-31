@@ -4,6 +4,7 @@ from rest_framework import status
 
 from django.db import transaction
 from django.core.files.storage import default_storage
+from django.conf import settings
 
 from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
@@ -80,18 +81,26 @@ class EnsembleSerializer(serializers.ModelSerializer):
             return request.user.is_ensemble_admin(obj)
 
     def get_join_link(self, obj):
-        """Generate join link if user is owner"""
+        """Generate join link if user is owner or admin"""
         request = self.context.get("request")
         if request and request.user.is_authenticated:
+            # Check if user is owner
+            if obj.owner == request.user:
+                token = obj.get_or_create_invite_token()
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                return f"{frontend_url.rstrip('/')}/join/{token}"
+            
+            # Check if user has admin role
             try:
                 ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
-                if ship.role != EnsembleUsership.Role.ADMIN:
-                    return None
+                if ship.role == EnsembleUsership.Role.ADMIN:
+                    token = obj.get_or_create_invite_token()
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                    return f"{frontend_url.rstrip('/')}/join/{token}"
             except EnsembleUsership.DoesNotExist:
-                return None
+                pass
 
-            token = obj.get_or_create_invite_token()
-            return request.build_absolute_uri(f"/join/{token}")
+            return None
         return None
 
     def get_userships(self, obj):
@@ -100,6 +109,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return [
                 {
+                    "id": usership.id,
                     "user": UserSerializer(usership.user).data,
                     "role": usership.role,
                     "date_joined": usership.date_joined,

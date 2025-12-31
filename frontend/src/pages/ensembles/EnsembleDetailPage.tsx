@@ -21,6 +21,7 @@ import {
   ScrollArea,
   Modal,
   Avatar,
+  Select,
 } from '@mantine/core';
 import { 
   IconAlertCircle, 
@@ -102,6 +103,20 @@ export default function EnsembleDisplay() {
       setSaving(false);
       setConfirmRemoveOpen(false);
       setRemoveCandidate(null);
+    }
+  };
+
+  const handleRoleChange = async (userId: number, newRole: 'M' | 'A') => {
+    if (!ensemble) return;
+    try {
+      setSaving(true);
+      await apiService.changeUserRole(userId, ensemble.slug, newRole);
+      // refresh
+      await fetchEnsemble(ensemble.slug);
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -265,7 +280,7 @@ export default function EnsembleDisplay() {
               <ScrollArea style={{ maxHeight: 300 }}>
                 <Table verticalSpacing="sm" miw={300}>
                   <tbody>
-                    {(ensemble.userships && ensemble.userships.length > 0) ? ensemble.userships.map((ship: any) => (
+                    {(ensemble.userships && ensemble.userships.length > 0) ? ensemble.userships.map((ship) => (
                       <tr key={ship.user.id}>
                         <td style={{ width: 40 }}>
                           <Avatar size={28} radius="xl">{(ship.user.username || 'U').charAt(0).toUpperCase()}</Avatar>
@@ -274,18 +289,38 @@ export default function EnsembleDisplay() {
                           <Text>{ship.user.username}</Text>
                           <Text size="xs" color="dimmed">{ship.user.email}</Text>
                         </td>
+                        <td>
+                          <Badge color={ship.role === 'A' ? 'teal' : 'gray'} variant="light">
+                            {ship.role === 'A' ? 'Admin' : 'Member'}
+                          </Badge>
+                        </td>
                         <td style={{ textAlign: 'right' }}>
-                          {isAdmin && (
-                            <Tooltip label="Remove user" position="left" withArrow>
-                              <ActionIcon color="red" onClick={() => handleRemoveUserClick(ship.id, ship.user.username)}>
-                                <IconTrash size={16} />
-                              </ActionIcon>
-                            </Tooltip>
-                          )}
+                          <Group gap="xs">
+                            {isAdmin && (
+                              <Select
+                                value={ship.role}
+                                onChange={(value) => value && handleRoleChange(ship.user.id, value as 'M' | 'A')}
+                                data={[
+                                  { value: 'M', label: 'Member' },
+                                  { value: 'A', label: 'Admin' },
+                                ]}
+                                size="xs"
+                                w={100}
+                                disabled={saving}
+                              />
+                            )}
+                            {isAdmin && (
+                              <Tooltip label="Remove user" position="left" withArrow>
+                                <ActionIcon color="red" onClick={() => handleRemoveUserClick(ship.user.id, ship.user.username)}>
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
+                          </Group>
                         </td>
                       </tr>
                     )) : (
-                      <tr><td colSpan={3}><Text color="dimmed">No members</Text></td></tr>
+                      <tr><td colSpan={4}><Text color="dimmed">No members</Text></td></tr>
                     )}
                   </tbody>
                 </Table>
