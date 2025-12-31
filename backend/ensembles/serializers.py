@@ -4,6 +4,7 @@ from rest_framework import status
 
 from django.db import transaction
 from django.core.files.storage import default_storage
+from django.conf import settings
 
 from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
@@ -19,8 +20,9 @@ VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
-
-    audio_state = serializers.CharField(source='get_audio_state_display', read_only=True)
+    audio_state = serializers.CharField(
+        source="get_audio_state_display", read_only=True
+    )
 
     class Meta:
         model = ArrangementVersion
@@ -55,42 +57,61 @@ class ArrangementSerializer(serializers.ModelSerializer):
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
-
     arrangements = ArrangementSerializer(many=True, read_only=True)
     join_link = serializers.SerializerMethodField()
-    is_owner = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField()
     userships = serializers.SerializerMethodField()
 
     class Meta:
         model = Ensemble
-        fields = ["id", "name", "slug", "arrangements", "join_link", "is_owner", "userships"]
-        read_only_fields = ["slug", "join_link", "is_owner", "userships"]
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "arrangements",
+            "join_link",
+            "is_admin",
+            "userships",
+        ]
+        read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
-    def get_is_owner(self, obj):
-        """Check if the current user is the owner"""
-        request = self.context.get('request')
+    def get_is_admin(self, obj):
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return obj.owner == request.user
-        return False
+            return request.user.is_ensemble_admin(obj)
 
     def get_join_link(self, obj):
-        """Generate join link if user is owner"""
-        request = self.context.get('request')
-        if request and request.user.is_authenticated and obj.owner == request.user:
-            token = obj.get_or_create_invite_token()
-            from django.conf import settings
-            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
-            return f"{frontend_url}/join/{token}"
+        """Generate join link if user is owner or admin"""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            # Check if user is owner
+            if obj.owner == request.user:
+                token = obj.get_or_create_invite_token()
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                return f"{frontend_url.rstrip('/')}/join/{token}"
+            
+            # Check if user has admin role
+            try:
+                ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
+                if ship.role == EnsembleUsership.Role.ADMIN:
+                    token = obj.get_or_create_invite_token()
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
+                    return f"{frontend_url.rstrip('/')}/join/{token}"
+            except EnsembleUsership.DoesNotExist:
+                pass
+
+            return None
         return None
-    
+
     def get_userships(self, obj):
         """Get userships details"""
-        request = self.context.get('request')
+        request = self.context.get("request")
         if request and request.user.is_authenticated:
             return [
                 {
+                    "id": usership.id,
                     "user": UserSerializer(usership.user).data,
-                    # "role": usership.role, #TODO[SC-255]: Add this field
+                    "role": usership.role,
                     "date_joined": usership.date_joined,
                 }
                 for usership in EnsembleUsership.objects.filter(ensemble=obj)
