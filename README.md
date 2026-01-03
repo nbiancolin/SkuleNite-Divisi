@@ -23,11 +23,17 @@ to run prod:
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
+Ensure all services below are running:
+- gunicorn
+- celery
+
+
 Backend:
 - `backend` contains django config things
+- `core` contains django specific things that aren't config (mainly Login stuff)
 - `divisi` contains everything needed to do the part-prep stuff
 - `ensembles` contains everything needed for score management
-
+- `vcs` goes hand in hand with with ensembles and contains the connections between Arrangements and Git Repos
 
 
 ## How Files storage is structured
