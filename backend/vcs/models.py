@@ -4,6 +4,8 @@ class ScoreRepository(models.Model):
     """ This model is where the git things live. So as to not point everything to arrangement versons """
     arrangement = models.OneToOneField("ensembles.Arrangement", on_delete=models.CASCADE)
 
+    latest_commit = models.ForeignKey(to="vcs.ScoreVersion", on_delete=models.PROTECT)
+
 
 class ScoreVersion(models.Model):
     """ Django Model that models git commits """
