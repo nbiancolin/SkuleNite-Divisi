@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Container,
   FileInput,
@@ -16,8 +16,26 @@ import {
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 import { ScoreTitlePreview } from "../components/ScoreTitlePreview";
+import { apiService } from "../services/apiService";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+// Helper function to get CSRF token from cookies
+function getCsrfToken(): string | null {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
 
 export default function PartFormatterPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -28,6 +46,7 @@ export default function PartFormatterPage() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [msczUrl, setMsczUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // New states
   const [selectedStyle, setSelectedStyle] = useState<"jazz" | "broadway" | "classical">("broadway");
@@ -37,6 +56,46 @@ export default function PartFormatterPage() {
   const [versionNum, setVersionNum] = useState<string>("1.0.0")
   const [composer, setComposer] = useState<string>("")
   const [arranger, setArranger] = useState<string>("")
+
+  // Check if user is authenticated on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await apiService.getCurrentUser();
+        setIsAuthenticated(response.is_authenticated);
+        // Fetch CSRF token if authenticated to ensure cookie is set
+        if (response.is_authenticated) {
+          await apiService.fetchCsrfToken();
+        }
+      } catch (error) {
+        console.error('Failed to check authentication:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Helper to get headers with CSRF token if user is authenticated
+  const getRequestHeaders = (contentType: string = 'application/json') => {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    
+    // Only set Content-Type if not multipart/form-data (axios sets it automatically)
+    if (contentType !== 'multipart/form-data') {
+      headers['Content-Type'] = contentType;
+    }
+    
+    // Include CSRF token if user is authenticated
+    if (isAuthenticated) {
+      const csrfToken = getCsrfToken();
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+    }
+    
+    return headers;
+  };
 
   const handleUpload = async () => {
     if (!file) return;
@@ -53,9 +112,8 @@ export default function PartFormatterPage() {
 
     try {
       const response = await axios.post(`${API_BASE_URL}/part-formatter/upload_mscz/`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: getRequestHeaders("multipart/form-data"),
+        withCredentials: true, // Include cookies for CSRF token
       });
 
       const id = response.data.session_id;
@@ -96,6 +154,9 @@ export default function PartFormatterPage() {
           measures_per_line: measuresPerLine,
           version_num: versionNum
         })
+      }, {
+        headers: getRequestHeaders(),
+        withCredentials: true, // Include cookies for CSRF token
       });
 
       setDownloadUrl(response.data.score_download_url);

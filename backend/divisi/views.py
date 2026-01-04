@@ -2,6 +2,8 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from django.core.files.storage import default_storage
 
@@ -16,9 +18,16 @@ logger = logging.getLogger("Divisi-Views")
 class PartFormatterViewSet(viewsets.ViewSet):
     """
     ViewSet for part formatter endpoints.
-    These endpoints do not require authentication.
+    These endpoints do not require authentication or CSRF tokens.
     """
     permission_classes = [AllowAny]
+
+    @method_decorator(csrf_exempt)
+    def dispatch(self, request, *args, **kwargs):
+        """
+        Override dispatch to exempt CSRF protection.
+        """
+        return super().dispatch(request, *args, **kwargs)
 
     @action(detail=False, methods=["post"])
     def upload_mscz(self, request):
