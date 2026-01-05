@@ -11,7 +11,7 @@ from divisi.tasks.export import export_all_parts_with_tracking
 
 
 @pytest.mark.django_db
-def test_part_creation(self, arrangement_versions):
+def test_part_creation( arrangement_versions):
     """Test creating a Part record"""
     v1, v2 = arrangement_versions
     part = Part.objects.create(
@@ -27,7 +27,7 @@ def test_part_creation(self, arrangement_versions):
     assert part.arrangement_version == v1
 
 @pytest.mark.django_db
-def test_part_score_flag(self, arrangement_versions):
+def test_part_score_flag( arrangement_versions):
     """Test creating a score Part"""
     v1, _ = arrangement_versions
     score_part = Part.objects.create(
@@ -41,7 +41,7 @@ def test_part_score_flag(self, arrangement_versions):
     assert score_part.name == "Score"
 
 @pytest.mark.django_db
-def test_part_file_url(self, arrangement_versions):
+def test_part_file_url( arrangement_versions):
     """Test Part file_url property"""
     v1, _ = arrangement_versions
     part = Part.objects.create(
@@ -57,7 +57,7 @@ def test_part_file_url(self, arrangement_versions):
     assert "cello.pdf" in url or "test/cello.pdf" in url
 
 @pytest.mark.django_db
-def test_part_ordering(self, arrangement_versions):
+def test_part_ordering( arrangement_versions):
     """Test Part model ordering (score first, then alphabetically)"""
     v1, _ = arrangement_versions
     
@@ -91,7 +91,7 @@ def test_part_ordering(self, arrangement_versions):
     assert parts[2].name == "Violin"
 
 @pytest.mark.django_db
-def test_part_deletion_with_version(self, arrangement_versions):
+def test_part_deletion_with_version( arrangement_versions):
     """Test that Parts are deleted when ArrangementVersion is deleted"""
     v1, _ = arrangement_versions
     
@@ -121,7 +121,7 @@ def test_part_deletion_with_version(self, arrangement_versions):
 
 @pytest.mark.django_db
 @patch('divisi.tasks.export.render_all_parts_pdf')
-def test_export_creates_parts_successfully(self, mock_render, arrangement_versions):
+def test_export_creates_parts_successfully( mock_render, arrangement_versions):
     """Test that export creates Part records correctly"""
     v1, _ = arrangement_versions
     
@@ -168,7 +168,7 @@ def test_export_creates_parts_successfully(self, mock_render, arrangement_versio
     assert cello_part.is_score is False
 
 @pytest.mark.django_db
-def test_export_handles_missing_input_file(self, arrangement_versions):
+def test_export_handles_missing_input_file( arrangement_versions):
     """Test export handles missing input file gracefully"""
     v1, _ = arrangement_versions
     
@@ -183,7 +183,7 @@ def test_export_handles_missing_input_file(self, arrangement_versions):
 
 @pytest.mark.django_db
 @patch('divisi.tasks.export.render_all_parts_pdf')
-def test_export_handles_invalid_zip(self, mock_render, arrangement_versions):
+def test_export_handles_invalid_zip( mock_render, arrangement_versions):
     """Test export handles invalid zip file"""
     v1, _ = arrangement_versions
     
@@ -201,7 +201,7 @@ def test_export_handles_invalid_zip(self, mock_render, arrangement_versions):
 
 @pytest.mark.django_db
 @patch('divisi.tasks.export.render_all_parts_pdf')
-def test_export_handles_empty_zip(self, mock_render, arrangement_versions):
+def test_export_handles_empty_zip( mock_render, arrangement_versions):
     """Test export handles empty zip file"""
     v1, _ = arrangement_versions
     
@@ -223,7 +223,7 @@ def test_export_handles_empty_zip(self, mock_render, arrangement_versions):
 
 @pytest.mark.django_db
 @patch('divisi.tasks.export.render_all_parts_pdf')
-def test_export_without_version_id(self, mock_render, arrangement_versions):
+def test_export_without_version_id( mock_render, arrangement_versions):
     """Test export works without creating Part records when version_id is None"""
     v1, _ = arrangement_versions
     
@@ -249,7 +249,7 @@ def test_export_without_version_id(self, mock_render, arrangement_versions):
 
 @pytest.mark.django_db
 @patch('divisi.tasks.export.render_all_parts_pdf')
-def test_export_handles_api_error(self, mock_render, arrangement_versions):
+def test_export_handles_api_error( mock_render, arrangement_versions):
     """Test export handles MuseScore API errors"""
     v1, _ = arrangement_versions
     
@@ -266,7 +266,7 @@ def test_export_handles_api_error(self, mock_render, arrangement_versions):
 
 
 @pytest.mark.django_db
-def test_list_parts_endpoint(self, arrangement_versions, client):
+def test_list_parts_endpoint( arrangement_versions, client):
     """Test listing parts for an arrangement version"""
     v1, _ = arrangement_versions
     
@@ -308,7 +308,7 @@ def test_list_parts_endpoint(self, arrangement_versions, client):
     assert "file_url" in data["parts"][0]
 
 @pytest.mark.django_db
-def test_list_parts_empty(self, arrangement_versions, client):
+def test_list_parts_empty( arrangement_versions, client):
     """Test listing parts when none exist"""
     v1, _ = arrangement_versions
     
@@ -323,7 +323,7 @@ def test_list_parts_empty(self, arrangement_versions, client):
     assert len(data["parts"]) == 0
 
 @pytest.mark.django_db
-def test_list_parts_nonexistent_version(self, client):
+def test_list_parts_nonexistent_version( client):
     """Test listing parts for non-existent version"""
     from django.urls import reverse
     url = reverse("ensembles:arrangementversion-list-parts", kwargs={"pk": 99999})
@@ -333,7 +333,7 @@ def test_list_parts_nonexistent_version(self, client):
     assert response.status_code == 404
 
 @pytest.mark.django_db
-def test_download_part_endpoint(self, arrangement_versions, client):
+def test_download_part_endpoint( arrangement_versions, client):
     """Test downloading a specific part"""
     v1, _ = arrangement_versions
     
@@ -359,7 +359,7 @@ def test_download_part_endpoint(self, arrangement_versions, client):
     assert "redirect" in data
 
 @pytest.mark.django_db
-def test_download_part_not_found(self, arrangement_versions, client):
+def test_download_part_not_found( arrangement_versions, client):
     """Test downloading a part that doesn't exist"""
     v1, _ = arrangement_versions
     
@@ -370,7 +370,7 @@ def test_download_part_not_found(self, arrangement_versions, client):
     assert response.status_code == 404
 
 @pytest.mark.django_db
-def test_download_part_wrong_version(self, arrangement_versions, client):
+def test_download_part_wrong_version( arrangement_versions, client):
     """Test downloading a part from wrong version"""
     v1, v2 = arrangement_versions
     
@@ -389,7 +389,7 @@ def test_download_part_wrong_version(self, arrangement_versions, client):
     assert response.status_code == 404
 
 @pytest.mark.django_db
-def test_download_part_missing_file(self, arrangement_versions, client):
+def test_download_part_missing_file( arrangement_versions, client):
     """Test downloading a part when file doesn't exist in storage"""
     v1, _ = arrangement_versions
     

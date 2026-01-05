@@ -10,7 +10,7 @@ from divisi.lib.musescore_headless import render_all_parts_pdf
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_success(self, mock_post):
+def test_render_all_parts_pdf_success(mock_post):
     """Test successful call to render-all-parts-pdf endpoint"""
     # Create a mock zip file response
     zip_buffer = io.BytesIO()
@@ -35,7 +35,7 @@ def test_render_all_parts_pdf_success(self, mock_post):
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_http_error(self, mock_post):
+def test_render_all_parts_pdf_http_error(mock_post):
     """Test handling of HTTP errors"""
     mock_response = MagicMock()
     mock_response.raise_for_status.side_effect = requests.HTTPError("404 Not Found")
@@ -46,7 +46,7 @@ def test_render_all_parts_pdf_http_error(self, mock_post):
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_connection_error(self, mock_post):
+def test_render_all_parts_pdf_connection_error( mock_post):
     """Test handling of connection errors"""
     mock_post.side_effect = requests.ConnectionError("Connection failed")
     
@@ -55,7 +55,7 @@ def test_render_all_parts_pdf_connection_error(self, mock_post):
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_timeout(self, mock_post):
+def test_render_all_parts_pdf_timeout( mock_post):
     """Test handling of timeout errors"""
     mock_post.side_effect = requests.Timeout("Request timed out")
     
@@ -64,7 +64,7 @@ def test_render_all_parts_pdf_timeout(self, mock_post):
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_file_handling(self, mock_post):
+def test_render_all_parts_pdf_file_handling( mock_post):
     """Test that file is opened and sent correctly"""
     mock_response = MagicMock()
     mock_response.content = b"fake zip content"
