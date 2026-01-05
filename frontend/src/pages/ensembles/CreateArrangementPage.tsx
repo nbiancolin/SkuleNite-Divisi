@@ -169,6 +169,7 @@ const emptyEnsemble = (): Ensemble => ({
       <TextInput
         label="Score Number"
         value={mvtNo}
+        required
         onChange={(e) => setMvtNo(e.currentTarget.value)}  //+ Operator converts from string to number (so stupid but wtv)
       />
 

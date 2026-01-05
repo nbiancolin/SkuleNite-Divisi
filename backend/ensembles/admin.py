@@ -1,6 +1,6 @@
 from django.contrib import admin, messages
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, Part
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
@@ -104,9 +104,17 @@ class EnsembleUsershipAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email", "ensemble__name")
 
 
+class PartAdmin(admin.ModelAdmin):
+    list_display = ("name", "arrangement_version", "is_score", "file_key")
+    list_filter = ("is_score", "arrangement_version")
+    search_fields = ("name", "arrangement_version__arrangement__title")
+    readonly_fields = ("file_key", "file_url")
+
+
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
 admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
+admin.site.register(Part, PartAdmin)

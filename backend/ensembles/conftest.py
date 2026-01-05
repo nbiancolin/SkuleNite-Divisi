@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def ensemble(django_db_blocker):
     with django_db_blocker.unblock():
         ensemble = EnsembleFactory(name="Test Ensemble")
@@ -57,7 +57,7 @@ def diff(arrangement_versions, django_db_blocker):
 
     yield diff
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def user(ensemble, django_db_blocker):
     with django_db_blocker.unblock():
         ship = EnsembleUsershipFactory(ensemble=ensemble)
@@ -65,7 +65,7 @@ def user(ensemble, django_db_blocker):
 
     
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def client(user):
     client = APIClient()
     client.force_authenticate(user=user)

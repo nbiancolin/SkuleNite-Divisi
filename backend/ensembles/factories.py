@@ -1,6 +1,6 @@
 import factory
 from factory.django import DjangoModelFactory
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff
+from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, Part
 
 from django.contrib.auth import get_user_model
 
@@ -62,3 +62,13 @@ class EnsembleUsershipFactory(DjangoModelFactory):
     user = factory.SubFactory(UserFactory)
     ensemble = factory.SubFactory(EnsembleFactory)
     # role = 'member' TODO: Add roles to userships
+
+
+class PartFactory(DjangoModelFactory):
+    class Meta:
+        model = Part
+    
+    arrangement_version = factory.SubFactory(ArrangementVersionFactory)
+    name = factory.Sequence(lambda n: f"Part {n}")
+    file_key = factory.LazyAttribute(lambda obj: f"test/{obj.name.lower()}.pdf")
+    is_score = False

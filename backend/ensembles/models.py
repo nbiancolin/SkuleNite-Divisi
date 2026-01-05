@@ -272,6 +272,12 @@ class ArrangementVersion(models.Model):
             self.score_pdf_key,
             self.score_parts_pdf_key,
         ]
+        
+        # Also delete all part PDFs
+        for part in self.parts.all():
+            if part.file_key not in keys_to_delete:
+                keys_to_delete.append(part.file_key)
+        
         logger.warning("Deleting ArrangementVersion")
 
         for key in keys_to_delete:
@@ -307,6 +313,28 @@ class ArrangementVersion(models.Model):
 
     class Meta:
         ordering = ["-timestamp"]
+
+
+class Part(models.Model):
+    """Model to track individual part PDFs for an ArrangementVersion"""
+    arrangement_version = models.ForeignKey(
+        ArrangementVersion, related_name="parts", on_delete=models.CASCADE
+    )
+    name = models.CharField(max_length=255)  # Part name (e.g., "Violin", "Cello")
+    file_key = models.CharField(max_length=500)  # Storage key for the PDF file
+    is_score = models.BooleanField(default=False)  # True if this is the full score PDF
+    
+    @property
+    def file_url(self) -> str:
+        """Public URL for serving to clients"""
+        return default_storage.url(self.file_key)
+    
+    def __str__(self):
+        part_type = "Score" if self.is_score else "Part"
+        return f"{part_type}: {self.name} ({self.arrangement_version})"
+    
+    class Meta:
+        ordering = ["-is_score", "name"]  # Score first (True before False), then parts alphabetically
 
 class ExportFailureLog(models.Model):
     arrangement_version = models.ForeignKey(ArrangementVersion, related_name="failure_log", on_delete=models.CASCADE)

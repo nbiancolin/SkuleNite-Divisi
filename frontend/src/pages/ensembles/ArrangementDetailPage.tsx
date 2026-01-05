@@ -93,6 +93,24 @@ export default function ArrangementDisplay() {
     exportLoading: false,
     exportError: false
   });
+  const [parts, setParts] = useState<Array<{
+    id: number;
+    name: string;
+    is_score: boolean;
+    file_url: string;
+    download_url: string;
+  }>>([]);
+  const [partsLoading, setPartsLoading] = useState(false);
+  
+  // Parts for latest version (displayed in main page)
+  const [latestVersionParts, setLatestVersionParts] = useState<Array<{
+    id: number;
+    name: string;
+    is_score: boolean;
+    file_url: string;
+    download_url: string;
+  }>>([]);
+  const [latestVersionPartsLoading, setLatestVersionPartsLoading] = useState(false);
 
   //TODO[SC-262]: uncomment when new score diff is ready
   // Diff functionality states
@@ -181,24 +199,54 @@ export default function ArrangementDisplay() {
     }
   };
 
+  const fetchLatestVersionParts = async (versionId: number) => {
+    try {
+      setLatestVersionPartsLoading(true);
+      const partsData = await apiService.getPartsForVersion(versionId);
+      setLatestVersionParts(partsData.parts || []);
+    } catch (err) {
+      console.error('Failed to fetch latest version parts:', err);
+      setLatestVersionParts([]);
+    } finally {
+      setLatestVersionPartsLoading(false);
+    }
+  };
+
   const handleVersionDownload = async (versionId: number) => {
     setSelectedVersionForDownload(versionId);
     setVersionDownloadModal(true);
     setVersionDownloadLoading(true);
+    setPartsLoading(true);
 
     try {
       const data = await apiService.getDownloadLinksForVersion(versionId);
       setVersionDownloadLinks({
         rawMsczUrl: data.raw_mscz_url,
         msczUrl: data.processed_mscz_url,
-        scoreUrl: data.score_parts_pdf_link,
+        scoreUrl: data.score_parts_pdf_link || data.score_pdf_url,
         exportLoading: data.is_processing,
         exportError: data.error
       });
+      
+      // Always fetch parts separately to ensure we have the latest data
+      // (even if parts are in the response, fetch to be sure)
+      try {
+        const partsData = await apiService.getPartsForVersion(versionId);
+        setParts(partsData.parts || []);
+      } catch (err) {
+        console.error('Failed to fetch parts:', err);
+        // Fallback: Use parts from get_download_links if available
+        if (data.parts && data.parts.length > 0) {
+          setParts(data.parts);
+        } else {
+          setParts([]);
+        }
+      }
     } catch (err) {
       setVersionDownloadLinks(prev => ({ ...prev, exportError: true }));
     } finally {
       setVersionDownloadLoading(false);
+      setPartsLoading(false);
     }
   };
 
@@ -275,6 +323,8 @@ export default function ArrangementDisplay() {
 
       if (data?.latest_version?.id) {
         await getDownloadLinks(data.latest_version.id);
+        // Fetch parts for latest version
+        await fetchLatestVersionParts(data.latest_version.id);
       }
 
       // Fetch version history
@@ -853,6 +903,50 @@ export default function ArrangementDisplay() {
                   Raw MSCZ
                 </Button>
               </Group>
+
+              {/* Individual Parts Section */}
+              {partsLoading ? (
+                <Group justify="center" py="md">
+                  <Loader size="sm" />
+                  <Text size="sm" c="dimmed">Loading parts...</Text>
+                </Group>
+              ) : parts.length > 0 ? (
+                <>
+                  <Divider label="Individual Parts" labelPosition="center" my="md" />
+                  <Text size="sm" c="dimmed" mb="xs">
+                    Download individual part PDFs:
+                  </Text>
+                  <ScrollArea h={300}>
+                    <Stack gap="xs">
+                      {parts.map((part) => {
+                        const downloadUrl = part.file_url || part.download_url;
+                        return (
+                          <Button
+                            key={part.id}
+                            component="a"
+                            href={downloadUrl}
+                            target="_blank"
+                            variant={part.is_score ? "light" : "subtle"}
+                            fullWidth
+                            justify="space-between"
+                            rightSection={<IconDownload size={16} />}
+                            disabled={!downloadUrl}
+                          >
+                            <Group gap="xs">
+                              {part.is_score && <IconMusic size={16} />}
+                              <Text>{part.name}</Text>
+                            </Group>
+                          </Button>
+                        );
+                      })}
+                    </Stack>
+                  </ScrollArea>
+                </>
+              ) : !versionDownloadLinks.exportLoading && !versionDownloadLinks.exportError ? (
+                <Text size="sm" c="dimmed" mt="md">
+                  No individual parts available for this version.
+                </Text>
+              ) : null}
             </Stack>
           )}
         </Modal>
@@ -960,7 +1054,51 @@ export default function ArrangementDisplay() {
 
         <Card shadow="xs" padding="lg" radius="md" withBorder>
           <Title order={3} mb="md">Download Parts</Title>
-          <Text> Coming soon !</Text>
+          {latestVersionPartsLoading ? (
+            <Group justify="center" py="md">
+              <Loader size="sm" />
+              <Text size="sm" c="dimmed">Loading parts...</Text>
+            </Group>
+          ) : latestVersionParts.length > 0 ? (
+            <Stack gap="xs" mt="sm">
+              <Text size="sm" c="dimmed" mb="xs">
+                Download individual part PDFs from the latest version:
+              </Text>
+              <ScrollArea h={400}>
+                <Stack gap="xs">
+                  {latestVersionParts.map((part) => {
+                    const downloadUrl = part.file_url || part.download_url;
+                    return (
+                      <Button
+                        key={part.id}
+                        component="a"
+                        href={downloadUrl}
+                        target="_blank"
+                        variant={part.is_score ? "light" : "subtle"}
+                        fullWidth
+                        justify="space-between"
+                        rightSection={<IconDownload size={16} />}
+                        disabled={!downloadUrl}
+                      >
+                        <Group gap="xs">
+                          {part.is_score && <IconMusic size={16} />}
+                          <Text>{part.name}</Text>
+                        </Group>
+                      </Button>
+                    );
+                  })}
+                </Stack>
+              </ScrollArea>
+            </Stack>
+          ) : arrangement?.latest_version ? (
+            <Text size="sm" c="dimmed" mt="sm">
+              No parts available for the latest version yet. Parts will appear here after the version is exported.
+            </Text>
+          ) : (
+            <Text size="sm" c="dimmed" mt="sm">
+              No latest version available. Upload a version to see parts here.
+            </Text>
+          )}
         </Card>
       </Paper>
     </Container>
