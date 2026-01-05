@@ -10,7 +10,7 @@ from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.conf import settings
 
-from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership
+from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, Part
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -281,10 +281,10 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "error": version.error_on_export,
             "raw_mscz_url": request.build_absolute_uri(version.mscz_file_url),
             "processed_mscz_url": request.build_absolute_uri(version.output_file_url),
-            "score_parts_pdf_link": request.build_absolute_uri(
-                version.score_parts_pdf_url
-            ),
-            "mp3_link": request.build_absolute_uri(version.audio_file_url)
+            "score_parts_pdf_link": None,  # Will be set from Part model or old file
+            "score_pdf_url": None,  # Individual score PDF
+            "mp3_link": request.build_absolute_uri(version.audio_file_url),
+            "parts": []  # List of individual part URLs
         }
 
         # Only include URLs for files that actually exist
@@ -294,8 +294,37 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         if not default_storage.exists(version.output_file_key):
             response_data["processed_mscz_url"] = None
 
-        if not default_storage.exists(version.score_parts_pdf_key):
-            response_data["score_parts_pdf_link"] = None
+        # Get score and parts from Part model (new way)
+        parts = Part.objects.filter(arrangement_version=version)
+        if parts.exists():
+            for part in parts:
+                if default_storage.exists(part.file_key):
+                    part_data = {
+                        "id": part.id,
+                        "name": part.name,
+                        "is_score": part.is_score,
+                        "file_url": request.build_absolute_uri(part.file_url),
+                        "download_url": request.build_absolute_uri(
+                            f"/api/arrangementversions/{version.id}/download_part/{part.id}/"
+                        ),
+                    }
+                    response_data["parts"].append(part_data)
+                    
+                    # Set score PDF URL if this is the score
+                    if part.is_score:
+                        response_data["score_pdf_url"] = part_data["file_url"]
+                        # Also set score_parts_pdf_link for backward compatibility
+                        response_data["score_parts_pdf_link"] = part_data["file_url"]
+        else:
+            # Fallback to old combined PDF file if no parts exist
+            if default_storage.exists(version.score_parts_pdf_key):
+                response_data["score_parts_pdf_link"] = request.build_absolute_uri(
+                    version.score_parts_pdf_url
+                )
+            # Also check for individual score PDF (old format)
+            elif default_storage.exists(version.score_pdf_key):
+                response_data["score_pdf_url"] = request.build_absolute_uri(version.score_pdf_url)
+                response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_pdf_url)
 
         return Response(response_data)
     
@@ -316,6 +345,57 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 return Response({"mp3_link": request.build_absolute_uri(version.audio_file_url)})
             case ArrangementVersion.AudioStatus.ERROR:
                 return Response({"error": "Error on export of audio file"}, status=500)
+    
+    @action(detail=True, methods=["get"])
+    def list_parts(self, request, pk=None):
+        """List all individual parts (including score) for this arrangement version"""
+        version = self.get_object()
+        
+        parts = Part.objects.filter(arrangement_version=version)
+        
+        parts_data = []
+        for part in parts:
+            parts_data.append({
+                "id": part.id,
+                "name": part.name,
+                "is_score": part.is_score,
+                "file_url": request.build_absolute_uri(part.file_url),
+                "download_url": request.build_absolute_uri(
+                    f"/api/arrangementversions/{version.id}/download_part/{part.id}/"
+                ),
+            })
+        
+        return Response({
+            "version_id": version.id,
+            "parts": parts_data,
+            "count": len(parts_data),
+        })
+    
+    @action(detail=True, methods=["get"], url_path="download_part/(?P<part_id>[^/.]+)")
+    def download_part(self, request, pk=None, part_id=None):
+        """Download a specific part PDF"""
+        version = self.get_object()
+        
+        try:
+            part = Part.objects.get(id=part_id, arrangement_version=version)
+        except Part.DoesNotExist:
+            return Response(
+                {"detail": "Part not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        if not default_storage.exists(part.file_key):
+            return Response(
+                {"detail": "Part PDF file not found in storage"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Return redirect to the file URL
+        file_url = default_storage.url(part.file_key)
+        return Response({
+            "file_url": request.build_absolute_uri(file_url),
+            "redirect": file_url,
+        })
 
 
 class JoinEnsembleView(APIView):

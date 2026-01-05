@@ -472,6 +472,25 @@ export const apiService = {
     return response.json()
   },
 
+  async getPartsForVersion(versionId: number) {
+    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/list_parts/`, {
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to get parts (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
   async getVersionHistory(arrangementId: number): Promise<VersionHistoryItem[]> {
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/versions/`, {
       credentials: 'include',

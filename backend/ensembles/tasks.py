@@ -2,8 +2,8 @@ from celery import shared_task
 
 from divisi.tasks import format_arrangement_version
 from divisi.tasks.export import (
-    export_score_and_parts_ms4_storage,
     export_mscz_to_mp3,
+    export_all_parts_with_tracking,
 )
 from .models import ArrangementVersion, ExportFailureLog
 from logging import getLogger
@@ -55,7 +55,8 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 output_dir = os.path.dirname(version.output_file_key) + "/"
 
                 logger.info(f"Starting export for version {version_id}")
-                result = export_score_and_parts_ms4_storage(input_key, output_dir)
+                # Use the new function that creates Part records
+                result = export_all_parts_with_tracking(input_key, output_dir, arrangement_version_id=version_id)
 
                 if result["status"] == "success":
                     logger.info(

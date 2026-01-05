@@ -33,16 +33,15 @@ def render_mscz(input_path: str, output_path: str, timeout=120):
                 out.write(chunk)
 
 
-def render_score_parts(input_path: str) -> bytes:
-    """Renders individual parts from a score using MuseScore's --parts option."""
+def render_all_parts_pdf(input_path: str) -> bytes:
+    """Renders the score and all parts as individual PDFs, returns as zip archive."""
     with open(input_path, "rb") as f:
         r = requests.post(
-            f"http://{_get_host()}:1234/render-score-parts",
+            f"http://{_get_host()}:1234/render-all-parts-pdf",
             files={"file": f},
             timeout=300,
         )
 
-    #Raising an exception here is ok... its caught up above and an error obj is created
-    r.raise_for_status() 
-
+    r.raise_for_status()
+    
     return r.content
