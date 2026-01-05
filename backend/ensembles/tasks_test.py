@@ -98,6 +98,10 @@ def test_export_falls_back_to_raw_file(mock_export, arrangement_versions):
     """Test that export falls back to raw file if processed doesn't exist"""
     v1, _ = arrangement_versions
 
+    # Ensure processed file doesn't exist
+    if default_storage.exists(v1.output_file_key):
+        default_storage.delete(v1.output_file_key)
+
     # Save only raw file
     raw_key = v1.mscz_file_key
     default_storage.save(raw_key, ContentFile(b"raw mscz content"))
@@ -118,6 +122,12 @@ def test_export_handles_missing_file(mock_export, arrangement_versions):
     v1, _ = arrangement_versions
 
     # Don't save any files
+    # Ensure processed file doesn't exist
+    if default_storage.exists(v1.output_file_key):
+        default_storage.delete(v1.output_file_key)
+    # Ensure raw file doesn't exist
+    if default_storage.exists(v1.mscz_file_key):
+        default_storage.delete(v1.mscz_file_key)
 
     result = export_arrangement_version(v1.id, action="score")
 
@@ -135,7 +145,7 @@ def test_export_handles_missing_file(mock_export, arrangement_versions):
 
 
 @pytest.mark.django_db
-def test_export_nonexistent_version(self):
+def test_export_nonexistent_version():
     """Test export with non-existent version ID"""
     result = export_arrangement_version(99999, action="score")
 
