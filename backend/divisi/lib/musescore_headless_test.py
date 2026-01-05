@@ -10,7 +10,8 @@ from divisi.lib.musescore_headless import render_all_parts_pdf
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_success(mock_post):
+@patch('builtins.open', new_callable=mock_open, read_data=b"fake mscz content")
+def test_render_all_parts_pdf_success(mock_file, mock_post):
     """Test successful call to render-all-parts-pdf endpoint"""
     # Create a mock zip file response
     zip_buffer = io.BytesIO()
@@ -32,10 +33,12 @@ def test_render_all_parts_pdf_success(mock_post):
     call_args = mock_post.call_args
     assert "render-all-parts-pdf" in call_args[0][0]
     assert call_args[1]["timeout"] == 300
+    mock_file.assert_called_once_with("/tmp/test.mscz", "rb")
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_http_error(mock_post):
+@patch('builtins.open', new_callable=mock_open, read_data=b"fake mscz content")
+def test_render_all_parts_pdf_http_error(mock_file, mock_post):
     """Test handling of HTTP errors"""
     mock_response = MagicMock()
     mock_response.raise_for_status.side_effect = requests.HTTPError("404 Not Found")
@@ -43,24 +46,32 @@ def test_render_all_parts_pdf_http_error(mock_post):
     
     with pytest.raises(requests.HTTPError):
         render_all_parts_pdf("/tmp/test.mscz")
+    
+    mock_file.assert_called_once_with("/tmp/test.mscz", "rb")
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_connection_error( mock_post):
+@patch('builtins.open', new_callable=mock_open, read_data=b"fake mscz content")
+def test_render_all_parts_pdf_connection_error(mock_file, mock_post):
     """Test handling of connection errors"""
     mock_post.side_effect = requests.ConnectionError("Connection failed")
     
     with pytest.raises(requests.ConnectionError):
         render_all_parts_pdf("/tmp/test.mscz")
+    
+    mock_file.assert_called_once_with("/tmp/test.mscz", "rb")
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
-def test_render_all_parts_pdf_timeout( mock_post):
+@patch('builtins.open', new_callable=mock_open, read_data=b"fake mscz content")
+def test_render_all_parts_pdf_timeout(mock_file, mock_post):
     """Test handling of timeout errors"""
     mock_post.side_effect = requests.Timeout("Request timed out")
     
     with pytest.raises(requests.Timeout):
         render_all_parts_pdf("/tmp/test.mscz")
+    
+    mock_file.assert_called_once_with("/tmp/test.mscz", "rb")
 
 @pytest.mark.django_db
 @patch('divisi.lib.musescore_headless.requests.post')
