@@ -31,6 +31,15 @@ COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --------------------------------------------------
+# Install Fonts
+# --------------------------------------------------
+COPY assets/fonts.zip /tmp/fonts.zip
+RUN mkdir -p /usr/share/fonts/truetype/custom && \
+    unzip /tmp/fonts.zip -d /usr/share/fonts/truetype/custom && \
+    fc-cache -fv && \
+    rm -f /tmp/fonts.zip
+
+# --------------------------------------------------
 # Application code
 # --------------------------------------------------
 COPY backend .
