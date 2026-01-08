@@ -61,7 +61,7 @@ class EnsembleUsershipFactory(DjangoModelFactory):
 
     user = factory.SubFactory(UserFactory)
     ensemble = factory.SubFactory(EnsembleFactory)
-    # role = 'member' TODO: Add roles to userships
+    # role = 'member' TODO: update factory to do this
 
 
 class PartFactory(DjangoModelFactory):

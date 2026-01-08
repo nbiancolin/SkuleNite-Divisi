@@ -53,6 +53,8 @@ class UploadSession(models.Model):
 
 # TODO[]: This model is unused ... Was initially going to be used for having the standalone pat exporter export parts,
 # I dont think I will do this, but will leave it bc we dont need another migration
+
+#TODO Now that we have the new part model, we definitelty dont need this I don't think.
 class ProcessedFile(models.Model):
     session = models.ForeignKey(
         UploadSession, on_delete=models.CASCADE, related_name="files"
