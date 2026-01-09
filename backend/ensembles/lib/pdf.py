@@ -6,10 +6,19 @@ from pypdf import PdfWriter, PdfReader
 
 from ensembles.models import STYLE_CHOICES
 
+from typing import TypedDict
+
+
+class TocEntry(TypedDict):
+    """Data used to generate a table of contents"""
+    show_number: str
+    title: str
+    version_label: str #v1.0.0 or wtv
+    page: int #ie. the page number it starts on. Tbd if this is eeded
+
 # Fns needed
 # Merge N many pdfs together (option to ensure they all start on an odd page for dbl sided printing)
 # option to overwrite page numbers
-
 
 # create cover page
 def generate_cover_page(
@@ -83,12 +92,53 @@ def generate_table_of_contents(
     *,
     show_title: str,
     show_subtitle: str = "",
+    part_name: str,
     export_date: str,
-    table_contents_data: list[tuple[str, str, int]],  # (title, version label, page #)
+    table_contents_data: list[TocEntry],  # (title, version label, page #)
     selected_style: str = "broadway",
 ) -> BytesIO:
-    #TODO: Maybe vibe code?
-    pass
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
+    width, height = pagesizes.LETTER
+
+    font = "Inkpen2 Script Std" if selected_style == "jazz" else "Palatino Linotype"
+
+    # debug
+    font = "Helvetica"
+
+    c.setFont(font, 32)
+    c.drawCentredString(width / 2, height - 80, show_title)
+    if show_subtitle:
+        c.setFont(font, 28)
+        c.drawCentredString(width / 2, height - 120, show_subtitle)
+
+    c.setFont(font, 16)
+    c.drawString(60, height - 60, part_name)
+
+
+    y = height - 160
+
+    c.setFont(font, 12)
+    while y > 160 and len(table_contents_data) > 0:
+        entry = table_contents_data.pop()
+        # lhs = f"<b>{entry['show_number']}: {entry['title']}</b> <i>({entry['version_label']})</i>"
+        lhs = f"{entry['show_number']}: {entry['title']} ({entry['version_label']})"
+        rhs = str(entry["page"])
+        c.drawString(width * 1/5, y, lhs)
+        c.drawRightString(width * 4/5, y, rhs)
+        y += 20
+
+
+    c.setFont(font, 12)
+    c.drawCentredString(width / 2, 80, f"Rev. {export_date}")
+
+    c.showPage()
+    c.save()
+
+    buffer.seek(0)
+    return buffer
+
 
 
 def generate_tacet_page(
@@ -111,6 +161,7 @@ def generate_tacet_page(
     font = "Helvetica"
 
     c.setFont(font, 32)
+    #TODO: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
     c.drawCentredString(width / 2, height - 80, song_title)
 
     if song_subtitle:
@@ -121,11 +172,11 @@ def generate_tacet_page(
     c.setFont(font, 32)  # not underlined
     text_width = stringWidth(show_number, font, 32)
 
-    c.drawCentredString(width - 60, height - 60, show_number)
-    c.drawBoundary(None, (width - 60) - (text_width * 1.25), (height - 60) -12, text_width * 2.5, 50)
+    c.drawRightString(width - 60, height - 60, show_number)
+    c.drawBoundary(None, (width - 60) - (text_width + 15), (height - 60) -12, text_width + 30, 50)
 
     c.setFont(font, 16)  # make it underlined somehow?
-    c.drawRightString((width - 60) - (text_width * 1.25) - 10, height - 60, show_title)
+    c.drawRightString((width - 60) - (text_width + 15) - 10, height - 60, show_title)
 
     c.drawString(60, height - 60, part_name)
 
@@ -143,7 +194,7 @@ def generate_tacet_page(
     return buffer
 
 
-def merge_pdfs(title_pdf: BytesIO, pdf_files: list[BytesIO]) -> BytesIO:
+def merge_pdfs(title_pdf: BytesIO, pdf_files: list[str]) -> BytesIO:
     writer = PdfWriter()
 
     # n.b. is this gonna error out bc not enough memory if we have a bunch of pdfs?

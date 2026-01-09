@@ -1,7 +1,7 @@
 import pytest
 
-from ensembles.lib.pdf import generate_cover_page, generate_tacet_page
-
+from ensembles.lib.pdf import generate_cover_page, generate_tacet_page, generate_table_of_contents
+from ensembles.lib.pdf import TocEntry
 
 def test_generate_cover_page():
     # Uncomment this test to generate a sample cover page
@@ -28,4 +28,32 @@ def test_generate_tacet_page():
     )
 
     with open("sample-tacet-page.pdf", mode="wb") as f:
+        f.write(page.getbuffer())
+
+
+def test_generate_toc_page():
+    #uncomment this test to generate a sample table of contents page
+    toc_data: list[TocEntry] = [
+        {
+            "show_number": "1",
+            "page": 1,
+            "title": "My First Song", 
+            "version_label": "v1.0.0"
+        },
+        {
+            "show_number": "2-1",
+            "page": 2,
+            "title": "My Second Song", 
+            "version_label": "v1.2.1"
+        }
+    ]
+
+    page = generate_table_of_contents(
+        show_title="Test Show",
+        export_date="2026-01-06",
+        table_contents_data=toc_data,
+        part_name="Piano 1"
+    )
+
+    with open("sample-toc-page.pdf", mode="wb") as f:
         f.write(page.getbuffer())
