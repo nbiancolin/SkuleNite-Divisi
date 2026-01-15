@@ -121,3 +121,13 @@ MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://divisi.nbiancolin.ca')
 LOGIN_REDIRECT_URL = FRONTEND_URL
 ACCOUNT_LOGOUT_REDIRECT_URL = FRONTEND_URL
+
+
+#SENTRY:
+import sentry_sdk
+
+sentry_sdk.init(
+    # dsn="https://3d4544eb118dd04d1b5480de3a66422d@o4510709620670464.ingest.de.sentry.io/4510709626175568",
+    dsn = os.environ.get('SENTRY_DSN', "NO SENTRY DSN FOUND IN ENV"),
+    send_default_pii=True,
+)
