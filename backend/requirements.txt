@@ -20,3 +20,4 @@ pytest-factoryboy
 django-extensions
 django-allauth
 requests
+sentry-sdk[django]
