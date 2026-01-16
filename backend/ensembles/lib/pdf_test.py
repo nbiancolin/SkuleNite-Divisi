@@ -3,6 +3,12 @@ import pytest
 from ensembles.lib.pdf import generate_cover_page, generate_tacet_page, generate_table_of_contents
 from ensembles.lib.pdf import TocEntry
 
+from ensembles.lib.fonts import register_fonts
+
+@pytest.fixture(autouse=True)
+def font_setup():
+    register_fonts()
+
 def test_generate_cover_page():
     # Uncomment this test to generate a sample cover page
 

@@ -56,10 +56,7 @@ def generate_cover_page(
     c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
     width, height = pagesizes.LETTER
 
-    font = "Inkpen2 Script Std" if selected_style == "jazz" else "Palatino Linotype"
-
-    # debug
-    font = "Helvetica"
+    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
     c.drawCentredString(width / 2, height / 2 + 40, show_title)
@@ -102,10 +99,8 @@ def generate_table_of_contents(
     c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
     width, height = pagesizes.LETTER
 
-    font = "Inkpen2 Script Std" if selected_style == "jazz" else "Palatino Linotype"
+    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
-    # debug
-    font = "Helvetica"
 
     c.setFont(font, 32)
     c.drawCentredString(width / 2, height - 80, show_title)
@@ -155,10 +150,7 @@ def generate_tacet_page(
     c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
     width, height = pagesizes.LETTER
 
-    font = "Inkpen2 Script Std" if selected_style == "jazz" else "Palatino Linotype"
-
-    # debug
-    font = "Helvetica"
+    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
     #TODO: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text

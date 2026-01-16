@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     # Utilities
     curl \
     git \
+    fontconfig \
     unzip \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
