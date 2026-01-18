@@ -348,6 +348,29 @@ class ExportFailureLog(models.Model):
     def arrangement_version__str__(self):
         return self.arrangement_version.__str__()
 
+
+class Book(models.Model):
+    """Model to represent a collection of parts
+    
+    A Book is an ordered collection of parts. The book contains the pdf of the generated book, its state, and ideally a reference to each part it contains, to check if it is the latest version
+    
+    """
+
+    date_created = models.DateTimeField(auto_now_add=True)
+
+    #state choice field
+
+    parts = models.ManyToManyField(Part, related_name="books")
+
+    #A part can be a part of many books
+
+
+    def is_latest_version(self) -> bool:
+        #todo this
+        pass
+
+
+
 #TODO: Remove
 class Diff(models.Model):
     from_version = models.ForeignKey(

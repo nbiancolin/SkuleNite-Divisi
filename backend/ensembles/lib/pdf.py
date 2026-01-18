@@ -16,6 +16,11 @@ class TocEntry(TypedDict):
     version_label: str #v1.0.0 or wtv
     page: int #ie. the page number it starts on. Tbd if this is eeded
 
+class MergedPdfResult(TypedDict):
+    pdf: BytesIO
+    toc_entries: list[TocEntry]
+
+
 # Fns needed
 # Merge N many pdfs together (option to ensure they all start on an odd page for dbl sided printing)
 # option to overwrite page numbers
@@ -185,22 +190,147 @@ def generate_tacet_page(
     buffer.seek(0)
     return buffer
 
+def count_pdf_pages(pdf: BytesIO | str) -> int:
+    reader = PdfReader(pdf)
+    return len(reader.pages)
 
-def merge_pdfs(title_pdf: BytesIO, pdf_files: list[str]) -> BytesIO:
+
+def add_blank_page(writer: PdfWriter):
+    writer.add_blank_page(
+        width=pagesizes.LETTER[0],
+        height=pagesizes.LETTER[1],
+    )
+
+
+def overlay_page_numbers(
+    *,
+    writer: PdfWriter,
+    start_page_number: int = 1,
+    skip_page: int = 0,
+    font_name: str = "palatinolinotype_roman",
+    font_size: int = 10,
+):
+    """
+    Overlay page numbers on every page in writer.
+    """
+    for i, page in enumerate(writer.pages):
+        packet = BytesIO()
+        c = canvas.Canvas(packet, pagesize=pagesizes.LETTER)
+
+        page_num = start_page_number + i
+        c.setFont(font_name, font_size)
+        if page_num > skip_page:
+            c.drawCentredString(
+                pagesizes.LETTER[0] / 2,
+                pagesizes.LETTER[0] - 40,
+                str(page_num),
+            )
+
+        c.save()
+        packet.seek(0)
+
+        overlay = PdfReader(packet).pages[0]
+        page.merge_page(overlay)
+
+
+def merge_pdfs(
+    *,
+    cover_pdf: BytesIO | None,
+    content_pdfs: list[tuple[TocEntry, BytesIO | str]],
+    start_on_odd_page: bool = True,
+    overwrite_page_numbers: bool = True,
+    first_content_page_number: int = 1,
+) -> MergedPdfResult:
+    """
+    Merge PDFs and compute TOC page numbers.
+
+    content_pdfs:
+        List of (toc_entry, pdf) where toc_entry.page will be filled in.
+    """
+
     writer = PdfWriter()
+    current_page = 0
+    toc_entries: list[TocEntry] = []
 
-    # n.b. is this gonna error out bc not enough memory if we have a bunch of pdfs?
-    # Mbe add a sanity chck layer that only does these in a few small increments
+    # Cover page
+    if cover_pdf:
+        cover_reader = PdfReader(cover_pdf)
+        writer.append(cover_reader)
+        current_page += len(cover_reader.pages)
 
-    #Or, if there are too may bytes, generate multiple smaller pdfs so as to not overload the machine (user then prints them 1 at a time)
-    #Limit to 50 pages bc that is the ECF limit?
+    # Main content
+    for entry, pdf in content_pdfs:
+        reader = PdfReader(pdf)
 
-    # Add title page
-    writer.append(PdfReader(title_pdf))
+        # Ensure odd-page start if requested
+        if start_on_odd_page and current_page % 2 == 1:
+            add_blank_page(writer)
+            current_page += 1
 
-    # Add uploaded PDFs
-    for pdf in pdf_files:
-        writer.append(PdfReader(pdf))
+        # Record TOC page (1-based, after cover)
+        entry = entry.copy()
+        entry["page"] = current_page + 1
+        toc_entries.append(entry)
+
+        writer.append(reader)
+        current_page += len(reader.pages)
+
+    # Page numbering
+    if overwrite_page_numbers:
+        overlay_page_numbers(
+            writer=writer,
+            start_page_number=first_content_page_number,
+        )
+
+    output = BytesIO()
+    writer.write(output)
+    output.seek(0)
+
+    return {
+        "pdf": output,
+        "toc_entries": toc_entries,
+    }
+
+
+    #TODO
+    """
+    - Build in BE code (celery task) to generate / store / return these
+    - Build in FE code to trigger these
+    """
+
+def generate_full_part_book(
+    *,
+    cover_pdf: BytesIO,
+    toc_kwargs: dict,
+    content_pdfs: list[tuple[TocEntry, BytesIO | str]],
+) -> BytesIO:
+    """
+    Full two-pass generation:
+    cover -> toc -> content
+    """
+
+    # Pass 1: compute TOC page numbers
+    pass1 = merge_pdfs(
+        cover_pdf=cover_pdf,
+        content_pdfs=content_pdfs,
+        overwrite_page_numbers=False,
+    )
+
+    # Generate TOC PDF
+    toc_pdf = generate_table_of_contents(
+        table_contents_data=pass1["toc_entries"],
+        **toc_kwargs,
+    )
+
+    # Pass 2: final merge
+    writer = PdfWriter()
+    writer.append(PdfReader(cover_pdf))
+    add_blank_page(writer)
+    writer.append(PdfReader(toc_pdf))
+    add_blank_page(writer)
+    writer.append(PdfReader(pass1["pdf"]))
+
+    overlay_page_numbers(writer=writer, start_page_number=5)
 
     output = BytesIO()
     writer.write(output)
