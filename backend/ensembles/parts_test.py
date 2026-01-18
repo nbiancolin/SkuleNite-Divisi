@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock, mock_open
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
-from ensembles.models import ArrangementVersion, Part
+from ensembles.models import ArrangementVersion, PartAsset
 from ensembles.factories import (
     ArrangementVersionFactory,
     ArrangementFactory,
@@ -18,7 +18,7 @@ from divisi.tasks.export import export_all_parts_with_tracking
 def test_part_creation(arrangement_versions):
     """Test creating a Part record"""
     v1, v2 = arrangement_versions
-    part = Part.objects.create(
+    part = PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/violin.pdf",
@@ -35,7 +35,7 @@ def test_part_creation(arrangement_versions):
 def test_part_score_flag(arrangement_versions):
     """Test creating a score Part"""
     v1, _ = arrangement_versions
-    score_part = Part.objects.create(
+    score_part = PartAsset.objects.create(
         arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
     )
 
@@ -47,7 +47,7 @@ def test_part_score_flag(arrangement_versions):
 def test_part_file_url(arrangement_versions):
     """Test Part file_url property"""
     v1, _ = arrangement_versions
-    part = Part.objects.create(
+    part = PartAsset.objects.create(
         arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
     )
 
@@ -62,20 +62,20 @@ def test_part_ordering(arrangement_versions):
     """Test Part model ordering (score first, then alphabetically)"""
     v1, _ = arrangement_versions
 
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/violin.pdf",
         is_score=False,
     )
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
     )
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
     )
 
-    parts = list(Part.objects.filter(arrangement_version=v1))
+    parts = list(PartAsset.objects.filter(arrangement_version=v1))
 
     # Score should be first (is_score=True sorts before False)
     assert parts[0].is_score is True
@@ -91,23 +91,23 @@ def test_part_deletion_with_version(arrangement_versions):
     """Test that Parts are deleted when ArrangementVersion is deleted"""
     v1, _ = arrangement_versions
 
-    part1 = Part.objects.create(
+    part1 = PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/violin.pdf",
         is_score=False,
     )
-    part2 = Part.objects.create(
+    part2 = PartAsset.objects.create(
         arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
     )
 
-    assert Part.objects.filter(arrangement_version=v1).count() == 2
+    assert PartAsset.objects.filter(arrangement_version=v1).count() == 2
 
     v1.delete()
 
     # Parts should be deleted via CASCADE
-    assert Part.objects.filter(id=part1.id).count() == 0
-    assert Part.objects.filter(id=part2.id).count() == 0
+    assert PartAsset.objects.filter(id=part1.id).count() == 0
+    assert PartAsset.objects.filter(id=part2.id).count() == 0
 
 
 """Tests for the export_all_parts_with_tracking function"""
@@ -146,7 +146,7 @@ def test_export_creates_parts_successfully(mock_render, arrangement_versions):
     assert len(result["written"]) == 3
 
     # Check that Part records were created
-    parts = Part.objects.filter(arrangement_version=v1)
+    parts = PartAsset.objects.filter(arrangement_version=v1)
     assert parts.count() == 3
 
     # Check score part
@@ -258,7 +258,7 @@ def test_export_without_version_id(mock_render, arrangement_versions):
     assert len(result["written"]) == 2
 
     # No Part records should be created
-    assert Part.objects.filter(arrangement_version=v1).count() == 0
+    assert PartAsset.objects.filter(arrangement_version=v1).count() == 0
 
 
 @pytest.mark.django_db
@@ -287,16 +287,16 @@ def test_list_parts_endpoint(arrangement_versions, client):
     v1, _ = arrangement_versions
 
     # Create some parts
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
     )
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/violin.pdf",
         is_score=False,
     )
-    Part.objects.create(
+    PartAsset.objects.create(
         arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
     )
 
@@ -357,7 +357,7 @@ def test_download_part_endpoint(arrangement_versions, client):
     file_key = "test/violin.pdf"
     default_storage.save(file_key, ContentFile(b"%PDF-1.4 fake pdf"))
 
-    part = Part.objects.create(
+    part = PartAsset.objects.create(
         arrangement_version=v1, name="Violin", file_key=file_key, is_score=False
     )
 
@@ -389,7 +389,7 @@ def test_download_part_wrong_version(arrangement_versions, client):
     """Test downloading a part from wrong version"""
     v1, v2 = arrangement_versions
 
-    part = Part.objects.create(
+    part = PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/violin.pdf",
@@ -410,7 +410,7 @@ def test_download_part_missing_file(arrangement_versions, client):
     v1, _ = arrangement_versions
 
     # Create part but don't save file to storage
-    part = Part.objects.create(
+    part = PartAsset.objects.create(
         arrangement_version=v1,
         name="Violin",
         file_key="test/nonexistent.pdf",

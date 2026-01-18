@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from divisi.models import UploadSession
 
 from divisi.lib import render_mscz, render_all_parts_pdf
-from ensembles.models import ArrangementVersion, Part
+from ensembles.models import ArrangementVersion, PartAsset
 
 import zipfile
 import io
@@ -127,7 +127,7 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         if arrangement_version_id:
                             try:
                                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                                Part.objects.update_or_create(
+                                PartAsset.objects.update_or_create(
                                     arrangement_version=version,
                                     name=part_name,
                                     defaults={

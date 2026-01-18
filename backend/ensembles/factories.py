@@ -1,6 +1,6 @@
 import factory
 from factory.django import DjangoModelFactory
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, Part
+from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, PartAsset
 
 from django.contrib.auth import get_user_model
 
@@ -64,9 +64,9 @@ class EnsembleUsershipFactory(DjangoModelFactory):
     # role = 'member' TODO: update factory to do this
 
 
-class PartFactory(DjangoModelFactory):
+class PartAssetFactory(DjangoModelFactory):
     class Meta:
-        model = Part
+        model = PartAsset
     
     arrangement_version = factory.SubFactory(ArrangementVersionFactory)
     name = factory.Sequence(lambda n: f"Part {n}")

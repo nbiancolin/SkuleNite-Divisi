@@ -10,7 +10,7 @@ from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.conf import settings
 
-from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, Part
+from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset
 from .serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -295,7 +295,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             response_data["processed_mscz_url"] = None
 
         # Get score and parts from Part model (new way)
-        parts = Part.objects.filter(arrangement_version=version)
+        parts = PartAsset.objects.filter(arrangement_version=version)
         if parts.exists():
             for part in parts:
                 if default_storage.exists(part.file_key):
@@ -351,7 +351,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         """List all individual parts (including score) for this arrangement version"""
         version = self.get_object()
         
-        parts = Part.objects.filter(arrangement_version=version)
+        parts = PartAsset.objects.filter(arrangement_version=version)
         
         parts_data = []
         for part in parts:
@@ -377,8 +377,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         version = self.get_object()
         
         try:
-            part = Part.objects.get(id=part_id, arrangement_version=version)
-        except Part.DoesNotExist:
+            part = PartAsset.objects.get(id=part_id, arrangement_version=version)
+        except PartAsset.DoesNotExist:
             return Response(
                 {"detail": "Part not found"},
                 status=status.HTTP_404_NOT_FOUND
