@@ -28,3 +28,41 @@ class PartAsset(models.Model):
     
     class Meta:
         ordering = ["-is_score", "name"]  # Score first (True before False), then parts alphabetically
+
+
+
+class PartName(models.Model):
+
+    ensemble = models.ForeignKey("ensembles.Ensemble", related_name="part_names", on_delete=models.CASCADE)
+
+    display_name = models.CharField(max_length=64)
+    # slug #TODO
+
+    def __str__(self):
+        return f"{self.display_name} ({self.ensemble.name})"
+    
+
+class PartBook(models.Model):
+    ensemble = models.ForeignKey("ensembles.Ensemble", related_name="part_books", on_delete=models.CASCADE)
+    part_name = models.ForeignKey(PartName, related_name="part_books", on_delete=models.CASCADE)
+
+    revision = models.PositiveIntegerField()
+
+    # parent #TODO
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+
+    # class Meta:
+    # Constraint that ensemble, partName and revision are all unique to eachother
+
+
+
+class PartBookEntry(models.Model):
+    part_book = models.ForeignKey(PartBook, related_name="entries", on_delete=models.CASCADE)
+    
+    arrangement = models.ForeignKey("ensembles.Arrangement", on_delete=models.CASCADE)
+    arrangement_version = models.ForeignKey("ensembles.ArrangementVersion", on_delete=models.CASCADE)
+
+    #When building a part book, compute this value from the Arrangement's mvt_no. This determines the order in the book
+    position = models.PositiveIntegerField()
