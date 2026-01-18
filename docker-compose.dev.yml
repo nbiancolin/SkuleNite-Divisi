@@ -18,9 +18,8 @@ services:
       - POSTGRES_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      # NEED TO FIX THESE TO USE NEW ENV FILE VALUES
-      # - DISCORD_CLIENT_ID=1454625091517284455
-      # - DISCORD_CLIENT_SECRET=5z8Xn8ebvMZMLf_gyt6UaCAIKBVk0VLs
+      - DISCORD_CLIENT_ID=1454625091517284455
+      - DISCORD_CLIENT_SECRET=pwwrXKWn81RzpiipzU2ChrzrDu0Dkewh
     depends_on:
       - db
       - redis

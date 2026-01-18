@@ -197,7 +197,7 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
             # Just export
             export_arrangement_version.delay(version.pk)
 
-        # epxort MXL for diff calculation
-        export_arrangement_version(version.pk, action="mxl")
+        # epxort MXL for diff calculation (unnecessary)
+        # export_arrangement_version(version.pk, action="mxl")
 
         return {"success": True, "version_id": version.id}

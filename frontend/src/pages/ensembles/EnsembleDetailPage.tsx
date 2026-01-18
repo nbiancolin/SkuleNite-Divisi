@@ -257,7 +257,7 @@ export default function EnsembleDisplay() {
                             <Text size="sm" color="dimmed">{arr.composer ?? ''} {arr.mvt_no ? `· Mvt ${arr.mvt_no}` : ''}</Text>
                           </div>
                           <Group>
-                            <Button component={Link} to={`/arrangements/${arr.slug}`} size="xs" variant="outline">View</Button>
+                            <Button component={Link} to={`/app/arrangements/${arr.id}`} size="xs" variant="outline">View</Button>
                           </Group>
                         </Group>
                       </Card>

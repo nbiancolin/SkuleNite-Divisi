@@ -22,3 +22,4 @@ django-allauth
 requests
 pypdf
 reportlab
+sentry-sdk[django]
