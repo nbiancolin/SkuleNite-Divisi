@@ -166,6 +166,10 @@ class ArrangementVersion(models.Model):
     @property
     def ensemble_slug(self):
         return self.arrangement.ensemble_slug
+    
+    @property
+    def ensemble(self):
+        return self.arrangement.ensemble
 
     def __str__(self):
         return f"{self.arrangement.__str__()} (v{self.version_label})"

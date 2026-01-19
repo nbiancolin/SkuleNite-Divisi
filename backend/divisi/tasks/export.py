@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from divisi.models import UploadSession
 
 from divisi.lib import render_mscz, render_all_parts_pdf
-from ensembles.models import ArrangementVersion, PartAsset
+from ensembles.models import ArrangementVersion, PartAsset, PartName
 
 import zipfile
 import io
@@ -108,6 +108,7 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         
                         # Determine if it's the score or a part
                         is_score = file_info.filename.lower() == "score.pdf"
+                        #TODO: Here, change part_name to map to a part_name objetct
                         part_name = file_info.filename.replace(".pdf", "")
                         
                         # Generate storage key
@@ -127,9 +128,13 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         if arrangement_version_id:
                             try:
                                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
+                                name_obj = PartName.objects.update_or_create(
+                                    ensemble=version.ensemble,
+                                    display_name=part_name
+                                )
                                 PartAsset.objects.update_or_create(
                                     arrangement_version=version,
-                                    name=part_name,
+                                    name=name_obj,
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,

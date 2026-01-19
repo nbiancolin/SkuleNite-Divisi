@@ -2,7 +2,7 @@ from ensembles.models.ensemble import Ensemble
 from ensembles.models.ensemble_usership import EnsembleUsership
 from ensembles.models.arrangement import Arrangement
 from ensembles.models.arrangement_version import ArrangementVersion
-from ensembles.models.part import PartAsset
+from ensembles.models.part import PartAsset, PartBook, PartBookEntry, PartName
 from ensembles.models.export_failure_log import ExportFailureLog
 
 from ensembles.models.diff import Diff

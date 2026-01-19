@@ -13,7 +13,8 @@ class PartAsset(models.Model):
     arrangement_version = models.ForeignKey(
         ArrangementVersion, related_name="parts", on_delete=models.CASCADE
     )
-    name = models.CharField(max_length=255)  # Part name (e.g., "Violin", "Cello")
+    name = models.ForeignKey("PartName", on_delete=models.CASCADE)
+    # name = models.CharField(max_length=255)  # Part name (e.g., "Violin", "Cello")
     file_key = models.CharField(max_length=500)  # Storage key for the PDF file
     is_score = models.BooleanField(default=False)  # True if this is the full score PDF
     
