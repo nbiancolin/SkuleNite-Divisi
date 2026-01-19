@@ -54,6 +54,11 @@ class PartName(models.Model):
         return f"{self.display_name} ({self.ensemble.name})"
     
 
+    @classmethod
+    def merge_part_names(cls, part1: "PartName", part2: "PartName", new_display_name: str):
+        #TODO: this
+        pass
+
 class PartBook(models.Model):
     ensemble = models.ForeignKey("ensembles.Ensemble", related_name="part_books", on_delete=models.CASCADE)
     part_name = models.ForeignKey(PartName, related_name="part_books", on_delete=models.CASCADE)
