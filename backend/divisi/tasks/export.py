@@ -128,13 +128,13 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         if arrangement_version_id:
                             try:
                                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                                name_obj = PartName.objects.update_or_create(
+                                name_obj, _ = PartName.objects.update_or_create(
                                     ensemble=version.ensemble,
                                     display_name=part_name
                                 )
                                 PartAsset.objects.update_or_create(
                                     arrangement_version=version,
-                                    name=name_obj,
+                                    name_obj=name_obj,
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,

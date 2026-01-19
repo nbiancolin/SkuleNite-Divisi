@@ -1,3 +1,4 @@
+from typing import Iterable
 from django.db import models
 from django.core.files.storage import default_storage
 
@@ -13,22 +14,32 @@ class PartAsset(models.Model):
     arrangement_version = models.ForeignKey(
         ArrangementVersion, related_name="parts", on_delete=models.CASCADE
     )
-    name = models.ForeignKey("PartName", on_delete=models.CASCADE)
+    #TODO: Backfill/delete any part assets that dont have a NameObj associated
+    name_obj = models.ForeignKey("PartName", on_delete=models.CASCADE, null=True)
     # name = models.CharField(max_length=255)  # Part name (e.g., "Violin", "Cello")
     file_key = models.CharField(max_length=500)  # Storage key for the PDF file
     is_score = models.BooleanField(default=False)  # True if this is the full score PDF
+
+    def save(self, **kwargs) -> None:
+        if self.name_obj is None:
+            raise NotImplementedError("Cannot create a PartAsset without a NameObj")
+        return super().save(**kwargs)
     
     @property
     def file_url(self) -> str:
         """Public URL for serving to clients"""
         return default_storage.url(self.file_key)
     
+    @property
+    def name(self):
+        return self.name_obj.display_name if self.name_obj else "No NameObj Record"
+    
     def __str__(self):
         part_type = "Score" if self.is_score else "Part"
         return f"{part_type}: {self.name} ({self.arrangement_version})"
     
     class Meta:
-        ordering = ["-is_score", "name"]  # Score first (True before False), then parts alphabetically
+        ordering = ["-is_score"]  # Score first (True before False), then parts alphabetically
 
 
 

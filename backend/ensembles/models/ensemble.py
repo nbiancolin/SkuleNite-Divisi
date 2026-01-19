@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement import Arrangement
+    from ensembles.models.part import PartName
 
 
 logger = getLogger("app")
@@ -20,6 +21,7 @@ class Ensemble(models.Model):
     if TYPE_CHECKING:
         from django.db.models.manager import RelatedManager
         arrangements: RelatedManager["Arrangement"]
+        part_names: RelatedManager["PartName"]
 
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)

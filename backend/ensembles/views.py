@@ -271,6 +271,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
     
+    #TODO: Make this have a serializer omg
     @action(detail=True, methods=["get"])
     def get_download_links(self, request, pk=None):
         version = self.get_object()

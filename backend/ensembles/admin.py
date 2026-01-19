@@ -1,13 +1,23 @@
 from django.contrib import admin, messages
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
 
 
+class PartNameInline(admin.TabularInline):
+    model = PartName
+    extra = 0
+    fields = ('display_name',) 
+
 class EnsembleAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "num_arrangements", "owner")
+    inlines = [PartNameInline]
+
+    def part_names_list(self, obj):
+        return ", ".join(obj.part_names.values_list('name', flat=True))
+    part_names_list.short_description = 'Parts'
 
 
 class ArrangementAdmin(admin.ModelAdmin):
