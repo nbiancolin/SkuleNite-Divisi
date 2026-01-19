@@ -89,3 +89,6 @@ def test_remove_user_from_ensemble(ensemble, user, client):
     
     assert r.status_code == 200, r.content
     assert not EnsembleUsership.objects.filter(user=new_ship.user).exists()
+
+
+#TODO: Add Tests for creating a score and creating parts
