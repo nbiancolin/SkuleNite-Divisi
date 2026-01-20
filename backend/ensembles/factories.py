@@ -1,6 +1,6 @@
 import factory
 from factory.django import DjangoModelFactory
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, PartAsset
+from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, PartAsset, PartName
 
 from django.contrib.auth import get_user_model
 
@@ -64,11 +64,21 @@ class EnsembleUsershipFactory(DjangoModelFactory):
     # role = 'member' TODO: update factory to do this
 
 
+class PartNameFactory(DjangoModelFactory):
+    class Meta:
+        model = PartName
+
+
+    ensemble = factory.SubFactory(EnsembleFactory)
+    display_name = factory.Sequence(lambda n: f"Part: Piano {n}")
+    
+
+
 class PartAssetFactory(DjangoModelFactory):
     class Meta:
         model = PartAsset
     
     arrangement_version = factory.SubFactory(ArrangementVersionFactory)
-    name = factory.Sequence(lambda n: f"Part {n}")
+    name_obj = factory.SubFactory(PartNameFactory)
     file_key = factory.LazyAttribute(lambda obj: f"test/{obj.name.lower()}.pdf")
     is_score = False

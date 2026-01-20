@@ -5,11 +5,13 @@ from unittest.mock import patch, MagicMock, mock_open
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
-from ensembles.models import ArrangementVersion, PartAsset
+from ensembles.models import ArrangementVersion, PartAsset, PartName
 from ensembles.factories import (
     ArrangementVersionFactory,
     ArrangementFactory,
     EnsembleFactory,
+    PartNameFactory,
+    PartAssetFactory
 )
 from divisi.tasks.export import export_all_parts_with_tracking
 
@@ -424,3 +426,27 @@ def test_download_part_missing_file(arrangement_versions, client):
     assert response.status_code == 404
     data = response.json()
     assert "not found in storage" in data["detail"].lower()
+
+
+@pytest.mark.django_db
+def test_merge_parts(ensemble, arrangement_versions):
+
+    v1, v2 = arrangement_versions
+
+    name1, name2 = PartNameFactory.create_batch(2, ensemble=ensemble)
+
+    arr1_parts = [
+        PartAssetFactory(arrangement_version=v1, name_obj=name1),
+        PartAssetFactory(arrangement_version=v1, name_obj=name2),
+    ]
+
+    arr2_parts = [
+        PartAssetFactory(arrangement_version=v2, name_obj=name1),
+        PartAssetFactory(arrangement_version=v2, name_obj=name2),
+    ]
+    # WHEN
+    name_obj = PartName.merge_part_names(name1, name2, "New Merged Part")
+
+    for part in arr1_parts + arr2_parts:
+        part.refresh_from_db()
+        assert part.name_obj == name_obj

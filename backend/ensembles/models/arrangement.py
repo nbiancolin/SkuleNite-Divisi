@@ -30,8 +30,8 @@ class Arrangement(models.Model):
     act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(default=1, blank=True, null=True)
 
-    #TODO: Remove blank=true
-    mvt_no = models.CharField(max_length=4, blank=True)
+    #This field cannot be blank, if its blank the value is filled in with the arrangemnt pk
+    mvt_no = models.CharField(max_length=4)
 
     style = models.CharField(choices=STYLE_CHOICES)
 
@@ -42,15 +42,17 @@ class Arrangement(models.Model):
         if not self.style:
             self.style = self.ensemble.default_style
 
-        if self.pk is None:
-            super().save(*args, **kwargs)
-            if self.mvt_no is None:
-                self.mvt_no = self.pk
-                super().save(update_fields=["mvt_no"])
-        else:
-            if self.mvt_no is None:
-                self.mvt_no = self.pk
-            super().save(*args, **kwargs)
+        # Old behaviour
+        # if self.pk is None:
+        #     super().save(*args, **kwargs)
+        #     self.refresh_from_db()
+        #     if self.mvt_no is None:
+        #         self.mvt_no = self.pk
+        #         super().save(update_fields=["mvt_no"])
+        # else:
+        #     if self.mvt_no is None:
+        #         self.mvt_no = self.pk        
+        #     super().save(*args, **kwargs)
 
 
     @property
