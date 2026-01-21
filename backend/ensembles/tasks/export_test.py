@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
-from ensembles.models import ArrangementVersion, Part, ExportFailureLog
+from ensembles.models import ArrangementVersion, ExportFailureLog
 from ensembles.factories import ArrangementVersionFactory, ArrangementFactory
 from ensembles.tasks import export_arrangement_version
 
