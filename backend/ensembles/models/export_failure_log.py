@@ -9,10 +9,10 @@ logger = getLogger("app")
 class ExportFailureLog(models.Model):
     arrangement_version = models.ForeignKey(ArrangementVersion, related_name="failure_log", on_delete=models.CASCADE)
     #Auto-populated with info from 
-    error_msg = models.CharField()
+    error_msg = models.CharField(max_length=512)
 
     #info that I may want to add
-    comments = models.CharField()
+    comments = models.CharField(max_length=255)
 
     @property
     def arrangement_version__str__(self):

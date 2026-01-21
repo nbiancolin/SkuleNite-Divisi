@@ -17,7 +17,7 @@ class Diff(models.Model):
         ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_target"
     )
 
-    file_name = models.CharField()
+    file_name = models.CharField(max_length=128)
     timestamp = models.DateTimeField(auto_now_add=True)
     status = models.CharField(
         max_length=20,
@@ -29,7 +29,7 @@ class Diff(models.Model):
         ],
         default="pending",
     )
-    error_msg = models.CharField(blank=True, null=True)
+    error_msg = models.CharField(max_length=512, blank=True, null=True)
 
     @property
     def from_version__str__(self):

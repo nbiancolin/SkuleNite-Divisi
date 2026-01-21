@@ -33,7 +33,7 @@ class Arrangement(models.Model):
     #This field cannot be blank, if its blank the value is filled in with the arrangemnt pk
     mvt_no = models.CharField(max_length=4)
 
-    style = models.CharField(choices=STYLE_CHOICES)
+    style = models.CharField(max_length=10, choices=STYLE_CHOICES)
 
     def save(self, *args, **kwargs):
         if not self.slug:

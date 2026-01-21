@@ -26,7 +26,7 @@ class Ensemble(models.Model):
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
-    default_style = models.CharField(choices=STYLE_CHOICES)
+    default_style = models.CharField(max_length=10, choices=STYLE_CHOICES)
     
     owner = models.ForeignKey(
         'auth.User',
