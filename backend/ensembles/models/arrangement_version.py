@@ -23,7 +23,7 @@ class ArrangementVersion(models.Model):
         from django.db.models.manager import RelatedManager
         parts: RelatedManager["PartAsset"]
 
-    file_name = models.CharField()
+    file_name = models.CharField(max_length=128)
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
