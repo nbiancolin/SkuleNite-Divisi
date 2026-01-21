@@ -108,7 +108,6 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         
                         # Determine if it's the score or a part
                         is_score = file_info.filename.lower() == "score.pdf"
-                        #TODO: Here, change part_name to map to a part_name objetct
                         part_name = file_info.filename.replace(".pdf", "")
                         
                         # Generate storage key
@@ -128,13 +127,13 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         if arrangement_version_id:
                             try:
                                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                                name_obj, _ = PartName.objects.update_or_create(
+                                part_name, _ = PartName.objects.update_or_create(
                                     ensemble=version.ensemble,
                                     display_name=part_name
                                 )
                                 PartAsset.objects.update_or_create(
                                     arrangement_version=version,
-                                    name_obj=name_obj,
+                                    part_name=part_name,
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,

@@ -79,6 +79,6 @@ class PartAssetFactory(DjangoModelFactory):
         model = PartAsset
     
     arrangement_version = factory.SubFactory(ArrangementVersionFactory)
-    name_obj = factory.SubFactory(PartNameFactory)
+    part_name = factory.SubFactory(PartNameFactory)
     file_key = factory.LazyAttribute(lambda obj: f"test/{obj.name.lower()}.pdf")
     is_score = False

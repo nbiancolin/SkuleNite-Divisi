@@ -42,17 +42,11 @@ class Arrangement(models.Model):
         if not self.style:
             self.style = self.ensemble.default_style
 
-        # Old behaviour
-        # if self.pk is None:
-        #     super().save(*args, **kwargs)
-        #     self.refresh_from_db()
-        #     if self.mvt_no is None:
-        #         self.mvt_no = self.pk
-        #         super().save(update_fields=["mvt_no"])
-        # else:
-        #     if self.mvt_no is None:
-        #         self.mvt_no = self.pk        
-        #     super().save(*args, **kwargs)
+        creating = self.pk is None
+        if creating and self.mvt_no is None:
+            raise NotImplementedError("mvt_no is required")
+        
+        super().save(*args, **kwargs)
 
 
     @property

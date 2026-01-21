@@ -17,13 +17,13 @@ class PartAsset(models.Model):
     arrangement_version = models.ForeignKey(
         ArrangementVersion, related_name="parts", on_delete=models.CASCADE
     )
-    #TODO: Backfill/delete any part assets that dont have a NameObj associated
-    name_obj = models.ForeignKey("PartName", on_delete=models.PROTECT, null=True)
+    #TODO: Backfill/delete any part assets that dont have a NameObj associated, and remove this null=True
+    part_name = models.ForeignKey("PartName", on_delete=models.PROTECT, null=True)
     file_key = models.CharField(max_length=500)  # Storage key for the PDF file
     is_score = models.BooleanField(default=False)  # True if this is the full score PDF
 
     def save(self, **kwargs) -> None:
-        if self.name_obj is None:
+        if self.part_name is None:
             raise NotImplementedError("Cannot create a PartAsset without a NameObj")
         return super().save(**kwargs)
     
@@ -34,7 +34,7 @@ class PartAsset(models.Model):
     
     @property
     def name(self):
-        return self.name_obj.display_name if self.name_obj else "No NameObj Record"
+        return self.part_name.display_name if self.part_name else "No NameObj Record"
     
     def __str__(self):
         part_type = "Score" if self.is_score else "Part"
@@ -63,13 +63,13 @@ class PartName(models.Model):
     
     def _merge_objs(self, second: "PartName"):
         """Merge `second` into `self`. Deletes `second` afterwards"""
-        second_part_asset_ids = PartAsset.objects.filter(name_obj=second).values_list("id", flat=True)
-        PartAsset.objects.filter(id__in=second_part_asset_ids).update(name_obj_id=self.id)
+        second_part_asset_ids = PartAsset.objects.filter(part_name=second).values_list("id", flat=True)
+        PartAsset.objects.filter(id__in=second_part_asset_ids).update(part_name_id=self.id)
         second.delete()
 
     @classmethod
     def merge_part_names(cls, first: "PartName", second: "PartName", new_displayname: str = "") -> "PartName":
-        if PartAsset.objects.filter(name_obj=second).count() > PartAsset.objects.filter(name_obj=first).count():
+        if PartAsset.objects.filter(part_name=second).count() > PartAsset.objects.filter(part_name=first).count():
             target = second
             merge_from = first
             if not new_displayname:
@@ -100,7 +100,12 @@ class PartBook(models.Model):
 
     revision = models.PositiveIntegerField()
 
-    # parent #TODO
+    parent = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     finalized_at = models.DateTimeField(null=True, blank=True)

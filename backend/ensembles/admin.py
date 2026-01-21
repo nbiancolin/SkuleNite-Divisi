@@ -115,10 +115,10 @@ class EnsembleUsershipAdmin(admin.ModelAdmin):
 
 
 #TODO: Rename
-class PartAdmin(admin.ModelAdmin):
-    list_display = ("name", "arrangement_version", "is_score", "file_key")
+class PartAssetAdmin(admin.ModelAdmin):
+    list_display = ("part_name", "arrangement_version", "is_score", "file_key")
     list_filter = ("is_score", "arrangement_version")
-    search_fields = ("name", "arrangement_version__arrangement__title")
+    search_fields = ("part_name", "arrangement_version__arrangement__title")
     readonly_fields = ("file_key", "file_url")
 
 
@@ -128,4 +128,4 @@ admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
 admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
-admin.site.register(PartAsset, PartAdmin)
+admin.site.register(PartAsset, PartAssetAdmin)

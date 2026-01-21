@@ -292,12 +292,6 @@ def merge_pdfs(
     }
 
 
-    #TODO
-    """
-    - Build in BE code (celery task) to generate / store / return these
-    - Build in FE code to trigger these
-    """
-
 def generate_full_part_book(
     *,
     cover_pdf: BytesIO,

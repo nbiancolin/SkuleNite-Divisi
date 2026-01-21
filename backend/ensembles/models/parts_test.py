@@ -436,17 +436,17 @@ def test_merge_parts(ensemble, arrangement_versions):
     name1, name2 = PartNameFactory.create_batch(2, ensemble=ensemble)
 
     arr1_parts = [
-        PartAssetFactory(arrangement_version=v1, name_obj=name1),
-        PartAssetFactory(arrangement_version=v1, name_obj=name2),
+        PartAssetFactory(arrangement_version=v1, part_name=name1),
+        PartAssetFactory(arrangement_version=v1, part_name=name2),
     ]
 
     arr2_parts = [
-        PartAssetFactory(arrangement_version=v2, name_obj=name1),
-        PartAssetFactory(arrangement_version=v2, name_obj=name2),
+        PartAssetFactory(arrangement_version=v2, part_name=name1),
+        PartAssetFactory(arrangement_version=v2, part_name=name2),
     ]
     # WHEN
-    name_obj = PartName.merge_part_names(name1, name2, "New Merged Part")
+    part_name = PartName.merge_part_names(name1, name2, "New Merged Part")
 
     for part in arr1_parts + arr2_parts:
         part.refresh_from_db()
-        assert part.name_obj == name_obj
+        assert part.part_name == part_name
