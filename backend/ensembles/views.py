@@ -193,6 +193,11 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                 {"detail": "User is not a member of this ensemble."},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+
+    @action(detail=True, methods=["post"])
+    def generate_part_books(self, request, pk=None):
+        pass
 
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):
@@ -397,6 +402,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "file_url": request.build_absolute_uri(file_url),
             "redirect": file_url,
         })
+    
+
 
 
 class JoinEnsembleView(APIView):

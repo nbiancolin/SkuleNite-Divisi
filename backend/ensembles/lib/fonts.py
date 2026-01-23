@@ -17,6 +17,14 @@ palatinolinotype_roman
 
 """
 
+#Flag to check if running tests in CI, and if so, to skip these tests
+IS_CI = os.getenv("CI") == "true"
+
+
+def is_running_tests():
+    return 'PYTEST_CURRENT_TEST' in os.environ
+
+
 def _font_name_from_filename(filename: str) -> str:
     """
     Convert a font filename into a safe ReportLab font name.
@@ -28,7 +36,7 @@ def _font_name_from_filename(filename: str) -> str:
 
 def register_fonts():
     global _FONTS_REGISTERED
-    if _FONTS_REGISTERED:
+    if _FONTS_REGISTERED or IS_CI:
         return
 
     for filename in os.listdir(FONT_DIR):

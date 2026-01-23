@@ -14,7 +14,7 @@ from ensembles.tasks import export_arrangement_version
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_creates_parts(mock_export, arrangement_versions):
     """Test that export_arrangement_version creates Part records"""
     v1, _ = arrangement_versions
@@ -46,7 +46,7 @@ def test_export_creates_parts(mock_export, arrangement_versions):
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_handles_error(mock_export, arrangement_versions):
     """Test that export_arrangement_version handles errors correctly"""
     v1, _ = arrangement_versions
@@ -74,7 +74,7 @@ def test_export_handles_error(mock_export, arrangement_versions):
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_uses_processed_file(mock_export, arrangement_versions):
     """Test that export uses processed file when available"""
     v1, _ = arrangement_versions
@@ -93,7 +93,7 @@ def test_export_uses_processed_file(mock_export, arrangement_versions):
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_falls_back_to_raw_file(mock_export, arrangement_versions):
     """Test that export falls back to raw file if processed doesn't exist"""
     v1, _ = arrangement_versions
@@ -116,7 +116,7 @@ def test_export_falls_back_to_raw_file(mock_export, arrangement_versions):
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_handles_missing_file(mock_export, arrangement_versions):
     """Test that export handles missing input file"""
     v1, _ = arrangement_versions
@@ -154,7 +154,7 @@ def test_export_nonexistent_version():
 
 
 @pytest.mark.django_db
-@patch("ensembles.tasks.export_all_parts_with_tracking")
+@patch("ensembles.tasks.export.export_all_parts_with_tracking")
 def test_export_handles_exception(mock_export, arrangement_versions):
     """Test that export handles unexpected exceptions"""
     v1, _ = arrangement_versions
