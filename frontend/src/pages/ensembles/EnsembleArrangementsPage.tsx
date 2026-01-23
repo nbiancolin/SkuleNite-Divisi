@@ -22,14 +22,17 @@ import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, Ico
 import { apiService, type Ensemble } from '../../services/apiService';
 
 const ArrangementsPage = () => {
-  const { slug = "NA"} = useParams(); // Get ensemble slug from URL
+  const { slug = "NA" } = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
   const [ensemble, setEnsemble] = useState<Ensemble | null>(null);
   const [arrangements, setArrangements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string|null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
+  const [partBookLoading, setPartBookLoading] = useState(false);
+  const [partBookError, setPartBookError] = useState<string | null>(null);
+
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -85,6 +88,31 @@ const ArrangementsPage = () => {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleGeneratePartBooks = async () => {
+    if (!ensemble) return;
+
+    try {
+      setPartBookLoading(true);
+      setPartBookError(null);
+
+      const data = await apiService.generatePartBooksForEnsemble(ensemble.slug);
+
+      if (data?.download_url) {
+        // force browser download
+        window.location.href = data.download_url;
+      } else {
+        throw new Error('No download URL returned');
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setPartBookError(err.message);
+      }
+    } finally {
+      setPartBookLoading(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -144,7 +172,7 @@ const ArrangementsPage = () => {
   return (
     <Stack gap="lg">
       <Breadcrumbs>{breadcrumbItems}</Breadcrumbs>
-      
+
       <Group justify="space-between" align="flex-end">
         <Stack gap="xs">
           <Group gap="sm">
@@ -204,8 +232,88 @@ const ArrangementsPage = () => {
           >
             Create Arrangement
           </Button>
+          {ensemble.is_admin && (!ensemble.part_books || ensemble.part_books.length === 0) && (
+            <Card shadow="sm" withBorder>
+              <Group justify="space-between">
+                <Text c="dimmed">
+                  No part books have been generated for this ensemble yet.
+                </Text>
+                <Button
+                  size="sm"
+                  onClick={handleGeneratePartBooks}
+                  loading={partBookLoading}
+                >
+                  Generate Part Books
+                </Button>
+              </Group>
+            </Card>
+          )}
         </Group>
       </Group>
+
+      {partBookError && (
+        <Alert color="red" title="Part Book Generation Failed">
+          {partBookError}
+        </Alert>
+      )}
+
+      {ensemble.part_books && ensemble.part_books.length > 0 && (
+        <Card shadow="sm" radius="md" withBorder>
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <Title order={4}>Part Books</Title>
+              {ensemble.is_admin && (
+                <Button
+                  size="xs"
+                  variant="light"
+                  onClick={handleGeneratePartBooks}
+                  loading={partBookLoading}
+                >
+                  Generate New
+                </Button>
+              )}
+            </Group>
+
+            <Table striped>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Label</Table.Th>
+                  <Table.Th>Version</Table.Th>
+                  <Table.Th>Generated</Table.Th>
+                  <Table.Th />
+                </Table.Tr>
+              </Table.Thead>
+
+              <Table.Tbody>
+                {ensemble.part_books.map((pb) => (
+                  <Table.Tr key={pb.id}>
+                    <Table.Td>{pb.label}</Table.Td>
+                    <Table.Td>
+                      <Badge variant="light">v{pb.version}</Badge>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm" c="dimmed">
+                        {new Date(pb.created_at).toLocaleString()}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Button
+                        size="xs"
+                        variant="subtle"
+                        component="a"
+                        href={pb.download_url}
+                      >
+                        Download
+                      </Button>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Stack>
+        </Card>
+      )}
+
 
       {arrangements.length > 0 ? (
         <Card shadow="sm" padding="lg" radius="md" withBorder>
@@ -239,11 +347,11 @@ const ArrangementsPage = () => {
                     <Badge
                       variant="light"
                       color={
-                      arrangement.latest_version_num !== 'N/A'
-                        ? arrangement.latest_version_num.startsWith('0')
-                        ? 'yellow'
-                        : 'green'
-                        : 'gray'
+                        arrangement.latest_version_num !== 'N/A'
+                          ? arrangement.latest_version_num.startsWith('0')
+                            ? 'yellow'
+                            : 'green'
+                          : 'gray'
                       }
                       size="sm"
                     >

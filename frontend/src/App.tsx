@@ -5,7 +5,7 @@ import NotFound from './pages/NotFound';
 import EnsemblesPage from './pages/ensembles/EnsemblesPage';
 import CreateEnsemblePage from './pages/ensembles/CreateEnsemblePage'
 import CreateArrangementPage from './pages/ensembles/CreateArrangementPage'
-import ArrangementsPage from './pages/ensembles/ArrangementsPage';
+import ArrangementsPage from './pages/ensembles/EnsembleArrangementsPage';
 import UploadArrangementVersionPage from './pages/ensembles/UploadArrangementVersionPage';
 import ArrangementDisplay from './pages/ensembles/ArrangementDetailPage';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
