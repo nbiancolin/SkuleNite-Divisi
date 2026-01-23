@@ -4,7 +4,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from io import BytesIO
 from pypdf import PdfWriter, PdfReader
 
-from ensembles.models import STYLE_CHOICES
+from ensembles.models.constants import STYLE_CHOICES
 
 from typing import TypedDict
 

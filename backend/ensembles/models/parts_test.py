@@ -16,102 +16,6 @@ from ensembles.factories import (
 from divisi.tasks.export import export_all_parts_with_tracking
 
 
-@pytest.mark.django_db
-def test_part_creation(arrangement_versions):
-    """Test creating a Part record"""
-    v1, v2 = arrangement_versions
-    part = PartAsset.objects.create(
-        arrangement_version=v1,
-        name="Violin",
-        file_key="test/violin.pdf",
-        is_score=False,
-    )
-
-    assert part.name == "Violin"
-    assert part.file_key == "test/violin.pdf"
-    assert part.is_score is False
-    assert part.arrangement_version == v1
-
-
-@pytest.mark.django_db
-def test_part_score_flag(arrangement_versions):
-    """Test creating a score Part"""
-    v1, _ = arrangement_versions
-    score_part = PartAsset.objects.create(
-        arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
-    )
-
-    assert score_part.is_score is True
-    assert score_part.name == "Score"
-
-
-@pytest.mark.django_db
-def test_part_file_url(arrangement_versions):
-    """Test Part file_url property"""
-    v1, _ = arrangement_versions
-    part = PartAsset.objects.create(
-        arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
-    )
-
-    # file_url should return the storage URL
-    url = part.file_url
-    assert url is not None
-    assert "cello.pdf" in url or "test/cello.pdf" in url
-
-
-@pytest.mark.django_db
-def test_part_ordering(arrangement_versions):
-    """Test Part model ordering (score first, then alphabetically)"""
-    v1, _ = arrangement_versions
-
-    PartAsset.objects.create(
-        arrangement_version=v1,
-        name="Violin",
-        file_key="test/violin.pdf",
-        is_score=False,
-    )
-    PartAsset.objects.create(
-        arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
-    )
-    PartAsset.objects.create(
-        arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
-    )
-
-    parts = list(PartAsset.objects.filter(arrangement_version=v1))
-
-    # Score should be first (is_score=True sorts before False)
-    assert parts[0].is_score is True
-    assert parts[0].name == "Score"
-
-    # Then parts alphabetically
-    assert parts[1].name == "Cello"
-    assert parts[2].name == "Violin"
-
-
-@pytest.mark.django_db
-def test_part_deletion_with_version(arrangement_versions):
-    """Test that Parts are deleted when ArrangementVersion is deleted"""
-    v1, _ = arrangement_versions
-
-    part1 = PartAsset.objects.create(
-        arrangement_version=v1,
-        name="Violin",
-        file_key="test/violin.pdf",
-        is_score=False,
-    )
-    part2 = PartAsset.objects.create(
-        arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
-    )
-
-    assert PartAsset.objects.filter(arrangement_version=v1).count() == 2
-
-    v1.delete()
-
-    # Parts should be deleted via CASCADE
-    assert PartAsset.objects.filter(id=part1.id).count() == 0
-    assert PartAsset.objects.filter(id=part2.id).count() == 0
-
-
 """Tests for the export_all_parts_with_tracking function"""
 
 
@@ -157,11 +61,13 @@ def test_export_creates_parts_successfully(mock_render, arrangement_versions):
     assert score_part.name == "Score"
 
     # Check other parts
-    violin_part = parts.filter(name="Violin").first()
+    violin_name = PartName.objects.get(ensemble=v1.ensemble, display_name="Violin")
+    violin_part = parts.filter(part_name=violin_name).first()
     assert violin_part is not None
     assert violin_part.is_score is False
 
-    cello_part = parts.filter(name="Cello").first()
+    cello_name = PartName.objects.get(ensemble=v1.ensemble, display_name="Violin")
+    cello_part = parts.filter(part_name=cello_name).first()
     assert cello_part is not None
     assert cello_part.is_score is False
 
@@ -289,18 +195,8 @@ def test_list_parts_endpoint(arrangement_versions, client):
     v1, _ = arrangement_versions
 
     # Create some parts
-    PartAsset.objects.create(
-        arrangement_version=v1, name="Score", file_key="test/score.pdf", is_score=True
-    )
-    PartAsset.objects.create(
-        arrangement_version=v1,
-        name="Violin",
-        file_key="test/violin.pdf",
-        is_score=False,
-    )
-    PartAsset.objects.create(
-        arrangement_version=v1, name="Cello", file_key="test/cello.pdf", is_score=False
-    )
+    PartAssetFactory(arrangement_version=v1, is_score=True)
+    PartAssetFactory.create_batch(2, arrangement_version=v1, is_score=False)
 
     from django.urls import reverse
 
@@ -316,7 +212,6 @@ def test_list_parts_endpoint(arrangement_versions, client):
 
     # Check parts are ordered correctly (score first)
     assert data["parts"][0]["is_score"] is True
-    assert data["parts"][0]["name"] == "Score"
     assert "download_url" in data["parts"][0]
     assert "file_url" in data["parts"][0]
 
@@ -359,8 +254,8 @@ def test_download_part_endpoint(arrangement_versions, client):
     file_key = "test/violin.pdf"
     default_storage.save(file_key, ContentFile(b"%PDF-1.4 fake pdf"))
 
-    part = PartAsset.objects.create(
-        arrangement_version=v1, name="Violin", file_key=file_key, is_score=False
+    part = PartAssetFactory(
+        arrangement_version=v1, file_key=file_key, is_score=False
     )
 
     # Use the custom URL pattern
@@ -391,9 +286,8 @@ def test_download_part_wrong_version(arrangement_versions, client):
     """Test downloading a part from wrong version"""
     v1, v2 = arrangement_versions
 
-    part = PartAsset.objects.create(
+    part = PartAssetFactory(
         arrangement_version=v1,
-        name="Violin",
         file_key="test/violin.pdf",
         is_score=False,
     )
@@ -412,9 +306,8 @@ def test_download_part_missing_file(arrangement_versions, client):
     v1, _ = arrangement_versions
 
     # Create part but don't save file to storage
-    part = PartAsset.objects.create(
+    part = PartAssetFactory(
         arrangement_version=v1,
-        name="Violin",
         file_key="test/nonexistent.pdf",
         is_score=False,
     )

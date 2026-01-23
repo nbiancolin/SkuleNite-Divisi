@@ -54,9 +54,10 @@ class PartName(models.Model):
     display_name = models.CharField(max_length=64)
     slug = models.SlugField(unique=True)
 
-    def save(self):
+    def save(self, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(PartName, self.display_name, instance=self)
+        super().save(**kwargs)
 
     def __str__(self):
         return f"{self.display_name} ({self.ensemble.name})"
@@ -82,7 +83,7 @@ class PartName(models.Model):
         target._merge_objs(merge_from)
         if new_displayname:
             target.display_name = new_displayname
-            target.save(update_fields=["displayname"])
+            target.save(update_fields=["display_name"])
         
         return target
 
@@ -124,3 +125,5 @@ class PartBookEntry(models.Model):
 
     #When building a part book, compute this value from the Arrangement's mvt_no. This determines the order in the book
     position = models.PositiveIntegerField()
+
+
