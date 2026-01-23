@@ -20,4 +20,6 @@ pytest-factoryboy
 django-extensions
 django-allauth
 requests
+pypdf
+reportlab
 sentry-sdk[django]

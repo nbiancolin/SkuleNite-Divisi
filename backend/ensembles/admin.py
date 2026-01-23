@@ -1,13 +1,23 @@
 from django.contrib import admin, messages
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, Part
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
 
 
+class PartNameInline(admin.TabularInline):
+    model = PartName
+    extra = 0
+    fields = ('display_name',) 
+
 class EnsembleAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "num_arrangements", "owner")
+    inlines = [PartNameInline]
+
+    def part_names_list(self, obj):
+        return ", ".join(obj.part_names.values_list('name', flat=True))
+    part_names_list.short_description = 'Parts'
 
 
 class ArrangementAdmin(admin.ModelAdmin):
@@ -104,10 +114,11 @@ class EnsembleUsershipAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email", "ensemble__name")
 
 
-class PartAdmin(admin.ModelAdmin):
-    list_display = ("name", "arrangement_version", "is_score", "file_key")
+#TODO: Rename
+class PartAssetAdmin(admin.ModelAdmin):
+    list_display = ("part_name", "arrangement_version", "is_score", "file_key")
     list_filter = ("is_score", "arrangement_version")
-    search_fields = ("name", "arrangement_version__arrangement__title")
+    search_fields = ("part_name", "arrangement_version__arrangement__title")
     readonly_fields = ("file_key", "file_url")
 
 
@@ -117,4 +128,4 @@ admin.site.register(Arrangement, ArrangementAdmin)
 admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
 admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
-admin.site.register(Part, PartAdmin)
+admin.site.register(PartAsset, PartAssetAdmin)

@@ -5,14 +5,12 @@ from divisi.tasks.export import (
     export_mscz_to_mp3,
     export_all_parts_with_tracking,
 )
-from .models import ArrangementVersion, ExportFailureLog
+from ensembles.models import ArrangementVersion, ExportFailureLog
 from logging import getLogger
 from django.core.files.storage import default_storage
 import os
 
 logger = getLogger("export_tasks")
-
-#TODO[SC-XXX]: Move Musescore export tasks to a common "lib" location (divisi/lib/musescore_api.py or smth)
 
 @shared_task
 def export_arrangement_version(version_id: int, action: str = "score"):

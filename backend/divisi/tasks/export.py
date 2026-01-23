@@ -9,7 +9,7 @@ from django.core.files.base import ContentFile
 from divisi.models import UploadSession
 
 from divisi.lib import render_mscz, render_all_parts_pdf
-from ensembles.models import ArrangementVersion, Part
+from ensembles.models import ArrangementVersion, PartAsset, PartName
 
 import zipfile
 import io
@@ -127,9 +127,13 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         if arrangement_version_id:
                             try:
                                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                                Part.objects.update_or_create(
+                                part_name, _ = PartName.objects.update_or_create(
+                                    ensemble=version.ensemble,
+                                    display_name=part_name
+                                )
+                                PartAsset.objects.update_or_create(
                                     arrangement_version=version,
-                                    name=part_name,
+                                    part_name=part_name,
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,
@@ -143,7 +147,7 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                                 LOGGER.exception("Failed to create Part record for %s", part_name)
         
         except zipfile.BadZipFile:
-            #TODO: Create exportFailureLogs here
+            #TODO: Create exportFailureLogs here / INvestigate that if it fails here, an export failure is created
             return {"status": "error", "details": "Invalid zip file received from MuseScore"}
         except Exception as e:
             LOGGER.exception("Failed to extract PDFs from zip")

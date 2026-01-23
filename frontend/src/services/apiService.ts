@@ -54,6 +54,15 @@ export interface EnsembleUsership {
   date_joined: string;
 }
 
+export interface EnsemblePartBook {
+  id: number;
+  label: string;
+  created_at: string;
+  version: string;
+  download_url: string;
+}
+
+
 export interface Ensemble {
   id: number,
   name: string,
@@ -61,7 +70,8 @@ export interface Ensemble {
   arrangements: [Arrangement],
   join_link?: string | null,
   is_admin: boolean, //if the requesting user is an admin in the esnemble
-  userships?: EnsembleUsership[]
+  userships?: EnsembleUsership[];
+  part_books?: EnsemblePartBook[];
 }
 
 export interface EditableArrangementData {
@@ -527,6 +537,32 @@ export const apiService = {
       );
     }
     return response.json();
+  },
+
+  async generatePartBooksForEnsemble(slug: string) {
+    const response = await fetch(
+      `${API_BASE_URL}/ensembles/${slug}/generate-part-books/`,
+      {
+        method: 'POST',
+        headers: getHeadersWithCsrf(),
+        credentials: 'include',
+      }
+    );
+
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to generate part books (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+
+    return response.json(); // { download_url }
   },
 
 

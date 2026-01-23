@@ -4,6 +4,6 @@ from django.db import models
 
 
 class SiteWarning(models.Model):
-    text = models.CharField()
+    text = models.CharField(max_length=256)
 
     is_visible = models.BooleanField(default=False)

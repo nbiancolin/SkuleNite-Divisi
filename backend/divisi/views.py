@@ -48,6 +48,7 @@ class PartFormatterViewSet(viewsets.ViewSet):
         file_url = default_storage.url(key)
 
         #TODO: Have it extract the title from the file and display it on the FE
+        #update Jan 6 - Part formatter can extract the title from the file, just need to process it and tell it to do that
 
         return Response(
             {
