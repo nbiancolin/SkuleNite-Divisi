@@ -333,6 +333,23 @@ class Part(models.Model):
         part_type = "Score" if self.is_score else "Part"
         return f"{part_type}: {self.name} ({self.arrangement_version})"
     
+    def delete(self, **kwargs):
+        # Delete files when diff is deleted
+        keys_to_delete = [self.file_key]
+        logger.warning(f"Deleting Part {self}")
+
+        for key in keys_to_delete:
+            try:
+                if default_storage.exists(key):
+                    default_storage.delete(key)
+                    logger.info(f"Deleted file: {key}")
+                else:
+                    logger.warning(f"File does not exist, skipping: {key}")
+            except Exception as e:
+                logger.error(f"Failed to delete {key}: {e}")
+
+        super().delete(**kwargs)
+
     class Meta:
         ordering = ["-is_score", "name"]  # Score first (True before False), then parts alphabetically
 
