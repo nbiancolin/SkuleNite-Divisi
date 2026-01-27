@@ -1,8 +1,11 @@
 from django.db import models
+from django.apps import apps
 import secrets
 from logging import getLogger
 from ensembles.models.constants import STYLE_CHOICES
 from ensembles.lib.slug import generate_unique_slug
+
+from django.db.models.expressions import RawSQL
 
 from typing import TYPE_CHECKING
 
@@ -27,6 +30,9 @@ class Ensemble(models.Model):
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(max_length=10, choices=STYLE_CHOICES)
+
+
+    part_books_generating = models.BooleanField(default=False)
     
     owner = models.ForeignKey(
         'auth.User',
@@ -56,6 +62,37 @@ class Ensemble(models.Model):
         if not self.invite_token:
             self.generate_invite_token()
         return self.invite_token
+
+
+    #TODO: Allow for passing in custom revisions of arrangements here
+    def generate_part_book_entries(self, part_book):
+        """Given a part book, generate part book entries for all the arrangements in this ensemble"""
+
+        PartBookEntry = apps.get_model("ensembles.PartBookEntry")
+
+        arrangements = (
+            self.arrangements
+            .annotate(
+                first_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
+                    []
+                ),
+                second_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
+                    []
+                ),
+            )
+            .order_by("first_num", "second_num", "mvt_no")
+        )
+
+        for i, arrangement in enumerate(arrangements):
+            PartBookEntry.objects.create(
+                part_book=part_book,
+                arrangement=arrangement,
+                arrangement_version=arrangement.latest_version,
+                position=i
+            )
+
 
     def __str__(self):
         return self.name

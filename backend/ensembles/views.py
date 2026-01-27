@@ -21,6 +21,7 @@ from logging import getLogger
 from django.db.models.expressions import RawSQL
 
 from ensembles.tasks import export_arrangement_version
+from ensembles.tasks.part_books import generate_books_for_ensemble
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -196,8 +197,11 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         
 
     @action(detail=True, methods=["post"])
-    def generate_part_books(self, request, pk=None):
-        pass
+    def generate_part_books(self, request, slug=None):
+        ensemble = self.get_object()
+
+        generate_books_for_ensemble.delay(ensemble.id)
+        return Response({"detail": "Export of Part Books triggered"}, status=status.HTTP_202_ACCEPTED)
 
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):

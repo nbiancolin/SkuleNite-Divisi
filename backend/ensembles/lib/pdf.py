@@ -16,6 +16,13 @@ class TocEntry(TypedDict):
     version_label: str #v1.0.0 or wtv
     page: int #ie. the page number it starts on. Tbd if this is eeded
 
+class EnsembleInfo(TypedDict):
+    show_title: str
+    show_number: str
+    part_name: str
+    selected_style: str
+
+
 class MergedPdfResult(TypedDict):
     pdf: BytesIO
     toc_entries: list[TocEntry]
@@ -89,6 +96,13 @@ def generate_cover_page(
     buffer.seek(0)
     return buffer
 
+
+class PartBookInfo(TypedDict):
+    show_title: str
+    show_subtitle: str | None
+    part_name: str
+    export_date: str
+    selected_style: str
 
 def generate_table_of_contents(
     *,
