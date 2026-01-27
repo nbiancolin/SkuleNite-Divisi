@@ -63,6 +63,11 @@ export interface EnsemblePartBook {
 }
 
 
+export interface PartName {
+  id: number;
+  display_name: string;
+}
+
 export interface Ensemble {
   id: number,
   name: string,
@@ -70,6 +75,7 @@ export interface Ensemble {
   arrangements: [Arrangement],
   join_link?: string | null,
   is_admin: boolean, //if the requesting user is an admin in the esnemble
+  part_name?: PartName[];
   userships?: EnsembleUsership[];
   part_books?: EnsemblePartBook[];
 }
@@ -730,7 +736,50 @@ export const apiService = {
       );
     }
     return response.json();
+  },
+
+  /**
+   * Send a BE request to merge two part name objects into one
+   * @param firstId id of the first PartName obj (this is the name that is kept if no displayname is passed in)
+   * @param secondId id of the second PartName obj
+   * @param new_displayname optional new displayname
+   */
+  async mergePartNames(firstId: number, secondId: number, new_displayname?: string | null) {
+    let payload = {};
+    if (new_displayname){
+      payload = {
+        "first_id": firstId,
+        "second_id": secondId,
+        "new_displayname": new_displayname
+      }
+    } else {
+      payload = {
+        "first_id": firstId,
+        "second_id": secondId,
+        "new_displayname": new_displayname
+      }
+    }
+    const response = await fetch(`${API_BASE_URL}/join/`, {
+      method: 'POST',
+      headers: getHeadersWithCsrf(),
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    });
+      if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to merge part names (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
   }
+
 
 };
 

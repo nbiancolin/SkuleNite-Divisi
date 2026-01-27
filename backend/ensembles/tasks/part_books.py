@@ -54,7 +54,8 @@ def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custo
 
     #first, generate all part book entries for that part name
     #TODO: This should set parent and the revision values
-    part_book = PartBook.objects.create(ensemble_id=ensemble_id, part_name_id=part_name_id, revision=revision)
+    parent = ensemble.part_books.order_by("-finalized_at")[0]
+    part_book = PartBook.objects.create(ensemble_id=ensemble_id, part_name_id=part_name_id, revision=revision, parent=parent)
     ensemble.generate_part_book_entries(part_book=part_book)
 
     #Then, render the part book

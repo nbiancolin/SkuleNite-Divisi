@@ -10,6 +10,7 @@ class PartNameInline(admin.TabularInline):
     model = PartName
     extra = 0
     fields = ('display_name',) 
+    #TODO: Add action here to merge part names (and input a custom name)
 
 class EnsembleAdmin(admin.ModelAdmin):
     list_display = ("name", "num_arrangements", "owner")
@@ -114,13 +115,26 @@ class EnsembleUsershipAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email", "ensemble__name")
 
 
-#TODO: Rename
 class PartAssetAdmin(admin.ModelAdmin):
     list_display = ("part_name", "arrangement_version", "is_score", "file_key")
     list_filter = ("is_score", "arrangement_version")
     search_fields = ("part_name", "arrangement_version__arrangement__title")
     readonly_fields = ("file_key", "file_url")
 
+
+class PartNameAdmin(admin.ModelAdmin):
+
+    list_display = ("display_name", "ensemble")
+    list_filter = ("ensemble", )
+    search_fields = ("ensemble",)
+
+    @admin.action(description="Merge Part Names")
+    def merge_part_names(self, request, queryset):
+        if len(queryset) != 2:
+            messages.warning(request, "Can only merge 2 part names at a time!")
+            return
+
+        PartName.merge_part_names(*queryset)
 
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
@@ -129,3 +143,4 @@ admin.site.register(ArrangementVersion, ArrangementVersionAdmin)
 admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
 admin.site.register(PartAsset, PartAssetAdmin)
+admin.site.register(PartName, PartNameAdmin)

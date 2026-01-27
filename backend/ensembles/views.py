@@ -10,12 +10,13 @@ from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.conf import settings
 
-from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset
-from .serializers import (
+from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
+from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
+    EnsemblePartNameMergeSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
@@ -197,6 +198,21 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         
 
     @action(detail=True, methods=["post"])
+    def merge_part_names(self, request, slug=None):
+        ensemble = self.get_object() #todo use this to validate
+        serializer = EnsemblePartNameMergeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        first = PartName.objects.get(id=validated_data["first"])
+        second = PartName.objects.get(id=validated_data["second"])
+
+        if new_displayname := validated_data.get("new_displayname"):
+            PartName.merge_part_names(first, second, new_displayname)
+        else:
+            PartName.merge_part_names(first, second)
+
+    @action(detail=True, methods=["post"])
     def generate_part_books(self, request, slug=None):
         ensemble = self.get_object()
 
@@ -224,6 +240,7 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         ensemble = serializer.validated_data['ensemble']
         user = self.request.user
         
+        #TODO: Move this to a serializer
         if ensemble.owner != user and not EnsembleUsership.objects.filter(
             ensemble=ensemble, user=user
         ).exists():

@@ -1,9 +1,16 @@
 from io import BytesIO
+from datetime import datetime
 from django.db import models
 from django.core.files.storage import default_storage
 
 from ensembles.models.arrangement_version import ArrangementVersion
 from ensembles.lib.slug import generate_unique_slug
+from ensembles.lib.pdf import TocEntry
+from ensembles.lib.pdf import (
+    generate_full_part_book,
+    generate_cover_page,
+    PartBookInfo,
+)
 
 from typing import TYPE_CHECKING
 
@@ -50,16 +57,23 @@ class PartAsset(models.Model):
 class PartName(models.Model):
     id: int
 
+    ensemble_id: int
     ensemble = models.ForeignKey(
         "ensembles.Ensemble", related_name="part_names", on_delete=models.CASCADE
     )
 
     display_name = models.CharField(max_length=64)
-    slug = models.SlugField(unique=True)
+    # SLUG should be unique per ensemble -- not for all part names
+    slug = models.SlugField()
 
     def save(self, **kwargs):
         if not self.slug:
-            self.slug = generate_unique_slug(PartName, self.display_name, instance=self)
+            self.slug = generate_unique_slug(
+                PartName,
+                self.display_name,
+                instance=self,
+                queryset=self.objects.filter(ensemble_id=self.ensemble_id),
+            )
         super().save(**kwargs)
 
     def __str__(self):
@@ -150,8 +164,6 @@ class PartBook(models.Model):
 
         entries = self.entries.order_by("position")
 
-        from ensembles.lib.pdf import TocEntry
-
         book_data = []
         for entry in entries:
             # get TOC entries
@@ -167,26 +179,18 @@ class PartBook(models.Model):
                 file = BytesIO(f.read())
             book_data.append((e, file))
 
-        from ensembles.lib.pdf import (
-            generate_full_part_book,
-            generate_cover_page,
-            PartBookInfo,
-        )
-
         cover_pdf = generate_cover_page(
             export_date=str(self.created_at),
             part_name=self.name,
             show_title=self.ensemble.name,
         )
 
-        from datetime import datetime
-
         export_datetime = datetime.now()
 
         toc_kwargs: PartBookInfo = {
             "show_title": self.ensemble.name,
             "show_subtitle": "",
-            "export_date": str(export_datetime),  # TODO: datetime.now
+            "export_date": str(export_datetime),
             "part_name": self.name,
             "selected_style": self.ensemble.default_style,
         }
@@ -195,8 +199,7 @@ class PartBook(models.Model):
             cover_pdf=cover_pdf, toc_kwargs=toc_kwargs, content_pdfs=book_data
         )
 
-
-        #write buf to filesystem
+        # write buf to filesystem
         with default_storage.open(self.pdf_file_key, "wb") as f:
             f.write(buf)
 
@@ -204,10 +207,7 @@ class PartBook(models.Model):
             f.close()
 
         self.finalized_at = export_datetime
-        self.save()
-
-        
-
+        self.save(update_fields=["finalized_at"])
 
     # Constraint that ensemble, partName and revision are all unique to eachother
     class Meta:

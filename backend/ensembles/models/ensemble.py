@@ -64,6 +64,8 @@ class Ensemble(models.Model):
         return self.invite_token
 
 
+    #TODO tomorrow write a test for all this?
+
     #TODO: Allow for passing in custom revisions of arrangements here
     def generate_part_book_entries(self, part_book):
         """Given a part book, generate part book entries for all the arrangements in this ensemble"""

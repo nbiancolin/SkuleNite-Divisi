@@ -59,8 +59,9 @@ class ArrangementSerializer(serializers.ModelSerializer):
 class EnsembleSerializer(serializers.ModelSerializer):
     arrangements = ArrangementSerializer(many=True, read_only=True)
     join_link = serializers.SerializerMethodField()
-    is_admin = serializers.SerializerMethodField()
-    userships = serializers.SerializerMethodField()
+    is_admin = serializers.SerializerMethodField(read_only=True)
+    userships = serializers.SerializerMethodField(read_only=True)
+    part_names = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Ensemble
@@ -72,6 +73,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             "join_link",
             "is_admin",
             "userships",
+            "part_names",
         ]
         read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
@@ -108,6 +110,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return [
+                #TODO: Usership serializer
                 {
                     "id": usership.id,
                     "user": UserSerializer(usership.user).data,
@@ -117,6 +120,34 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 for usership in EnsembleUsership.objects.filter(ensemble=obj)
             ]
         return None
+
+
+    def get_part_names(self, obj):
+        """get part names details"""
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            return [{part.id: part.display_name} for part in obj.part_names.all()]
+
+
+class EnsemblePartNameMergeSerializer(serializers.Serializer):
+    default_error_messages = {
+        "invalid_part_id": "One or both of these part ids is incorrect."
+    }
+    first_id = serializers.IntegerField(required=True)
+    second_id = serializers.IntegerField(required=True)
+
+    new_displayname = serializers.CharField(required=False)
+
+    # def validate(self, *args, **kwargs):
+    #     res = super().validate(*args, **kwargs)
+
+    #TODO: Validate that the two passed in part ids belong to the same ensemble
+    
+
+        
+
+
+
 
 
 class UserSerializer(serializers.ModelSerializer):

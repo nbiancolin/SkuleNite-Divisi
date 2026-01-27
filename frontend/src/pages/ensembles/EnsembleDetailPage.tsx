@@ -246,7 +246,7 @@ export default function EnsembleDisplay() {
                 <Badge>{ensemble.arrangements?.length ?? 0}</Badge>
               </Group>
               <Divider />
-              <ScrollArea style={{ maxHeight: 300 }}>
+              <ScrollArea style={{ maxHeight: 450 }}>
                 <Stack mt="md">
                   {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
                     ensemble.arrangements.map((arr: any) => (
@@ -348,6 +348,7 @@ export default function EnsembleDisplay() {
             </Card>
           </Grid.Col>
         </Grid>
+        {/* TODO: HERE make some content to display part names and an action to merge them */}
       </Paper>
 
       <Modal opened={confirmRemoveOpen} onClose={cancelRemove} title="Confirm remove user">

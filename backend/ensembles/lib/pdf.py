@@ -11,10 +11,12 @@ from typing import TypedDict
 
 class TocEntry(TypedDict):
     """Data used to generate a table of contents"""
+
     show_number: str
     title: str
-    version_label: str #v1.0.0 or wtv
-    page: int #ie. the page number it starts on. Tbd if this is eeded
+    version_label: str  # v1.0.0 or wtv
+    page: int  # ie. the page number it starts on. Tbd if this is eeded
+
 
 class EnsembleInfo(TypedDict):
     show_title: str
@@ -31,6 +33,7 @@ class MergedPdfResult(TypedDict):
 # Fns needed
 # Merge N many pdfs together (option to ensure they all start on an odd page for dbl sided printing)
 # option to overwrite page numbers
+
 
 # create cover page
 def generate_cover_page(
@@ -104,6 +107,7 @@ class PartBookInfo(TypedDict):
     export_date: str
     selected_style: str
 
+
 def generate_table_of_contents(
     *,
     show_title: str,
@@ -113,13 +117,11 @@ def generate_table_of_contents(
     table_contents_data: list[TocEntry],  # (title, version label, page #)
     selected_style: str = "broadway",
 ) -> BytesIO:
-
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
     width, height = pagesizes.LETTER
 
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
-
 
     c.setFont(font, 32)
     c.drawCentredString(width / 2, height - 80, show_title)
@@ -130,7 +132,6 @@ def generate_table_of_contents(
     c.setFont(font, 16)
     c.drawString(60, height - 60, part_name)
 
-
     y = height - 160
 
     c.setFont(font, 12)
@@ -139,10 +140,9 @@ def generate_table_of_contents(
         # lhs = f"<b>{entry['show_number']}: {entry['title']}</b> <i>({entry['version_label']})</i>"
         lhs = f"{entry['show_number']}: {entry['title']} ({entry['version_label']})"
         rhs = str(entry["page"])
-        c.drawString(width * 1/5, y, lhs)
-        c.drawRightString(width * 4/5, y, rhs)
+        c.drawString(width * 1 / 5, y, lhs)
+        c.drawRightString(width * 4 / 5, y, rhs)
         y += 20
-
 
     c.setFont(font, 12)
     c.drawCentredString(width / 2, 80, f"Rev. {export_date}")
@@ -152,7 +152,6 @@ def generate_table_of_contents(
 
     buffer.seek(0)
     return buffer
-
 
 
 def generate_tacet_page(
@@ -172,25 +171,25 @@ def generate_tacet_page(
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
-    #TODO: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
+    # TODO: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
     c.drawCentredString(width / 2, height - 80, song_title)
 
     if song_subtitle:
         c.setFont(font, 28)
         c.drawCentredString(width / 2, height - 120, song_subtitle)
 
-
     c.setFont(font, 32)  # not underlined
     text_width = stringWidth(show_number, font, 32)
 
     c.drawRightString(width - 60, height - 60, show_number)
-    c.drawBoundary(None, (width - 60) - (text_width + 15), (height - 60) -12, text_width + 30, 50)
+    c.drawBoundary(
+        None, (width - 60) - (text_width + 15), (height - 60) - 12, text_width + 30, 50
+    )
 
     c.setFont(font, 16)  # make it underlined somehow?
     c.drawRightString((width - 60) - (text_width + 15) - 10, height - 60, show_title)
 
     c.drawString(60, height - 60, part_name)
-
 
     c.setFont(font, 32)
     c.drawCentredString(width / 2, height / 2 + 40, "TACET")
@@ -203,6 +202,7 @@ def generate_tacet_page(
 
     buffer.seek(0)
     return buffer
+
 
 def count_pdf_pages(pdf: BytesIO | str) -> int:
     reader = PdfReader(pdf)
@@ -251,6 +251,7 @@ def merge_pdfs(
     *,
     cover_pdf: BytesIO | None,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
+    # TODO: Make this a list of bools (where the index s the the index in contentpdfs) that determines if that pdf should start on an odd page
     start_on_odd_page: bool = True,
     overwrite_page_numbers: bool = True,
     first_content_page_number: int = 1,
