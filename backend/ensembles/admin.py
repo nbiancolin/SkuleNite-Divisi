@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
 
 from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName
 from .tasks import export_arrangement_version, prep_and_export_mscz
@@ -134,7 +135,10 @@ class PartNameAdmin(admin.ModelAdmin):
             messages.warning(request, "Can only merge 2 part names at a time!")
             return
 
-        PartName.merge_part_names(*queryset)
+        try:
+            PartName.merge_part_names(*queryset)
+        except ValidationError as e:
+            messages.error(request, f"Failed to merge part names: {e}")
 
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)

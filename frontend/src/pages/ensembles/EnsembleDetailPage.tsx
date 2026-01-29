@@ -18,7 +18,6 @@ import {
   TextInput,
   Collapse,
   Table,
-  ScrollArea,
   Modal,
   Avatar,
   Select,
@@ -30,7 +29,7 @@ import {
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 
-import type { Ensemble } from '../../services/apiService';
+import type { Ensemble, PartName } from '../../services/apiService';
 
 export default function EnsembleDisplay() {
   const { slug = '' } = useParams();
@@ -47,6 +46,11 @@ export default function EnsembleDisplay() {
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [removeCandidate, setRemoveCandidate] = useState<{ id: number; username: string } | null>(null);
+
+  const [mergeModalOpen, setMergeModalOpen] = useState(false);
+  const [mergeFirstId, setMergeFirstId] = useState<string | null>(null);
+  const [mergeSecondId, setMergeSecondId] = useState<string | null>(null);
+  const [mergeNewDisplayName, setMergeNewDisplayName] = useState<string>('');
 
   // helper to read CSRF token from cookies (same logic as apiService)
   function getCsrfToken(): string | null {
@@ -206,6 +210,68 @@ export default function EnsembleDisplay() {
 
   const isAdmin = !!ensemble.is_admin;
 
+  const partNames: PartName[] = (() => {
+    // Prefer backend shape (`part_names`), fallback to older (`part_name`)
+    const raw = (ensemble as any).part_names ?? (ensemble as any).part_name ?? [];
+    if (!Array.isArray(raw)) return [];
+
+    return raw
+      .map((p: any) => {
+        if (p && typeof p === 'object') {
+          // New backend shape
+          if (typeof p.id === 'number' && typeof p.display_name === 'string') {
+            return { id: p.id, display_name: p.display_name } as PartName;
+          }
+          // Old backend shape: { [id]: "name" }
+          const entries = Object.entries(p);
+          if (entries.length === 1) {
+            const [idStr, name] = entries[0];
+            const id = Number(idStr);
+            if (Number.isFinite(id) && typeof name === 'string') {
+              return { id, display_name: name } as PartName;
+            }
+          }
+        }
+        return null;
+      })
+      .filter(Boolean) as PartName[];
+  })();
+
+  const partNameSelectData = partNames
+    .slice()
+    .sort((a, b) => a.display_name.localeCompare(b.display_name))
+    .map((p) => ({ value: String(p.id), label: p.display_name }));
+
+  const handleMergePartNames = async () => {
+    if (!ensemble) return;
+    const firstId = Number(mergeFirstId);
+    const secondId = Number(mergeSecondId);
+    if (!Number.isFinite(firstId) || !Number.isFinite(secondId) || firstId === secondId) {
+      setError('Please select two different part names to merge.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      await apiService.mergePartNames(
+        ensemble.slug,
+        firstId,
+        secondId,
+        mergeNewDisplayName.trim() ? mergeNewDisplayName.trim() : null
+      );
+      await fetchEnsemble(ensemble.slug);
+      setMergeModalOpen(false);
+      setMergeFirstId(null);
+      setMergeSecondId(null);
+      setMergeNewDisplayName('');
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Container size="md" py="xl">
       <Paper shadow="sm" p="xl" radius="md">
@@ -246,7 +312,7 @@ export default function EnsembleDisplay() {
                 <Badge>{ensemble.arrangements?.length ?? 0}</Badge>
               </Group>
               <Divider />
-              <ScrollArea style={{ maxHeight: 450 }}>
+              <div style={{ height: 450, overflowY: 'auto', minHeight: 0 }}>
                 <Stack mt="md">
                   {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
                     ensemble.arrangements.map((arr: any) => (
@@ -266,7 +332,7 @@ export default function EnsembleDisplay() {
                     <Text color="dimmed">No arrangements yet.</Text>
                   )}
                 </Stack>
-              </ScrollArea>
+              </div>
             </Card>
           </Grid.Col>
 
@@ -277,7 +343,7 @@ export default function EnsembleDisplay() {
                 <Badge>{ensemble.userships?.length ?? 0}</Badge>
               </Group>
               <Divider />
-              <ScrollArea style={{ maxHeight: 300 }}>
+              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
                 <Table verticalSpacing="sm" miw={300}>
                   <tbody>
                     {(ensemble.userships && ensemble.userships.length > 0) ? ensemble.userships.map((ship) => (
@@ -324,7 +390,7 @@ export default function EnsembleDisplay() {
                     )}
                   </tbody>
                 </Table>
-              </ScrollArea>
+              </div>
             </Card>
 
             <Card withBorder>
@@ -348,7 +414,43 @@ export default function EnsembleDisplay() {
             </Card>
           </Grid.Col>
         </Grid>
-        {/* TODO: HERE make some content to display part names and an action to merge them */}
+
+        <Card withBorder mt="md">
+          <Group mb="xs" justify="space-between">
+            <Group gap="xs">
+              <Text>Part names</Text>
+              <Badge>{partNames.length}</Badge>
+            </Group>
+            {isAdmin && (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => setMergeModalOpen(true)}
+                disabled={partNames.length < 2}
+              >
+                Merge
+              </Button>
+            )}
+          </Group>
+          <Divider />
+          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+            <Stack mt="md" gap="xs">
+              {partNames.length ? (
+                partNames
+                  .slice()
+                  .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                  .map((p) => (
+                    <Group key={p.id} justify="space-between">
+                      <Text>{p.display_name}</Text>
+                      <Badge variant="light" color="gray">{p.id}</Badge>
+                    </Group>
+                  ))
+              ) : (
+                <Text color="dimmed">No part names found for this ensemble yet.</Text>
+              )}
+            </Stack>
+          </div>
+        </Card>
       </Paper>
 
       <Modal opened={confirmRemoveOpen} onClose={cancelRemove} title="Confirm remove user">
@@ -357,6 +459,49 @@ export default function EnsembleDisplay() {
           <Button variant="outline" onClick={cancelRemove}>Cancel</Button>
           <Button color="red" onClick={confirmRemove} loading={saving}>Remove</Button>
         </Group>
+      </Modal>
+
+      <Modal
+        opened={mergeModalOpen}
+        onClose={() => setMergeModalOpen(false)}
+        title="Merge part names"
+      >
+        <Stack>
+          <Select
+            label="Keep"
+            placeholder="Choose the part name to keep"
+            data={partNameSelectData}
+            value={mergeFirstId}
+            onChange={setMergeFirstId}
+            searchable
+          />
+          <Select
+            label="Merge into it"
+            placeholder="Choose the part name to merge"
+            data={partNameSelectData}
+            value={mergeSecondId}
+            onChange={setMergeSecondId}
+            searchable
+          />
+          <TextInput
+            label="New display name (optional)"
+            placeholder="Leave blank to keep the chosen name"
+            value={mergeNewDisplayName}
+            onChange={(e) => setMergeNewDisplayName(e.currentTarget.value)}
+          />
+          <Group justify="flex-end">
+            <Button variant="outline" onClick={() => setMergeModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMergePartNames}
+              loading={saving}
+              disabled={!mergeFirstId || !mergeSecondId}
+            >
+              Merge
+            </Button>
+          </Group>
+        </Stack>
       </Modal>
     </Container>
   );

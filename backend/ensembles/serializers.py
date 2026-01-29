@@ -126,7 +126,11 @@ class EnsembleSerializer(serializers.ModelSerializer):
         """get part names details"""
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return [{part.id: part.display_name} for part in obj.part_names.all()]
+            # Keep a stable, typed shape for the frontend
+            return [
+                {"id": part.id, "display_name": part.display_name}
+                for part in obj.part_names.all()
+            ]
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):
@@ -142,7 +146,6 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
     #     res = super().validate(*args, **kwargs)
 
     #TODO: Validate that the two passed in part ids belong to the same ensemble
-    
 
         
 

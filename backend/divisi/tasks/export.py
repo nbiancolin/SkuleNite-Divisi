@@ -126,21 +126,28 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                         # Create Part record if arrangement_version_id is provided
                         if arrangement_version_id:
                             try:
-                                version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                                part_name, _ = PartName.objects.update_or_create(
-                                    ensemble=version.ensemble,
-                                    display_name=part_name
+                                version = ArrangementVersion.objects.select_related(
+                                    "arrangement__ensemble"
+                                ).get(id=arrangement_version_id)
+                                part_name_obj = PartName.resolve_for_arrangement(
+                                    ensemble=version.arrangement.ensemble,
+                                    arrangement=version.arrangement,
+                                    raw_display_name=part_name,
                                 )
                                 PartAsset.objects.update_or_create(
                                     arrangement_version=version,
-                                    part_name=part_name,
+                                    part_name=part_name_obj,
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,
                                     }
                                 )
                                 parts_created += 1
-                                LOGGER.info("Created Part record: %s for version %d", part_name, arrangement_version_id)
+                                LOGGER.info(
+                                    "Created Part record: %s for version %d",
+                                    part_name_obj,
+                                    arrangement_version_id,
+                                )
                             except ArrangementVersion.DoesNotExist:
                                 LOGGER.warning("ArrangementVersion %d does not exist, skipping Part record", arrangement_version_id)
                             except Exception as e:

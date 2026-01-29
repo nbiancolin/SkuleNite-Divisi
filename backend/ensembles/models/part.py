@@ -1,7 +1,9 @@
 from io import BytesIO
 from datetime import datetime
 from django.db import models
+from django.db import transaction
 from django.core.files.storage import default_storage
+from django.core.exceptions import ValidationError
 
 from ensembles.models.arrangement_version import ArrangementVersion
 from ensembles.lib.slug import generate_unique_slug
@@ -53,6 +55,13 @@ class PartAsset(models.Model):
             "-is_score"
         ]  # Score first (True before False), then parts alphabetically
 
+        constraints = [
+            models.UniqueConstraint(
+                fields=["arrangement_version", "part_name"],
+                name="uniq_partasset_version_partname",
+            ),
+        ]
+    
 
 class PartName(models.Model):
     id: int
@@ -72,7 +81,7 @@ class PartName(models.Model):
                 PartName,
                 self.display_name,
                 instance=self,
-                queryset=self.objects.filter(ensemble_id=self.ensemble_id),
+                queryset=PartName.objects.filter(ensemble_id=self.ensemble_id),
             )
         super().save(**kwargs)
 
@@ -88,6 +97,50 @@ class PartName(models.Model):
             part_name_id=self.id
         )
         second.delete()
+
+    @staticmethod
+    def normalize_display_name(value: str) -> str:
+        # Normalize for stable matching (case/whitespace-insensitive).
+        return " ".join((value or "").strip().lower().split())
+
+    @classmethod
+    def resolve_for_arrangement(
+        cls, ensemble, arrangement, raw_display_name: str
+    ) -> "PartName":
+        """
+        Resolve an incoming/raw part label to a canonical PartName for this arrangement.
+
+        This first checks persisted aliases (created when users merge/rename parts),
+        scoped per arrangement so re-uploading arrangement A uses A's alias.
+        Then falls back to a case-insensitive match on PartName.display_name, and
+        finally creates a new PartName if nothing matches.
+        """
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        normalized = cls.normalize_display_name(raw_display_name)
+
+        if arrangement is not None:
+            alias = (
+                PartNameAlias.objects.select_related("canonical_part_name")
+                .filter(
+                    ensemble=ensemble,
+                    arrangement=arrangement,
+                    alias_normalized=normalized,
+                )
+                .first()
+            )
+            if alias is not None:
+                return alias.canonical_part_name
+
+        existing = (
+            cls.objects.filter(ensemble=ensemble, display_name__iexact=raw_display_name)
+            .order_by("id")
+            .first()
+        )
+        if existing is not None:
+            return existing
+
+        return cls.objects.create(ensemble=ensemble, display_name=raw_display_name)
 
     @classmethod
     def merge_part_names(
@@ -105,10 +158,84 @@ class PartName(models.Model):
             target = first
             merge_from = second
 
-        target._merge_objs(merge_from)
-        if new_displayname:
-            target.display_name = new_displayname
-            target.save(update_fields=["display_name"])
+        # Before merging, ensure we will not end up with multiple PartAsset
+        # objects for the same ArrangementVersion under the final part name.
+        existing_versions = set(
+            PartAsset.objects.filter(part_name=target).values_list(
+                "arrangement_version_id", flat=True
+            )
+        )
+        incoming_versions = set(
+            PartAsset.objects.filter(part_name=merge_from).values_list(
+                "arrangement_version_id", flat=True
+            )
+        )
+        if existing_versions.intersection(incoming_versions):
+            raise ValidationError(
+                "Cannot merge part names: multiple parts exist for the same "
+                "arrangement version under the merged name."
+            )
+
+        # Persist the merge intent as aliases per arrangement so re-uploading
+        # arrangement A uses A's alias (e.g. "Flute I" -> Flute) and B uses B's.
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        previous_target_name = target.display_name
+        previous_merge_from_name = merge_from.display_name
+        ensemble_id = target.ensemble_id
+
+        # Arrangements that had a part under the name we're merging away:
+        # when we re-upload that arrangement, we want "merge_from" label -> target.
+        arrangements_with_merge_from = set(
+            PartAsset.objects.filter(part_name=merge_from)
+            .values_list("arrangement_version__arrangement_id", flat=True)
+        )
+        arrangements_with_merge_from.discard(None)
+
+        with transaction.atomic():
+            # Re-point any existing aliases that targeted the "merge_from" PartName.
+            PartNameAlias.objects.filter(
+                ensemble_id=ensemble_id, canonical_part_name=merge_from
+            ).update(canonical_part_name=target)
+
+            # Create/ensure an alias (merge_from name -> target) per arrangement
+            # that had that part, so re-uploading that arrangement uses the alias.
+            for arr_id in arrangements_with_merge_from:
+                PartNameAlias.objects.update_or_create(
+                    ensemble_id=ensemble_id,
+                    arrangement_id=arr_id,
+                    alias_normalized=PartNameAlias.normalize(previous_merge_from_name),
+                    defaults={
+                        "alias": previous_merge_from_name,
+                        "canonical_part_name": target,
+                    },
+                )
+
+            # If we are renaming the canonical display name, keep the old canonical name
+            # as an alias too for arrangements that had the target part.
+            if new_displayname and PartNameAlias.normalize(previous_target_name) != PartNameAlias.normalize(new_displayname):
+                arrangements_with_target = set(
+                    PartAsset.objects.filter(part_name=target)
+                    .values_list("arrangement_version__arrangement_id", flat=True)
+                )
+                arrangements_with_target.discard(None)
+                for arr_id in arrangements_with_target:
+                    PartNameAlias.objects.update_or_create(
+                        ensemble_id=ensemble_id,
+                        arrangement_id=arr_id,
+                        alias_normalized=PartNameAlias.normalize(previous_target_name),
+                        defaults={
+                            "alias": previous_target_name,
+                            "canonical_part_name": target,
+                        },
+                    )
+
+            # Merge actual PartAsset references and delete the redundant PartName.
+            target._merge_objs(merge_from)
+
+            if new_displayname:
+                target.display_name = new_displayname
+                target.save(update_fields=["display_name"])
 
         return target
 

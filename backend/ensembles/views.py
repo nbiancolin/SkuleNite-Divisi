@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.conf import settings
 
@@ -199,18 +200,36 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def merge_part_names(self, request, slug=None):
-        ensemble = self.get_object() #todo use this to validate
+        ensemble = self.get_object()  # TODO: use this to validate same-ensemble
         serializer = EnsemblePartNameMergeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-        first = PartName.objects.get(id=validated_data["first"])
-        second = PartName.objects.get(id=validated_data["second"])
+        try:
+            first = PartName.objects.get(id=validated_data["first_id"], ensemble=ensemble)
+            second = PartName.objects.get(
+                id=validated_data["second_id"], ensemble=ensemble
+            )
+        except PartName.DoesNotExist:
+            return Response(
+                {"detail": "One or both part IDs are invalid for this ensemble."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        if new_displayname := validated_data.get("new_displayname"):
-            PartName.merge_part_names(first, second, new_displayname)
-        else:
-            PartName.merge_part_names(first, second)
+        try:
+            merged = PartName.merge_part_names(
+                first, second, validated_data.get("new_displayname", "") or ""
+            )
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"id": merged.id, "display_name": merged.display_name},
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=True, methods=["post"])
     def generate_part_books(self, request, slug=None):
