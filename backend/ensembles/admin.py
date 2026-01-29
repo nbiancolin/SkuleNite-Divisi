@@ -7,6 +7,18 @@ from .tasks import export_arrangement_version, prep_and_export_mscz
 from django.http import HttpRequest
 
 
+
+class PdfObjMixin:
+    """Mixin for modeladmins with pdfs. Pdfs and files need to be cleaned up"""
+
+
+    # Override to allow for delete method to actualy clean up old stuff
+    # There is a performance impact, but its ncessary to save space
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
+
+
 class PartNameInline(admin.TabularInline):
     model = PartName
     extra = 0
@@ -25,12 +37,7 @@ class ArrangementAdmin(admin.ModelAdmin):
     list_display = ("title", "ensemble", "latest_version")
 
 
-class ArrangementVersionAdmin(admin.ModelAdmin):
-    # Override to allow for delete method to actualy clean up old stuff
-    # There is a performance impact, but its ncessary to save space
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.delete()
+class ArrangementVersionAdmin(admin.ModelAdmin, PdfObjMixin):
 
     list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp", "audio_state")
 
@@ -96,17 +103,11 @@ class ExportFailureLogAdmin(admin.ModelAdmin):
         return False
     
 
-class DiffAdmin(admin.ModelAdmin):
+class DiffAdmin(admin.ModelAdmin, PdfObjMixin):
     list_display = ("from_version__str__", "to_version__str__", "status", "timestamp")
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
-
-    # Override to allow for delete method to actualy clean up old stuff
-    # There is a performance impact, but its ncessary to save space
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.delete()
 
 
 class EnsembleUsershipAdmin(admin.ModelAdmin):
@@ -115,17 +116,12 @@ class EnsembleUsershipAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email", "ensemble__name")
 
 
-class PartAssetAdmin(admin.ModelAdmin):
+class PartAssetAdmin(admin.ModelAdmin, PdfObjMixin):
     list_display = ("part_name", "arrangement_version", "is_score", "file_key")
     list_filter = ("is_score", "arrangement_version")
     search_fields = ("part_name", "arrangement_version__arrangement__title")
     readonly_fields = ("file_key", "file_url")
 
-    # Override to allow for delete method to actualy clean up old stuff
-    # There is a performance impact, but its ncessary to save space
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.delete()
 
 
 class PartNameAdmin(admin.ModelAdmin):
@@ -145,6 +141,11 @@ class PartNameAdmin(admin.ModelAdmin):
         except ValidationError as e:
             messages.error(request, f"Failed to merge part names: {e}")
 
+
+class PartBookAdmin(admin.ModelAdmin, PdfObjMixin):
+    pass
+
+
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
@@ -153,4 +154,4 @@ admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
 admin.site.register(PartAsset, PartAssetAdmin)
 admin.site.register(PartName, PartNameAdmin)
-admin.site.register(PartBook) #TODO: modeladmin for part book
+admin.site.register(PartBook, PartBookAdmin)
