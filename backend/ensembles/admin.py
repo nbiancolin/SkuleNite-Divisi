@@ -121,6 +121,12 @@ class PartAssetAdmin(admin.ModelAdmin):
     search_fields = ("part_name", "arrangement_version__arrangement__title")
     readonly_fields = ("file_key", "file_url")
 
+    # Override to allow for delete method to actualy clean up old stuff
+    # There is a performance impact, but its ncessary to save space
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
+
 
 class PartNameAdmin(admin.ModelAdmin):
 
