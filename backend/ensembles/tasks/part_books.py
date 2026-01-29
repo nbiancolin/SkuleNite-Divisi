@@ -54,7 +54,7 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
             generate_part_book(ensemble_id, part_name_id, revision)
 
         ensemble.latest_part_book_revision = revision
-        ensemble.part_books_generating = True
+        ensemble.part_books_generating = False
         ensemble.save(update_fields=["part_books_generating", "latest_part_book_revision"])
 
         return {"status": "success", "ensemble_id": ensemble_id}

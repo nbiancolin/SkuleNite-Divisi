@@ -21,6 +21,7 @@ import {
   Modal,
   Avatar,
   Select,
+  Tabs,
 } from '@mantine/core';
 import { 
   IconAlertCircle, 
@@ -28,6 +29,8 @@ import {
   IconBook,
   IconDownload,
   IconRefresh,
+  IconChevronDown,
+  IconChevronRight,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
@@ -54,6 +57,7 @@ export default function EnsembleDisplay() {
   const [mergeFirstId, setMergeFirstId] = useState<string | null>(null);
   const [mergeSecondId, setMergeSecondId] = useState<string | null>(null);
   const [mergeNewDisplayName, setMergeNewDisplayName] = useState<string>('');
+  const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
 
   // helper to read CSRF token from cookies (same logic as apiService)
   function getCsrfToken(): string | null {
@@ -325,240 +329,264 @@ export default function EnsembleDisplay() {
           </Card>
         </Collapse>
 
-        <Grid>
-          <Grid.Col span={6}>
-            <Card withBorder mb="md">
-              <Group mb="xs">
-                <Text>Arrangements</Text>
-                <Badge>{ensemble.arrangements?.length ?? 0}</Badge>
-              </Group>
-              <Divider />
-              <div style={{ height: 450, overflowY: 'auto', minHeight: 0 }}>
-                <Stack mt="md">
-                  {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
-                    ensemble.arrangements.map((arr: any) => (
-                      <Card key={arr.id} withBorder radius="sm" p="sm">
-                        <Group>
-                          <div>
-                            <Text>{arr.title}{arr.subtitle ? ` — ${arr.subtitle}` : ''}</Text>
-                            <Text size="sm" color="dimmed">{arr.composer ?? ''} {arr.mvt_no ? `· Mvt ${arr.mvt_no}` : ''}</Text>
-                          </div>
-                          <Group>
-                            <Button component={Link} to={`/app/arrangements/${arr.id}`} size="xs" variant="outline">View</Button>
-                          </Group>
-                        </Group>
-                      </Card>
-                    ))
-                  ) : (
-                    <Text color="dimmed">No arrangements yet.</Text>
-                  )}
-                </Stack>
-              </div>
-            </Card>
-          </Grid.Col>
+        <Tabs defaultValue="overview" mt="md">
+          <Tabs.List>
+            <Tabs.Tab value="overview">Overview</Tabs.Tab>
+            <Tabs.Tab value="parts">Parts & part books</Tabs.Tab>
+          </Tabs.List>
 
-          <Grid.Col span={6}>
-            <Card withBorder mb="md">
-              <Group mb="xs">
-                <Text>Members</Text>
-                <Badge>{ensemble.userships?.length ?? 0}</Badge>
-              </Group>
-              <Divider />
-              <div style={{ maxHeight: 300, overflowY: 'auto' }}>
-                <Table verticalSpacing="sm" miw={300}>
-                  <tbody>
-                    {(ensemble.userships && ensemble.userships.length > 0) ? ensemble.userships.map((ship) => (
-                      <tr key={ship.user.id}>
-                        <td style={{ width: 40 }}>
-                          <Avatar size={28} radius="xl">{(ship.user.username || 'U').charAt(0).toUpperCase()}</Avatar>
-                        </td>
-                        <td>
-                          <Text>{ship.user.username}</Text>
-                          <Text size="xs" color="dimmed">{ship.user.email}</Text>
-                        </td>
-                        <td>
-                          <Badge color={ship.role === 'A' ? 'teal' : 'gray'} variant="light">
-                            {ship.role === 'A' ? 'Admin' : 'Member'}
-                          </Badge>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          <Group gap="xs">
-                            {isAdmin && (
-                              <Select
-                                value={ship.role}
-                                onChange={(value) => value && handleRoleChange(ship.user.id, value as 'M' | 'A')}
-                                data={[
-                                  { value: 'M', label: 'Member' },
-                                  { value: 'A', label: 'Admin' },
-                                ]}
-                                size="xs"
-                                w={100}
-                                disabled={saving}
-                              />
-                            )}
-                            {isAdmin && (
-                              <Tooltip label="Remove user" position="left" withArrow>
-                                <ActionIcon color="red" onClick={() => handleRemoveUserClick(ship.user.id, ship.user.username)}>
-                                  <IconTrash size={16} />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Group>
-                        </td>
-                      </tr>
-                    )) : (
-                      <tr><td colSpan={4}><Text color="dimmed">No members</Text></td></tr>
+          <Tabs.Panel value="overview" pt="md">
+            <Grid>
+              <Grid.Col span={6}>
+                <Card withBorder mb="md">
+                  <Group mb="xs" justify="space-between">
+                    <Group>
+                      <Text fw={500}>Arrangements</Text>
+                      <Badge size="sm" variant="light">{ensemble.arrangements?.length ?? 0}</Badge>
+                    </Group>
+                    <Button component={Link} to={`/app/ensembles/${ensemble.slug}/arrangements`} size="xs" variant="subtle">
+                      View all
+                    </Button>
+                  </Group>
+                  <Divider />
+                  <div style={{ height: 320, overflowY: 'auto', minHeight: 0 }}>
+                    <Stack mt="md" gap="xs">
+                      {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
+                        ensemble.arrangements.slice(0, 8).map((arr: any) => (
+                          <Card key={arr.id} withBorder radius="sm" p="sm" component={Link} to={`/app/arrangements/${arr.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                            <Text size="sm" fw={500} lineClamp={1}>{arr.title}{arr.subtitle ? ` — ${arr.subtitle}` : ''}</Text>
+                            <Text size="xs" c="dimmed">{arr.composer ?? ''} {arr.mvt_no ? `· Mvt ${arr.mvt_no}` : ''}</Text>
+                          </Card>
+                        ))
+                      ) : (
+                        <Text size="sm" c="dimmed">No arrangements yet.</Text>
+                      )}
+                      {ensemble.arrangements && ensemble.arrangements.length > 8 && (
+                        <Button component={Link} to={`/app/ensembles/${ensemble.slug}/arrangements`} variant="light" size="xs" fullWidth>
+                          +{ensemble.arrangements.length - 8} more
+                        </Button>
+                      )}
+                    </Stack>
+                  </div>
+                </Card>
+              </Grid.Col>
+
+              <Grid.Col span={6}>
+                <Card withBorder mb="md">
+                  <Group mb="xs">
+                    <Text fw={500}>Members</Text>
+                    <Badge size="sm" variant="light">{ensemble.userships?.length ?? 0}</Badge>
+                  </Group>
+                  <Divider />
+                  <div style={{ maxHeight: 260, overflowY: 'auto' }}>
+                    <Table verticalSpacing="sm" miw={260}>
+                      <tbody>
+                        {(ensemble.userships && ensemble.userships.length > 0) ? ensemble.userships.map((ship) => (
+                          <tr key={ship.user.id}>
+                            <td style={{ width: 36 }}>
+                              <Avatar size={28} radius="xl">{(ship.user.username || 'U').charAt(0).toUpperCase()}</Avatar>
+                            </td>
+                            <td>
+                              <Text size="sm">{ship.user.username}</Text>
+                              <Text size="xs" c="dimmed" lineClamp={1}>{ship.user.email}</Text>
+                            </td>
+                            <td>
+                              <Badge size="xs" color={ship.role === 'A' ? 'teal' : 'gray'} variant="light">
+                                {ship.role === 'A' ? 'Admin' : 'Member'}
+                              </Badge>
+                            </td>
+                            <td style={{ textAlign: 'right', width: 80 }}>
+                              {isAdmin && (
+                                <Group gap={4} justify="flex-end">
+                                  <Select
+                                    value={ship.role}
+                                    onChange={(value) => value && handleRoleChange(ship.user.id, value as 'M' | 'A')}
+                                    data={[
+                                      { value: 'M', label: 'Member' },
+                                      { value: 'A', label: 'Admin' },
+                                    ]}
+                                    size="xs"
+                                    w={82}
+                                    disabled={saving}
+                                  />
+                                  <Tooltip label="Remove user" position="left" withArrow>
+                                    <ActionIcon color="red" size="sm" onClick={() => handleRemoveUserClick(ship.user.id, ship.user.username)}>
+                                      <IconTrash size={14} />
+                                    </ActionIcon>
+                                  </Tooltip>
+                                </Group>
+                              )}
+                            </td>
+                          </tr>
+                        )) : (
+                          <tr><td colSpan={4}><Text size="sm" c="dimmed">No members</Text></td></tr>
+                        )}
+                      </tbody>
+                    </Table>
+                  </div>
+                </Card>
+
+                <Card withBorder>
+                  <Text size="xs" c="dimmed" mb={4}>Invite link</Text>
+                  <Group gap="xs">
+                    <Text size="sm" style={{ flex: 1, minWidth: 0 }} truncate>{ensemble.join_link ?? 'No invite link'}</Text>
+                    {isAdmin && (
+                      <Button size="xs" variant="outline" onClick={async () => {
+                        try {
+                          const data = await apiService.getInviteLink(ensemble.slug);
+                          await fetchEnsemble(ensemble.slug);
+                          setJoinLinkDraft(data?.invite_link ?? data?.join_link ?? ensemble.join_link);
+                        } catch (err: any) {
+                          setError(err?.message || String(err));
+                        }
+                      }}>Generate</Button>
                     )}
-                  </tbody>
-                </Table>
-              </div>
-            </Card>
+                  </Group>
+                </Card>
+              </Grid.Col>
+            </Grid>
+          </Tabs.Panel>
 
+          <Tabs.Panel value="parts" pt="md">
             <Card withBorder>
-              <Text size="sm" color="dimmed">Invite link</Text>
-              <Group mt="xs">
-                <Text size="sm" truncate>{ensemble.join_link ?? 'No invite link'}</Text>
+              <Group mb="xs" justify="space-between">
+                <Group gap="xs">
+                  <IconBook size={18} />
+                  <Text fw={500}>Parts & part books</Text>
+                  <Badge size="sm" variant="light">{partNames.length} parts</Badge>
+                  {ensemble.part_books_generating && (
+                    <Badge color="blue" variant="light" leftSection={<Loader size={12} />}>
+                      Generating…
+                    </Badge>
+                  )}
+                </Group>
                 {isAdmin && (
-                  <Button size="xs" variant="outline" onClick={async () => {
-                    try {
-                      const data = await apiService.getInviteLink(ensemble.slug);
-                      // update local state and refetch
-                      await fetchEnsemble(ensemble.slug);
-                      setNameDraft((s) => s);
-                      setJoinLinkDraft(data?.invite_link || data?.join_link || ensemble.join_link);
-                    } catch (err: any) {
-                      setError(err?.message || String(err));
-                    }
-                  }}>Generate</Button>
+                  <Group gap="xs">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setMergeModalOpen(true)}
+                      disabled={partNames.length < 2}
+                    >
+                      Merge part names
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="filled"
+                      leftSection={<IconRefresh size={14} />}
+                      onClick={handleGeneratePartBooks}
+                      disabled={!!ensemble.part_books_generating || partNames.length === 0}
+                    >
+                      Generate part books
+                    </Button>
+                  </Group>
                 )}
               </Group>
-            </Card>
-          </Grid.Col>
-        </Grid>
-
-        <Card withBorder mt="md">
-          <Group mb="xs" justify="space-between">
-            <Group gap="xs">
-              <Text>Part names</Text>
-              <Badge>{partNames.length}</Badge>
-            </Group>
-            {isAdmin && (
-              <Button
-                size="xs"
-                variant="outline"
-                onClick={() => setMergeModalOpen(true)}
-                disabled={partNames.length < 2}
-              >
-                Merge
-              </Button>
-            )}
-          </Group>
-          <Divider />
-          <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-            <Stack mt="md" gap="xs">
-              {partNames.length ? (
-                partNames
-                  .slice()
-                  .sort((a, b) => a.display_name.localeCompare(b.display_name))
-                  .map((p) => (
-                    <Group key={p.id} justify="space-between">
-                      <Text>{p.display_name}</Text>
-                      <Badge variant="light" color="gray">{p.id}</Badge>
-                    </Group>
-                  ))
-              ) : (
-                <Text color="dimmed">No part names found for this ensemble yet.</Text>
-              )}
-            </Stack>
-          </div>
-        </Card>
-
-        <Card withBorder mt="md">
-          <Group mb="xs" justify="space-between">
-            <Group gap="xs">
-              <IconBook size={18} />
-              <Text>Part books</Text>
-              {ensemble.part_books_generating && (
-                <Badge color="blue" variant="light" leftSection={<Loader size={12} />}>
-                  Generating…
-                </Badge>
-              )}
-            </Group>
-            {isAdmin && (
-              <Button
-                size="xs"
-                variant="filled"
-                leftSection={<IconRefresh size={14} />}
-                onClick={handleGeneratePartBooks}
-                disabled={!!ensemble.part_books_generating || partNames.length === 0}
-              >
-                Generate part books
-              </Button>
-            )}
-          </Group>
-          <Divider />
-          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-            {(() => {
-              const partBooks: EnsemblePartBook[] = ensemble.part_books ?? [];
-              if (partBooks.length === 0 && !ensemble.part_books_generating) {
-                return (
-                  <Text mt="md" color="dimmed">
-                    No part books yet. Generate part books to create one PDF per part (latest arrangement versions).
+              <Divider />
+              <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+                {partNames.length === 0 ? (
+                  <Text mt="md" size="sm" c="dimmed">
+                    No part names yet. Part names are added when you upload arrangement versions with parts.
                   </Text>
-                );
-              }
-              const latestRev = ensemble.latest_part_book_revision ?? 0;
-              const byPart = partBooks.reduce<Record<string, EnsemblePartBook[]>>(
-                (acc, b) => {
-                  const key = b.part_display_name;
-                  if (!acc[key]) acc[key] = [];
-                  acc[key].push(b);
-                  return acc;
-                },
-                {}
-              );
-              return (
-                <Stack mt="md" gap="sm">
-                  {Object.entries(byPart)
-                    .sort(([a], [b]) => a.localeCompare(b))
-                    .map(([partName, books]) => (
-                      <Card key={partName} withBorder radius="sm" p="sm">
-                        <Text size="sm" fw={600} mb="xs">{partName}</Text>
-                        <Stack gap="xs">
-                          {books.map((book: EnsemblePartBook) => (
-                            <Group key={book.id} justify="space-between">
-                              <Group gap="xs">
-                                <Text size="sm">Revision {book.revision}</Text>
-                                {book.revision === latestRev && (
-                                  <Badge size="xs" variant="light" color="teal">Latest</Badge>
-                                )}
-                                {!book.is_rendered && (
-                                  <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
+                ) : (
+                  <Stack mt="md" gap={0}>
+                    {partNames
+                      .slice()
+                      .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                      .map((part) => {
+                        const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])
+                          .filter((b) => b.part_display_name === part.display_name)
+                          .sort((a, b) => b.revision - a.revision);
+                        const latestBook = partBooks[0];
+                        const olderBooks = partBooks.slice(1);
+                        const latestRev = ensemble.latest_part_book_revision ?? 0;
+                        const isExpanded = expandedPartId === part.id;
+
+                        return (
+                          <div key={part.id}>
+                            <Card withBorder radius="sm" p="sm" mb="xs">
+                              <Group justify="space-between" wrap="nowrap">
+                                <Group gap="xs" style={{ minWidth: 0 }}>
+                                  <ActionIcon
+                                    variant="subtle"
+                                    size="sm"
+                                    onClick={() => setExpandedPartId(isExpanded ? null : part.id)}
+                                    disabled={olderBooks.length === 0}
+                                    title={olderBooks.length ? 'Older revisions' : undefined}
+                                  >
+                                    {olderBooks.length > 0 ? (
+                                      isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />
+                                    ) : (
+                                      <IconChevronRight size={16} style={{ opacity: 0.3 }} />
+                                    )}
+                                  </ActionIcon>
+                                  <Text size="sm" fw={600}>{part.display_name}</Text>
+                                  {latestBook && (
+                                    <>
+                                      <Badge size="xs" variant="light" color={latestBook.revision === latestRev ? 'teal' : 'gray'}>
+                                        r{latestBook.revision} {latestBook.revision === latestRev ? '(latest)' : ''}
+                                      </Badge>
+                                      {!latestBook.is_rendered && (
+                                        <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
+                                      )}
+                                    </>
+                                  )}
+                                  {!latestBook && (
+                                    <Text size="xs" c="dimmed">No part book</Text>
+                                  )}
+                                </Group>
+                                {latestBook?.is_rendered && latestBook.download_url && (
+                                  <Button
+                                    component="a"
+                                    href={latestBook.download_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="xs"
+                                    variant="light"
+                                    leftSection={<IconDownload size={14} />}
+                                  >
+                                    Download
+                                  </Button>
                                 )}
                               </Group>
-                              {book.is_rendered && book.download_url && (
-                                <Button
-                                  component="a"
-                                  href={book.download_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  size="xs"
-                                  variant="light"
-                                  leftSection={<IconDownload size={14} />}
-                                >
-                                  Download
-                                </Button>
-                              )}
-                            </Group>
-                          ))}
-                        </Stack>
-                      </Card>
-                    ))}
-                </Stack>
-              );
-            })()}
-          </div>
-        </Card>
+                              <Collapse in={isExpanded && olderBooks.length > 0}>
+                                <Stack gap="xs" mt="sm" pl="md" style={{ borderLeft: '2px solid var(--mantine-color-default-border)' }}>
+                                  <Text size="xs" c="dimmed" fw={500}>Older revisions</Text>
+                                  {olderBooks.map((book) => (
+                                    <Group key={book.id} justify="space-between">
+                                      <Group gap="xs">
+                                        <Text size="sm">Revision {book.revision}</Text>
+                                        {!book.is_rendered && (
+                                          <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
+                                        )}
+                                      </Group>
+                                      {book.is_rendered && book.download_url && (
+                                        <Button
+                                          component="a"
+                                          href={book.download_url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          size="xs"
+                                          variant="subtle"
+                                          leftSection={<IconDownload size={12} />}
+                                        >
+                                          Download
+                                        </Button>
+                                      )}
+                                    </Group>
+                                  ))}
+                                </Stack>
+                              </Collapse>
+                            </Card>
+                          </div>
+                        );
+                      })}
+                  </Stack>
+                )}
+              </div>
+            </Card>
+          </Tabs.Panel>
+        </Tabs>
       </Paper>
 
       <Modal opened={confirmRemoveOpen} onClose={cancelRemove} title="Confirm remove user">

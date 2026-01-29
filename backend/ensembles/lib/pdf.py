@@ -74,7 +74,7 @@ def generate_cover_page(
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
-    c.drawCentredString(width / 2, height / 2 + 40, show_title)
+    c.drawCentredString(width / 2, height / 2 + 60, show_title)
 
     if show_subtitle:
         c.setFont(font, 16)
@@ -186,7 +186,7 @@ def generate_tacet_page(
         None, (width - 60) - (text_width + 15), (height - 60) - 12, text_width + 30, 50
     )
 
-    c.setFont(font, 16)  # make it underlined somehow?
+    c.setFont(font, 12)  # make it underlined somehow?
     c.drawRightString((width - 60) - (text_width + 15) - 10, height - 60, show_title)
 
     c.drawString(60, height - 60, part_name)
@@ -227,6 +227,7 @@ def overlay_page_numbers(
     """
     Overlay page numbers on every page in writer.
     """
+    #TODO: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
     for i, page in enumerate(writer.pages):
         packet = BytesIO()
         c = canvas.Canvas(packet, pagesize=pagesizes.LETTER)
@@ -253,7 +254,7 @@ def merge_pdfs(
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
     # TODO: Make this a list of bools (where the index s the the index in contentpdfs) that determines if that pdf should start on an odd page
     start_on_odd_page: bool = True,
-    overwrite_page_numbers: bool = True,
+    overwrite_page_numbers: bool = False, #TODO: Fix this, its janky rn
     first_content_page_number: int = 1,
 ) -> MergedPdfResult:
     """
@@ -318,20 +319,27 @@ def generate_full_part_book(
     cover -> toc -> content
     """
 
-    # Pass 1: compute TOC page numbers
+    # Pass 1: merge content only (no cover) to get TOC page numbers and content PDF
     pass1 = merge_pdfs(
-        cover_pdf=cover_pdf,
+        cover_pdf=None,
         content_pdfs=content_pdfs,
         overwrite_page_numbers=False,
     )
 
+    # TOC page numbers must account for: cover (1) + blank (1) + toc (1) + blank (1) = 4 pages before content
+    pages_before_content = 4
+    toc_entries_with_offset = [
+        {**entry, "page": entry["page"] + pages_before_content}
+        for entry in pass1["toc_entries"]
+    ]
+
     # Generate TOC PDF
     toc_pdf = generate_table_of_contents(
-        table_contents_data=pass1["toc_entries"],
+        table_contents_data=toc_entries_with_offset,
         **toc_kwargs,
     )
 
-    # Pass 2: final merge
+    # Pass 2: final merge (cover already added here; pass1["pdf"] is content-only)
     writer = PdfWriter()
     writer.append(PdfReader(cover_pdf))
     add_blank_page(writer)
@@ -339,7 +347,7 @@ def generate_full_part_book(
     add_blank_page(writer)
     writer.append(PdfReader(pass1["pdf"]))
 
-    overlay_page_numbers(writer=writer, start_page_number=5)
+    # overlay_page_numbers(writer=writer, start_page_number=5)
 
     output = BytesIO()
     writer.write(output)

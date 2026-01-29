@@ -46,6 +46,11 @@ class ArrangementVersion(models.Model):
     num_lines_per_page = models.IntegerField()
 
     @property
+    def version_label_full(self) -> str:
+        """Includes the v and is not just the number"""
+        return f"v{self.version_label}"
+
+    @property
     def mscz_file_key(self) -> str:
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/raw/{self.file_name}"
 
