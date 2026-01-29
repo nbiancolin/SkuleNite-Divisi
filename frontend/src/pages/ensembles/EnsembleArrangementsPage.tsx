@@ -155,7 +155,7 @@ const ArrangementsPage = () => {
       ?? [];
     if (!Array.isArray(raw)) return [];
     return raw
-      .map((p: PartName & Record<string, unknown>) => {
+      .map((p: PartName) => {
         if (p && typeof p === 'object' && typeof p.id === 'number' && typeof p.display_name === 'string') {
           return { id: p.id, display_name: p.display_name };
         }

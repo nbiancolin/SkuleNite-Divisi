@@ -545,7 +545,7 @@ def test_merge_and_reupload_uses_alias(mock_render):
     zip_a2 = io.BytesIO()
     with zipfile.ZipFile(zip_a2, "w") as z:
         z.writestr("Score.pdf", b"%PDF-1.4 score v2")
-        z.writestr("Flute 1.pdf", b"%PDF-1.4 flute 1 part")  # Same raw name as before
+        z.writestr("Flute I.pdf", b"%PDF-1.4 flute i part")  # Same raw name as A1 so alias is used
     
     mock_render.return_value = zip_a2.getvalue()
     input_key_a2 = version_a2.output_file_key
