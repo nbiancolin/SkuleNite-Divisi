@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 from datetime import datetime
 from django.db import models
 from django.db import transaction
@@ -11,6 +12,7 @@ from ensembles.lib.pdf import TocEntry
 from ensembles.lib.pdf import (
     generate_full_part_book,
     generate_cover_page,
+    generate_tacet_page,
     PartBookInfo,
 )
 
@@ -290,6 +292,8 @@ class PartBook(models.Model):
         assert self.entries.count() > 0, "Part book must be built before rendering"
 
         entries = self.entries.order_by("position")
+        export_datetime = datetime.now()
+        export_date_str = str(export_datetime)
 
         book_data = []
         for entry in entries:
@@ -301,18 +305,29 @@ class PartBook(models.Model):
                 "page": -1,  # Dummy value for now
             }
 
-            # get file pdf as bytesIO object
-            with default_storage.open(entry.part_asset.file_key, "rb") as f:
-                file = BytesIO(f.read())
-            book_data.append((e, file))
+            if entry.part_asset is not None:
+                # get file pdf as bytesIO object
+                with default_storage.open(entry.part_asset.file_key, "rb") as f:
+                    file = BytesIO(f.read())
+                book_data.append((e, file))
+            else:
+                # No part for this arrangement; generate a tacet page
+                tacet_pdf = generate_tacet_page(
+                    show_title=self.ensemble.name,
+                    show_number=entry.arrangement.mvt_no,
+                    export_date=export_date_str,
+                    song_title=entry.arrangement.title,
+                    song_subtitle="",
+                    part_name=self.name,
+                    selected_style=self.ensemble.default_style,
+                )
+                book_data.append((e, tacet_pdf))
 
         cover_pdf = generate_cover_page(
             export_date=str(self.created_at),
             part_name=self.name,
             show_title=self.ensemble.name,
         )
-
-        export_datetime = datetime.now()
 
         toc_kwargs: PartBookInfo = {
             "show_title": self.ensemble.name,
@@ -326,9 +341,12 @@ class PartBook(models.Model):
             cover_pdf=cover_pdf, toc_kwargs=toc_kwargs, content_pdfs=book_data
         )
 
-        # write buf to filesystem
+        # write buf to filesystem (ensure parent dir exists for FileSystemStorage)
+        if hasattr(default_storage, "path"):
+            parent = Path(default_storage.path(self.pdf_file_key)).parent
+            parent.mkdir(parents=True, exist_ok=True)
         with default_storage.open(self.pdf_file_key, "wb") as f:
-            f.write(buf)
+            f.write(buf.getvalue())
 
         for _, f in book_data:
             f.close()
@@ -351,7 +369,9 @@ class PartBookEntry(models.Model):
         "ensembles.ArrangementVersion", on_delete=models.CASCADE
     )
 
-    part_asset = models.ForeignKey("ensembles.PartAsset", on_delete=models.PROTECT)
+    part_asset = models.ForeignKey(
+        "ensembles.PartAsset", on_delete=models.PROTECT, null=True, blank=True
+    )
 
     # When building a part book, compute this value from the Arrangement's mvt_no. This determines the order in the book
     position = models.PositiveIntegerField()

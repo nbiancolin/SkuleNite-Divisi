@@ -25,11 +25,14 @@ import {
 import { 
   IconAlertCircle, 
   IconTrash,
+  IconBook,
+  IconDownload,
+  IconRefresh,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 
-import type { Ensemble, PartName } from '../../services/apiService';
+import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
 
 export default function EnsembleDisplay() {
   const { slug = '' } = useParams();
@@ -88,6 +91,13 @@ export default function EnsembleDisplay() {
   useEffect(() => {
     if (slug) fetchEnsemble(slug);
   }, [slug]);
+
+  // Poll ensemble while part books are generating
+  useEffect(() => {
+    if (!slug || !ensemble?.part_books_generating) return;
+    const interval = setInterval(() => fetchEnsemble(slug), 3000);
+    return () => clearInterval(interval);
+  }, [slug, ensemble?.part_books_generating]);
 
   const handleRemoveUserClick = (userId: number, username: string) => {
     setRemoveCandidate({ id: userId, username });
@@ -241,6 +251,17 @@ export default function EnsembleDisplay() {
     .slice()
     .sort((a, b) => a.display_name.localeCompare(b.display_name))
     .map((p) => ({ value: String(p.id), label: p.display_name }));
+
+  const handleGeneratePartBooks = async () => {
+    if (!ensemble) return;
+    try {
+      setError(null);
+      await apiService.generatePartBooksForEnsemble(ensemble.slug);
+      await fetchEnsemble(ensemble.slug);
+    } catch (err: any) {
+      setError(err?.message || String(err));
+    }
+  };
 
   const handleMergePartNames = async () => {
     if (!ensemble) return;
@@ -449,6 +470,93 @@ export default function EnsembleDisplay() {
                 <Text color="dimmed">No part names found for this ensemble yet.</Text>
               )}
             </Stack>
+          </div>
+        </Card>
+
+        <Card withBorder mt="md">
+          <Group mb="xs" justify="space-between">
+            <Group gap="xs">
+              <IconBook size={18} />
+              <Text>Part books</Text>
+              {ensemble.part_books_generating && (
+                <Badge color="blue" variant="light" leftSection={<Loader size={12} />}>
+                  Generating…
+                </Badge>
+              )}
+            </Group>
+            {isAdmin && (
+              <Button
+                size="xs"
+                variant="filled"
+                leftSection={<IconRefresh size={14} />}
+                onClick={handleGeneratePartBooks}
+                disabled={!!ensemble.part_books_generating || partNames.length === 0}
+              >
+                Generate part books
+              </Button>
+            )}
+          </Group>
+          <Divider />
+          <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+            {(() => {
+              const partBooks: EnsemblePartBook[] = ensemble.part_books ?? [];
+              if (partBooks.length === 0 && !ensemble.part_books_generating) {
+                return (
+                  <Text mt="md" color="dimmed">
+                    No part books yet. Generate part books to create one PDF per part (latest arrangement versions).
+                  </Text>
+                );
+              }
+              const latestRev = ensemble.latest_part_book_revision ?? 0;
+              const byPart = partBooks.reduce<Record<string, EnsemblePartBook[]>>(
+                (acc, b) => {
+                  const key = b.part_display_name;
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(b);
+                  return acc;
+                },
+                {}
+              );
+              return (
+                <Stack mt="md" gap="sm">
+                  {Object.entries(byPart)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([partName, books]) => (
+                      <Card key={partName} withBorder radius="sm" p="sm">
+                        <Text size="sm" fw={600} mb="xs">{partName}</Text>
+                        <Stack gap="xs">
+                          {books.map((book: EnsemblePartBook) => (
+                            <Group key={book.id} justify="space-between">
+                              <Group gap="xs">
+                                <Text size="sm">Revision {book.revision}</Text>
+                                {book.revision === latestRev && (
+                                  <Badge size="xs" variant="light" color="teal">Latest</Badge>
+                                )}
+                                {!book.is_rendered && (
+                                  <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
+                                )}
+                              </Group>
+                              {book.is_rendered && book.download_url && (
+                                <Button
+                                  component="a"
+                                  href={book.download_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  size="xs"
+                                  variant="light"
+                                  leftSection={<IconDownload size={14} />}
+                                >
+                                  Download
+                                </Button>
+                              )}
+                            </Group>
+                          ))}
+                        </Stack>
+                      </Card>
+                    ))}
+                </Stack>
+              );
+            })()}
           </div>
         </Card>
       </Paper>

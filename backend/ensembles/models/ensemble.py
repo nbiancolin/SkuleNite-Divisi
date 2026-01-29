@@ -33,6 +33,7 @@ class Ensemble(models.Model):
 
 
     part_books_generating = models.BooleanField(default=False)
+    latest_part_book_revision = models.IntegerField(default=1)
     
     owner = models.ForeignKey(
         'auth.User',
@@ -64,13 +65,12 @@ class Ensemble(models.Model):
         return self.invite_token
 
 
-    #TODO tomorrow write a test for all this?
-
     #TODO: Allow for passing in custom revisions of arrangements here
     def generate_part_book_entries(self, part_book):
-        """Given a part book, generate part book entries for all the arrangements in this ensemble"""
+        """Given a part book, generate part book entries for all the arrangements in this ensemble."""
 
         PartBookEntry = apps.get_model("ensembles.PartBookEntry")
+        PartAsset = apps.get_model("ensembles.PartAsset")
 
         arrangements = (
             self.arrangements
@@ -87,13 +87,24 @@ class Ensemble(models.Model):
             .order_by("first_num", "second_num", "mvt_no")
         )
 
-        for i, arrangement in enumerate(arrangements):
+        position = 0
+        for arrangement in arrangements:
+            if arrangement.latest_version is None:
+                continue
+            part_asset = PartAsset.objects.filter(
+                arrangement_version=arrangement.latest_version,
+                part_name=part_book.part_name,
+                is_score=False,
+            ).first()
+            # Create entry with or without part_asset; when None, render will generate a tacet page
             PartBookEntry.objects.create(
                 part_book=part_book,
                 arrangement=arrangement,
                 arrangement_version=arrangement.latest_version,
-                position=i
+                part_asset=part_asset,
+                position=position,
             )
+            position += 1
 
 
     def __str__(self):

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.core.files.storage import default_storage
 from django.conf import settings
 
-from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
 from django.contrib.auth import get_user_model
@@ -62,6 +62,8 @@ class EnsembleSerializer(serializers.ModelSerializer):
     is_admin = serializers.SerializerMethodField(read_only=True)
     userships = serializers.SerializerMethodField(read_only=True)
     part_names = serializers.SerializerMethodField(read_only=True)
+    part_books = serializers.SerializerMethodField(read_only=True)
+    default_style = serializers.CharField(required=True)
 
     class Meta:
         model = Ensemble
@@ -74,6 +76,10 @@ class EnsembleSerializer(serializers.ModelSerializer):
             "is_admin",
             "userships",
             "part_names",
+            "part_books_generating",
+            "latest_part_book_revision",
+            "part_books",
+            "default_style",
         ]
         read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
@@ -131,6 +137,35 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 {"id": part.id, "display_name": part.display_name}
                 for part in obj.part_names.all()
             ]
+
+    def get_part_books(self, obj):
+        """List part books for this ensemble (all parts, all revisions) with download URLs when rendered."""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return []
+        books = (
+            PartBook.objects.filter(ensemble=obj)
+            .select_related("part_name")
+            .order_by("part_name__display_name", "-revision")
+        )
+        result = []
+        for book in books:
+            item = {
+                "id": book.id,
+                "part_name_id": book.part_name_id,
+                "part_display_name": book.part_name.display_name,
+                "revision": book.revision,
+                "created_at": book.created_at.isoformat() if book.created_at else None,
+                "finalized_at": book.finalized_at.isoformat() if book.finalized_at else None,
+                "is_rendered": book.is_rendered,
+                "download_url": None,
+            }
+            if book.is_rendered and default_storage.exists(book.pdf_file_key):
+                file_url = default_storage.url(book.pdf_file_key)
+                item["download_url"] = request.build_absolute_uri(file_url)
+            result.append(item)
+        return result
+    
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):

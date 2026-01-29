@@ -56,10 +56,13 @@ export interface EnsembleUsership {
 
 export interface EnsemblePartBook {
   id: number;
-  label: string;
-  created_at: string;
-  version: string;
-  download_url: string;
+  part_name_id: number;
+  part_display_name: string;
+  revision: number;
+  created_at: string | null;
+  finalized_at: string | null;
+  is_rendered: boolean;
+  download_url: string | null;
 }
 
 
@@ -74,11 +77,13 @@ export interface Ensemble {
   slug: string,
   arrangements: Arrangement[],
   join_link?: string | null,
-  is_admin: boolean, //if the requesting user is an admin in the esnemble
+  is_admin: boolean, //if the requesting user is an admin in the ensemble
   // Backend returns `part_names`. Keep `part_name` for backward compatibility.
   part_names?: PartName[];
   part_name?: PartName[];
   userships?: EnsembleUsership[];
+  part_books_generating?: boolean;
+  latest_part_book_revision?: number;
   part_books?: EnsemblePartBook[];
 }
 
@@ -549,7 +554,7 @@ export const apiService = {
 
   async generatePartBooksForEnsemble(slug: string) {
     const response = await fetch(
-      `${API_BASE_URL}/ensembles/${slug}/generate-part-books/`,
+      `${API_BASE_URL}/ensembles/${slug}/generate_part_books/`,
       {
         method: 'POST',
         headers: getHeadersWithCsrf(),

@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName, PartBook
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
@@ -11,7 +11,6 @@ class PartNameInline(admin.TabularInline):
     model = PartName
     extra = 0
     fields = ('display_name',) 
-    #TODO: Add action here to merge part names (and input a custom name)
 
 class EnsembleAdmin(admin.ModelAdmin):
     list_display = ("name", "num_arrangements", "owner")
@@ -148,3 +147,4 @@ admin.site.register(Diff, DiffAdmin)
 admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
 admin.site.register(PartAsset, PartAssetAdmin)
 admin.site.register(PartName, PartNameAdmin)
+admin.site.register(PartBook) #TODO: modeladmin for part book
