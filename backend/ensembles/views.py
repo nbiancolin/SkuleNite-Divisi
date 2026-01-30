@@ -12,13 +12,10 @@ from django.db.models import Q
 from django.conf import settings
 
 from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
-from ensembles.serializers import (
-    EnsembleSerializer,
-    ArrangementSerializer,
-    ArrangementVersionSerializer,
-    CreateArrangementVersionMsczSerializer,
-    EnsemblePartNameMergeSerializer,
-)
+from ensembles.serializers.ensemble import EnsembleSerializer, EnsemblePartNameMergeSerializer
+from ensembles.serializers.arrangement import ArrangementSerializer
+from ensembles.serializers.arrangement_version import ArrangementVersionSerializer, CreateArrangementVersionMsczSerializer
+
 from logging import getLogger
 from django.db.models.expressions import RawSQL
 
