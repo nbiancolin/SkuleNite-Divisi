@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='uploadsession',
             name='file_name',
-            field=models.CharField(max_length=128),
+            field=models.CharField(max_length=255),
         ),
     ]

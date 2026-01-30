@@ -16,7 +16,7 @@ class UploadSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)
-    file_name = models.CharField(max_length=128)
+    file_name = models.CharField(max_length=255)
     user_agent = models.TextField(blank=True, null=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     deleted = models.BooleanField(default=False)
