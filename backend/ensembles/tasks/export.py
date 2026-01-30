@@ -40,8 +40,7 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 
                 if not default_storage.exists(input_key):
                     logger.error(f"No input file found for version {version_id}")
-                    version.error_on_export = True
-                    version.is_processing = False
+                    version.export_state = ArrangementVersion.ExportStatus.ERROR
                     version.save()
 
                     ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
@@ -60,15 +59,14 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     logger.info(
                         f"Successfully exported {len(result['written'])} files for version {version_id}"
                     )
-                    version.error_on_export = False
+                    version.export_state = ArrangementVersion.ExportStatus.COMPLETE
                 else:
                     logger.error(
                         f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}"
                     )
-                    version.error_on_export = True
+                    version.export_state = ArrangementVersion.ExportStatus.ERROR
                     ExportFailureLog.objects.create(arrangement_version=version, error_msg=result["details"])
 
-                version.is_processing = False
                 version.save()
 
                 return result
@@ -77,8 +75,7 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 logger.error(
                     f"Unexpected error exporting version {version_id}: {str(e)}"
                 )
-                version.error_on_export = True
-                version.is_processing = False
+                version.export_state = ArrangementVersion.ExportStatus.ERROR
                 version.save()
 
                 ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
@@ -136,10 +133,5 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 def prep_and_export_mscz(version_id):
     format_arrangement_version(version_id)
     res = export_arrangement_version(version_id)
-    v = ArrangementVersion.objects.get(id=version_id)
-    if not res["status"] == "success":
-        v.error_on_export = True
-    v.is_processing = False
-    v.save(update_fields=["is_processing", "error_on_export"])
 
     return res

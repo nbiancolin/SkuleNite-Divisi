@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 
 logger = getLogger("app")
 
+
+class _Status(models.TextChoices):
+    NONE = "N", "none"
+    PROCESSING = "P", "processing"
+    COMPLETE = "C", "complete"
+    ERROR = "E", "error"
+
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
@@ -28,22 +35,24 @@ class ArrangementVersion(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
     
-    #TODO[SC-241]: Convert these fields to a state field
-    is_processing = models.BooleanField(default=True)
-    error_on_export = models.BooleanField(default=False)
+    ExportStatus = _Status
+    export_state = models.CharField(max_length=1, choices=ExportStatus.choices, default=ExportStatus.NONE)
 
-    class AudioStatus(models.TextChoices):
-        NONE = "N", "none"
-        PROCESSING = "P", "processing"
-        COMPLETE = "C", "complete"
-        ERROR = "E", "error"
-
-
+    AudioStatus = _Status
     audio_state = models.CharField(max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE)
 
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
     num_lines_per_page = models.IntegerField()
+
+
+    @property
+    def is_processing(self):
+        return self.export_state == self.ExportStatus.PROCESSING
+    
+    @property
+    def error_on_export(self):
+        return self.export_state == self.ExportStatus.ERROR
 
     @property
     def version_label_full(self) -> str:
