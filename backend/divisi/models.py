@@ -16,7 +16,7 @@ class UploadSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     completed = models.BooleanField(default=False)
-    file_name = models.CharField()
+    file_name = models.CharField(max_length=128)
     user_agent = models.TextField(blank=True, null=True)
     ip_address = models.GenericIPAddressField(blank=True, null=True)
     deleted = models.BooleanField(default=False)
@@ -51,8 +51,8 @@ class UploadSession(models.Model):
         super().delete(**kwargs)
 
 
-# TODO[]: This model is unused ... Was initially going to be used for having the standalone pat exporter export parts,
-# I dont think I will do this, but will leave it bc we dont need another migration
+
+#TODO[SC-276] Now that we have the new part models, we definitelty dont need this I don't think. Remove at some point
 class ProcessedFile(models.Model):
     session = models.ForeignKey(
         UploadSession, on_delete=models.CASCADE, related_name="files"

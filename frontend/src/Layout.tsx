@@ -20,7 +20,8 @@ export default function Layout() {
       <AppShell.Header>
         <HeaderSimple />
       </AppShell.Header>
-      <AppShell.Main>
+      {/* Ensure the main content area is the scroll container */}
+      <AppShell.Main style={{ height: 'calc(100dvh - 60px)', overflowY: 'auto' }}>
         <Outlet />
       </AppShell.Main>
     </AppShell>

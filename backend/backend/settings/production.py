@@ -22,7 +22,6 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # CSRF Trusted Origins - required for Django 4.0+
 CSRF_TRUSTED_ORIGINS = [
     'https://divisi.nbiancolin.ca',
-    # 'http://divisi.nbiancolin.ca',  # TODO: If no issues arise, remove this
 ]
 
 # CSRF Cookie settings - allow JavaScript to read the cookie
@@ -33,7 +32,6 @@ CSRF_USE_SESSIONS = False  # Use cookies for CSRF token (default)
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
     'https://divisi.nbiancolin.ca',
-    # 'http://divisi.nbiancolin.ca',   # TODO: If no issues arise, remove this
 ]
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [

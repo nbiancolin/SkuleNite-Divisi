@@ -1,7 +1,3 @@
-# TODO: Write E2E test here that ensures that one can upload a file, 
-# and it will return a formatted file url (and that the file exoists) and the pdf file (and that the pdf file exists)
-
-
 import pytest
 from unittest.mock import patch
 
@@ -17,9 +13,6 @@ def get_format_payload(session_id):
         "show_number": "1-1",
         "measures_per_line": 6,
     }
-
-
-#can test upload work
 
 
 #can test formatting works

@@ -43,7 +43,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
         return value
 
     def save(self, **kwargs):
-        #TODO: This could probably be moved to the service layer 9since its business level things)
+        #TODO[SC-276]: This could be refactored for readability
         assert self.validated_data, "Must call `is_valid` first!"
 
         style = self.validated_data["style"]

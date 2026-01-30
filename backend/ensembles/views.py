@@ -7,20 +7,23 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.conf import settings
 
-from .models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, Part
-from .serializers import (
+from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
+from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
+    EnsemblePartNameMergeSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
 
 from ensembles.tasks import export_arrangement_version
+from ensembles.tasks.part_books import generate_books_for_ensemble
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -124,7 +127,7 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        #TODO: Move this to a serializer
+        #TODO[SC-278]: Move this to a serializer
         user_id = request.data.get("user_id")
         if not user_id:
             return Response(
@@ -193,6 +196,38 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                 {"detail": "User is not a member of this ensemble."},
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+
+    @action(detail=True, methods=["post"])
+    def merge_part_names(self, request, slug=None):
+        serializer = EnsemblePartNameMergeSerializer(data=request.data, context={"ensemble": self.get_object()})
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        first = validated_data["first_part"]
+        second = validated_data["second_part"]
+
+        try:
+            merged = PartName.merge_part_names(
+                first, second, validated_data.get("new_displayname", "") or ""
+            )
+        except ValidationError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {"id": merged.id, "display_name": merged.display_name},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"])
+    def generate_part_books(self, request, slug=None):
+        ensemble = self.get_object()
+
+        generate_books_for_ensemble.delay(ensemble.id)
+        return Response({"detail": "Export of Part Books triggered"}, status=status.HTTP_202_ACCEPTED)
 
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):
@@ -271,6 +306,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
     
+    #TODO[SC-278]: Make this have a serializer omg
     @action(detail=True, methods=["get"])
     def get_download_links(self, request, pk=None):
         version = self.get_object()
@@ -295,7 +331,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             response_data["processed_mscz_url"] = None
 
         # Get score and parts from Part model (new way)
-        parts = Part.objects.filter(arrangement_version=version)
+        parts = PartAsset.objects.filter(arrangement_version=version)
         if parts.exists():
             for part in parts:
                 if default_storage.exists(part.file_key):
@@ -351,7 +387,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         """List all individual parts (including score) for this arrangement version"""
         version = self.get_object()
         
-        parts = Part.objects.filter(arrangement_version=version)
+        parts = PartAsset.objects.filter(arrangement_version=version)
         
         parts_data = []
         for part in parts:
@@ -377,8 +413,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         version = self.get_object()
         
         try:
-            part = Part.objects.get(id=part_id, arrangement_version=version)
-        except Part.DoesNotExist:
+            part = PartAsset.objects.get(id=part_id, arrangement_version=version)
+        except PartAsset.DoesNotExist:
             return Response(
                 {"detail": "Part not found"},
                 status=status.HTTP_404_NOT_FOUND
@@ -396,6 +432,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "file_url": request.build_absolute_uri(file_url),
             "redirect": file_url,
         })
+    
+
 
 
 class JoinEnsembleView(APIView):

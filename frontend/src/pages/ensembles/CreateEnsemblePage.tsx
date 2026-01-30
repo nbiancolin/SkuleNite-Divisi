@@ -36,7 +36,6 @@ export default function CreateEnsemblePage() {
 
   return (
     <Container size="sm" py="xl">
-      {/* TODO: Remove this when adding users */}
       <Button
         variant="subtle"
         leftSection={<IconArrowLeft size={16} />}

@@ -36,7 +36,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15
+        image: postgres:17
         env:
           POSTGRES_DB: test_db
           POSTGRES_USER: postgres
@@ -55,7 +55,7 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: 5432
-      DJANGO_SETTINGS_MODULE: backend.settings
+      DJANGO_SETTINGS_MODULE: backend.settings.development
       PYTHONPATH: ${{ github.workspace }}/backend
 
     steps:
