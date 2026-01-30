@@ -8,7 +8,7 @@ logger = getLogger("app")
 
 
 
-#TODO: Remove
+#TODO[SC-283]: Remove
 class Diff(models.Model):
     from_version = models.ForeignKey(
         ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_source"

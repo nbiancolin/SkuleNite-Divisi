@@ -127,7 +127,7 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_403_FORBIDDEN
                 )
         
-        #TODO: Move this to a serializer
+        #TODO[SC-278]: Move this to a serializer
         user_id = request.data.get("user_id")
         if not user_id:
             return Response(
@@ -200,21 +200,12 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def merge_part_names(self, request, slug=None):
-        ensemble = self.get_object()  # TODO: use this to validate same-ensemble
-        serializer = EnsemblePartNameMergeSerializer(data=request.data)
+        serializer = EnsemblePartNameMergeSerializer(data=request.data, context={"ensemble": self.get_object()})
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
-        try:
-            first = PartName.objects.get(id=validated_data["first_id"], ensemble=ensemble)
-            second = PartName.objects.get(
-                id=validated_data["second_id"], ensemble=ensemble
-            )
-        except PartName.DoesNotExist:
-            return Response(
-                {"detail": "One or both part IDs are invalid for this ensemble."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        first = validated_data["first_part"]
+        second = validated_data["second_part"]
 
         try:
             merged = PartName.merge_part_names(
@@ -259,7 +250,6 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         ensemble = serializer.validated_data['ensemble']
         user = self.request.user
         
-        #TODO: Move this to a serializer
         if ensemble.owner != user and not EnsembleUsership.objects.filter(
             ensemble=ensemble, user=user
         ).exists():
@@ -316,7 +306,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
     
-    #TODO: Make this have a serializer omg
+    #TODO[SC-278]: Make this have a serializer omg
     @action(detail=True, methods=["get"])
     def get_download_links(self, request, pk=None):
         version = self.get_object()

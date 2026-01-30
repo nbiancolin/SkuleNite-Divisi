@@ -29,8 +29,7 @@ class PartAsset(models.Model):
     arrangement_version = models.ForeignKey(
         ArrangementVersion, related_name="parts", on_delete=models.CASCADE
     )
-    # TODO: Backfill/delete any part assets that dont have a NameObj associated, and remove this null=True
-    part_name = models.ForeignKey("PartName", on_delete=models.PROTECT, null=True)
+    part_name = models.ForeignKey("PartName", on_delete=models.PROTECT)
     file_key = models.CharField(max_length=500)  # Storage key for the PDF file
     is_score = models.BooleanField(default=False)  # True if this is the full score PDF
 

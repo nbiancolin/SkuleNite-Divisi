@@ -26,7 +26,7 @@ class Arrangement(models.Model):
     slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
-    #TODO: Remove act number and piece number, they are no longer used
+    #TODO[SC-282]: Remove act number and piece number, they are no longer used
     act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(default=1, blank=True, null=True)
 

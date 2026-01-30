@@ -171,7 +171,7 @@ def generate_tacet_page(
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
-    # TODO: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
+    # TODO[SC-279]: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
     c.drawCentredString(width / 2, height - 80, song_title)
 
     if song_subtitle:
@@ -227,7 +227,7 @@ def overlay_page_numbers(
     """
     Overlay page numbers on every page in writer.
     """
-    #TODO: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
+    #TODO[SC-280]: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
     for i, page in enumerate(writer.pages):
         packet = BytesIO()
         c = canvas.Canvas(packet, pagesize=pagesizes.LETTER)
@@ -252,9 +252,9 @@ def merge_pdfs(
     *,
     cover_pdf: BytesIO | None,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
-    # TODO: Make this a list of bools (where the index s the the index in contentpdfs) that determines if that pdf should start on an odd page
+    # TODO[SC-281]: Allow setting which pdfs to start on a blank page
     start_on_odd_page: bool = True,
-    overwrite_page_numbers: bool = False, #TODO: Fix this, its janky rn
+    overwrite_page_numbers: bool = False, #TODO[SC-280]: Fix this, its janky rn
     first_content_page_number: int = 1,
 ) -> MergedPdfResult:
     """

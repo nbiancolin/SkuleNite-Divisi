@@ -52,7 +52,7 @@ class UploadSession(models.Model):
 
 
 
-#TODO Now that we have the new part models, we definitelty dont need this I don't think. Remove at some point
+#TODO[SC-276] Now that we have the new part models, we definitelty dont need this I don't think. Remove at some point
 class ProcessedFile(models.Model):
     session = models.ForeignKey(
         UploadSession, on_delete=models.CASCADE, related_name="files"

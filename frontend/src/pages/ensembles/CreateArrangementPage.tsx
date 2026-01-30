@@ -143,8 +143,6 @@ const emptyEnsemble = (): Ensemble => ({
         label="Ensemble Name"
         value={slug}
         mt="md"
-        //TODO: This should not be editable -- just display it as a field of some kind
-        // like, /app/ensembles/<slug>/create -- and get slug from that
       />
       <TextInput
         label="Arrangement Title"

@@ -6,7 +6,7 @@ from django.db import transaction
 from django.core.files.storage import default_storage
 from django.conf import settings
 
-from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook, PartName
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
 from django.contrib.auth import get_user_model
@@ -116,7 +116,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return [
-                #TODO: Usership serializer
+                #TODO[SC-278]: Usership serializer
                 {
                     "id": usership.id,
                     "user": UserSerializer(usership.user).data,
@@ -177,10 +177,34 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
 
     new_displayname = serializers.CharField(required=False)
 
-    # def validate(self, *args, **kwargs):
-    #     res = super().validate(*args, **kwargs)
+    def validate(self, attrs):
+        ensemble = self.context["ensemble"]
+        first_id = attrs["first_id"]
+        second_id = attrs["second_id"]
 
-    #TODO: Validate that the two passed in part ids belong to the same ensemble
+        try:
+            first_part = PartName.objects.get(id=first_id)
+            second_part = PartName.objects.get(id=second_id)
+        except PartName.DoesNotExist:
+            self.fail("invalid_part_id")
+
+        if first_part.ensemble_id != second_part.ensemble_id:
+            self.fail("invalid_part_id")
+
+        if ensemble.id != first_id:
+            self.fail("invalid_part_id")
+
+        # prevent merging the same row into itself
+        if first_part.id == second_part.id:
+            raise serializers.ValidationError(
+                "Cannot merge a PartName with itself."
+            )
+
+        # Stash for use in the view to avoid re-querying
+        attrs["first_part"] = first_part
+        attrs["second_part"] = second_part
+
+        return attrs
 
         
 
