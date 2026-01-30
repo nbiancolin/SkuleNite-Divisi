@@ -29,7 +29,7 @@ class Diff(models.Model):
         ],
         default="pending",
     )
-    error_msg = models.CharField(max_length=512, blank=True, null=True)
+    error_msg = models.CharField(max_length=1000, blank=True, null=True)
 
     @property
     def from_version__str__(self):

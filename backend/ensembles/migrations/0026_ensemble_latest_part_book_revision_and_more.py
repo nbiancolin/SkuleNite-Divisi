@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='diff',
             name='error_msg',
-            field=models.CharField(blank=True, max_length=512, null=True),
+            field=models.CharField(blank=True, max_length=1000, null=True),
         ),
         migrations.AlterField(
             model_name='diff',
@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='exportfailurelog',
             name='error_msg',
-            field=models.CharField(max_length=512),
+            field=models.CharField(max_length=1000),
         ),
         migrations.CreateModel(
             name='PartAsset',
