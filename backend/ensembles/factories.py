@@ -1,6 +1,6 @@
 import factory
 from factory.django import DjangoModelFactory
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, PartAsset, PartName
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, Diff, PartAsset, PartName
 
 from django.contrib.auth import get_user_model
 
@@ -57,11 +57,11 @@ class UserFactory(DjangoModelFactory):
 
 class EnsembleUsershipFactory(DjangoModelFactory):
     class Meta:
-        model = 'ensembles.EnsembleUsership'
+        model = EnsembleUsership
 
     user = factory.SubFactory(UserFactory)
     ensemble = factory.SubFactory(EnsembleFactory)
-    # role = 'member' TODO[SC-278]: update factory to do this
+    role = EnsembleUsership.Role.MEMBER
 
 
 class PartNameFactory(DjangoModelFactory):
