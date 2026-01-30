@@ -74,7 +74,7 @@ def generate_cover_page(
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
-    c.drawCentredString(width / 2, height / 2 + 60, show_title)
+    c.drawCentredString(width / 2, height / 2 + 40, show_title)
 
     if show_subtitle:
         c.setFont(font, 16)
@@ -87,7 +87,7 @@ def generate_cover_page(
         c.drawCentredString(width / 2, height / 2, f"Rev: {export_date}")
 
     c.setFont(font, 20)
-    c.drawCentredString(width / 2, height / 2 + 80, part_name)
+    c.drawCentredString(width / 2, height / 2 + 100, part_name)
 
     if copyright:
         c.setFont(font, 12)
@@ -124,7 +124,7 @@ def generate_table_of_contents(
     font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
 
     c.setFont(font, 32)
-    c.drawCentredString(width / 2, height - 80, show_title)
+    c.drawCentredString(width / 2, height - 100, show_title)
     if show_subtitle:
         c.setFont(font, 28)
         c.drawCentredString(width / 2, height - 120, show_subtitle)
@@ -138,7 +138,7 @@ def generate_table_of_contents(
     while y > 160 and len(table_contents_data) > 0:
         entry = table_contents_data.pop()
         # lhs = f"<b>{entry['show_number']}: {entry['title']}</b> <i>({entry['version_label']})</i>"
-        lhs = f"{entry['show_number']}: {entry['title']} ({entry['version_label']})"
+        lhs = f"{entry['show_number']}: {entry['title']} (v{entry['version_label']})"
         rhs = str(entry["page"])
         c.drawString(width * 1 / 5, y, lhs)
         c.drawRightString(width * 4 / 5, y, rhs)

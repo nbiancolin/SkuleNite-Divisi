@@ -1,6 +1,6 @@
 from io import BytesIO
 from pathlib import Path
-from datetime import datetime
+from django.utils import timezone 
 from django.db import models
 from django.db import transaction
 from django.core.files.storage import default_storage
@@ -293,7 +293,7 @@ class PartBook(models.Model):
 
     @property
     def file_name(self) -> str:
-        # TODO: add # in front here (eg. 01 - Flute (.pdf))
+        # TODO: add Score Order # in front here (eg. 01 - Flute (.pdf))
         return f"{self.name}-{self.ensemble.name}_({self.created_at}).pdf"
 
     @property
@@ -308,8 +308,8 @@ class PartBook(models.Model):
         assert self.entries.count() > 0, "Part book must be built before rendering"
 
         entries = self.entries.order_by("position")
-        export_datetime = datetime.now()
-        export_date_str = str(export_datetime)
+        export_datetime = timezone.now()
+        export_date_str = export_datetime.strftime("%Y-%m-%d, %H:%M")
 
         book_data = []
         for entry in entries:
@@ -340,7 +340,7 @@ class PartBook(models.Model):
                 book_data.append((e, tacet_pdf))
 
         cover_pdf = generate_cover_page(
-            export_date=str(self.created_at),
+            export_date=export_date_str,
             part_name=self.name,
             show_title=self.ensemble.name,
         )

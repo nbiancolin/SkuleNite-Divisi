@@ -191,7 +191,7 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
         if first_part.ensemble_id != second_part.ensemble_id:
             self.fail("invalid_part_id")
 
-        if ensemble.id != first_id:
+        if ensemble.id != first_part.ensemble_id:
             self.fail("invalid_part_id")
 
         # prevent merging the same row into itself
