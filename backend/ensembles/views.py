@@ -229,6 +229,54 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         generate_books_for_ensemble.delay(ensemble.id)
         return Response({"detail": "Export of Part Books triggered"}, status=status.HTTP_202_ACCEPTED)
 
+    @action(detail=True, methods=["post"], url_path="update-part-order")
+    def update_part_order(self, request, slug=None):
+        """Update the order of parts for an ensemble. Only admins can do this."""
+        ensemble = self.get_object()
+        user = request.user
+
+        if not user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can update part order."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Expected format: {"part_orders": [{"id": 1, "order": 0}, {"id": 2, "order": 1}, ...]}
+        part_orders = request.data.get("part_orders", [])
+        
+        if not isinstance(part_orders, list):
+            return Response(
+                {"detail": "part_orders must be a list of objects with 'id' and 'order' fields."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate that all part IDs belong to this ensemble
+        part_ids = [item.get("id") for item in part_orders if item.get("id")]
+        if not part_ids:
+            return Response(
+                {"detail": "No part IDs provided."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        parts = PartName.objects.filter(id__in=part_ids, ensemble=ensemble)
+        if parts.count() != len(part_ids):
+            return Response(
+                {"detail": "One or more part IDs are invalid or do not belong to this ensemble."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update orders
+        part_dict = {item.get("id"): item.get("order") for item in part_orders if item.get("id") is not None}
+        for part in parts:
+            if part.id in part_dict:
+                part.order = part_dict[part.id]
+                part.save(update_fields=["order"])
+
+        return Response(
+            {"detail": "Part order updated successfully."},
+            status=status.HTTP_200_OK
+        )
+
 
 class BaseArrangementViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementSerializer

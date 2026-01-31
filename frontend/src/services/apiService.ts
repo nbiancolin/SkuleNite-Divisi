@@ -69,6 +69,7 @@ export interface EnsemblePartBook {
 export interface PartName {
   id: number;
   display_name: string;
+  order: number | null;
 }
 
 export interface Ensemble {
@@ -752,6 +753,28 @@ export const apiService = {
    * @param secondId id of the second PartName obj
    * @param new_displayname optional new displayname
    */
+  async updatePartOrder(slug: string, partOrders: Array<{ id: number; order: number }>) {
+    const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/update-part-order/`, {
+      method: 'POST',
+      headers: getHeadersWithCsrf(),
+      body: JSON.stringify({ part_orders: partOrders }),
+      credentials: 'include',
+    });
+    if (!response.ok) {
+      let errorDetails = '';
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to update part order (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
   async mergePartNames(
     ensembleSlug: string,
     firstId: number,

@@ -401,7 +401,15 @@ const ArrangementsPage = () => {
                   <Stack gap={0} mt="xs">
                     {partNames
                       .slice()
-                      .sort((a, b) => a.display_name.localeCompare(b.display_name))
+                      .sort((a, b) => {
+                        // Sort by order (nulls last), then by display_name for stable ordering
+                        if (a.order !== null && b.order !== null) {
+                          return a.order - b.order;
+                        }
+                        if (a.order !== null) return -1;
+                        if (b.order !== null) return 1;
+                        return a.display_name.localeCompare(b.display_name);
+                      })
                       .map((part) => {
                         const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])
                           .filter((b) => b.part_display_name === part.display_name)
