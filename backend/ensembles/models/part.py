@@ -308,8 +308,7 @@ class PartBook(models.Model):
 
     @property
     def file_name(self) -> str:
-        # TODO: add Score Order # in front here (eg. 01 - Flute (.pdf))
-        return f"{self.name}-{self.ensemble.name}_({self.created_at}).pdf"
+        return f"{self.part_name.order:02d}_-_{self.name}-{self.ensemble.name}_({self.created_at}).pdf"
 
     @property
     def pdf_file_key(self):
