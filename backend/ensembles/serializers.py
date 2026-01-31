@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework import status
 
 from django.db import transaction
+from django.db.models import F
 from django.core.files.storage import default_storage
 from django.conf import settings
 
@@ -132,10 +133,18 @@ class EnsembleSerializer(serializers.ModelSerializer):
         """get part names details"""
         request = self.context.get("request")
         if request and request.user.is_authenticated:
+            # Order by order field (nulls last), then by id for stable ordering
+            from django.db.models import F, Value, IntegerField
+            from django.db.models.functions import Coalesce
+            # Use Coalesce to put nulls at the end (treat null as a very large number)
+            parts = obj.part_names.all().order_by(
+                Coalesce("order", Value(999999, output_field=IntegerField())),
+                "id"
+            )
             # Keep a stable, typed shape for the frontend
             return [
-                {"id": part.id, "display_name": part.display_name}
-                for part in obj.part_names.all()
+                {"id": part.id, "display_name": part.display_name, "order": part.order}
+                for part in parts
             ]
 
     def get_part_books(self, obj):

@@ -3,6 +3,7 @@ from pathlib import Path
 from django.utils import timezone 
 from django.db import models
 from django.db import transaction
+from django.db.models import Max
 from django.core.files.storage import default_storage
 from django.core.exceptions import ValidationError
 
@@ -92,6 +93,9 @@ class PartName(models.Model):
     display_name = models.CharField(max_length=64)
     # SLUG should be unique per ensemble -- not for all part names
     slug = models.SlugField()
+    # Order for displaying parts in the ensemble (lower numbers appear first)
+    # Defaults to None, which means it will be set based on creation order
+    order = models.PositiveIntegerField(null=True, blank=True)
 
     def save(self, **kwargs):
         if not self.slug:
@@ -101,6 +105,15 @@ class PartName(models.Model):
                 instance=self,
                 queryset=PartName.objects.filter(ensemble_id=self.ensemble_id),
             )
+        # Set order if it's None and this is a new instance
+        if self.order is None and self.pk is None:
+            # Get the max order for this ensemble, or start at 0
+            max_order = (
+                PartName.objects.filter(ensemble_id=self.ensemble_id)
+                .exclude(order__isnull=True)
+                .aggregate(Max("order"))["order__max"]
+            )
+            self.order = (max_order + 1) if max_order is not None else 0
         super().save(**kwargs)
 
     def __str__(self):
@@ -158,6 +171,8 @@ class PartName(models.Model):
         if existing is not None:
             return existing
 
+        # Create new PartName with order set based on creation order
+        # The save() method will automatically set order if None
         return cls.objects.create(ensemble=ensemble, display_name=raw_display_name)
 
     @classmethod
@@ -293,8 +308,7 @@ class PartBook(models.Model):
 
     @property
     def file_name(self) -> str:
-        # TODO: add Score Order # in front here (eg. 01 - Flute (.pdf))
-        return f"{self.name}-{self.ensemble.name}_({self.created_at}).pdf"
+        return f"{self.part_name.order:02d}_-_{self.name}-{self.ensemble.name}_({self.created_at}).pdf"
 
     @property
     def pdf_file_key(self):

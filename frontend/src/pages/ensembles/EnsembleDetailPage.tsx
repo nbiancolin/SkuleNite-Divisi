@@ -31,6 +31,7 @@ import {
   IconRefresh,
   IconChevronDown,
   IconChevronRight,
+  IconGripVertical,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
@@ -58,6 +59,9 @@ export default function EnsembleDisplay() {
   const [mergeSecondId, setMergeSecondId] = useState<string | null>(null);
   const [mergeNewDisplayName, setMergeNewDisplayName] = useState<string>('');
   const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
+  const [reorderingParts, setReorderingParts] = useState(false);
+  const [draggedPartId, setDraggedPartId] = useState<number | null>(null);
+  const [dragOverPartId, setDragOverPartId] = useState<number | null>(null);
 
   // helper to read CSRF token from cookies (same logic as apiService)
   function getCsrfToken(): string | null {
@@ -492,8 +496,16 @@ export default function EnsembleDisplay() {
                   <Stack mt="md" gap={0}>
                     {partNames
                       .slice()
-                      .sort((a, b) => a.display_name.localeCompare(b.display_name))
-                      .map((part) => {
+                      .sort((a, b) => {
+                        // Sort by order (nulls last), then by display_name for stable ordering
+                        if (a.order !== null && b.order !== null) {
+                          return a.order - b.order;
+                        }
+                        if (a.order !== null) return -1;
+                        if (b.order !== null) return 1;
+                        return a.display_name.localeCompare(b.display_name);
+                      })
+                      .map((part, index, sortedParts) => {
                         const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])
                           .filter((b) => b.part_display_name === part.display_name)
                           .sort((a, b) => b.revision - a.revision);
@@ -502,11 +514,121 @@ export default function EnsembleDisplay() {
                         const latestRev = ensemble.latest_part_book_revision ?? 0;
                         const isExpanded = expandedPartId === part.id;
 
+                        const isDragging = draggedPartId === part.id;
+                        const isDragOver = dragOverPartId === part.id;
+
+                        const handleDragStart = (e: React.DragEvent) => {
+                          if (!ensemble?.is_admin) return;
+                          setDraggedPartId(part.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', part.id.toString());
+                          // Make the dragged element semi-transparent
+                          if (e.currentTarget instanceof HTMLElement) {
+                            e.currentTarget.style.opacity = '0.5';
+                          }
+                        };
+
+                        const handleDragEnd = (e: React.DragEvent) => {
+                          setDraggedPartId(null);
+                          setDragOverPartId(null);
+                          // Reset opacity
+                          if (e.currentTarget instanceof HTMLElement) {
+                            e.currentTarget.style.opacity = '1';
+                          }
+                        };
+
+                        const handleDragOver = (e: React.DragEvent) => {
+                          if (!ensemble?.is_admin || draggedPartId === part.id) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          setDragOverPartId(part.id);
+                        };
+
+                        const handleDragLeave = () => {
+                          setDragOverPartId(null);
+                        };
+
+                        const handleDrop = async (e: React.DragEvent) => {
+                          e.preventDefault();
+                          if (!ensemble?.is_admin || draggedPartId === null || draggedPartId === part.id) {
+                            setDragOverPartId(null);
+                            return;
+                          }
+
+                          const draggedIndex = sortedParts.findIndex(p => p.id === draggedPartId);
+                          const targetIndex = index;
+
+                          if (draggedIndex === -1 || draggedIndex === targetIndex) {
+                            setDragOverPartId(null);
+                            return;
+                          }
+
+                          // Create new order array
+                          const reorderedParts = [...sortedParts];
+                          const [draggedPart] = reorderedParts.splice(draggedIndex, 1);
+                          reorderedParts.splice(targetIndex, 0, draggedPart);
+
+                          // Update orders based on new positions
+                          const updatedParts = reorderedParts.map((p, i) => ({
+                            ...p,
+                            order: i
+                          }));
+
+                          try {
+                            setReorderingParts(true);
+                            await apiService.updatePartOrder(
+                              slug,
+                              updatedParts.map(p => ({ id: p.id, order: p.order ?? 0 }))
+                            );
+                            // Refresh ensemble data
+                            const updated = await apiService.getEnsemble(slug);
+                            setEnsemble(updated);
+                          } catch (err) {
+                            console.error('Failed to update part order:', err);
+                            alert('Failed to update part order. Please try again.');
+                          } finally {
+                            setReorderingParts(false);
+                            setDragOverPartId(null);
+                            setDraggedPartId(null);
+                          }
+                        };
+
                         return (
                           <div key={part.id}>
-                            <Card withBorder radius="sm" p="sm" mb="xs">
+                            <Card 
+                              withBorder 
+                              radius="sm" 
+                              p="sm" 
+                              mb="xs"
+                              draggable={ensemble?.is_admin && !reorderingParts}
+                              onDragStart={handleDragStart}
+                              onDragEnd={handleDragEnd}
+                              onDragOver={handleDragOver}
+                              onDragLeave={handleDragLeave}
+                              onDrop={handleDrop}
+                              style={{
+                                cursor: ensemble?.is_admin ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                                opacity: isDragging ? 0.5 : 1,
+                                borderColor: isDragOver ? 'var(--mantine-color-blue-6)' : undefined,
+                                borderWidth: isDragOver ? 2 : undefined,
+                                backgroundColor: isDragOver ? 'var(--mantine-color-blue-0)' : undefined,
+                                transition: 'background-color 0.2s, border-color 0.2s',
+                              }}
+                            >
                               <Group justify="space-between" wrap="nowrap">
                                 <Group gap="xs" style={{ minWidth: 0 }}>
+                                  {ensemble?.is_admin && (
+                                    <ActionIcon
+                                      variant="subtle"
+                                      size="sm"
+                                      style={{ cursor: 'grab' }}
+                                      title="Drag to reorder"
+                                      onMouseDown={(e) => e.stopPropagation()}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <IconGripVertical size={16} />
+                                    </ActionIcon>
+                                  )}
                                   <ActionIcon
                                     variant="subtle"
                                     size="sm"
