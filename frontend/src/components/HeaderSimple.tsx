@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 import { apiService, type User } from '../services/apiService';
 
 const links = [
-  { link: '/app', label: 'Ensemble Score Management' },
+  { link: '/app/ensembles', label: 'Ensemble Score Management' },
   { link: '/part-formatter', label: 'Part Formatter' },
   { link: '/contact', label: 'Contact' },
 ];
