@@ -452,6 +452,22 @@ const ArrangementsPage = () => {
                                     <Text size="xs" c="dimmed">No part book</Text>
                                   )}
                                 </Group>
+                                <Group>
+                                  {(part.arrangements) && (length <= 2)  && (
+                                    <>
+                                      {part.arrangements.map((arr) => ( 
+                                        <Text size="xs" c="dimmed">{arr} </Text>
+                                      ))}
+                                    </>
+                                  )}
+                                  {(part.arrangements) && (length >2) && (
+                                    <>
+                                      <Text size="xs" c="dimmed">{part.arrangements[0]}</Text>
+                                      <Text size="xs" c="dimmed">... {part.arrangements.length - 1} more</Text>
+                                    {part.arrangements.map((arr) => ( <Text size="xs" c="dimmed">{arr}</Text> ))}
+                                    </>
+                                  )}
+                                </Group>
                                 {latestBook?.is_rendered && latestBook.download_url && (
                                   <Button
                                     component="a"

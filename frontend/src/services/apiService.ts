@@ -70,6 +70,7 @@ export interface PartName {
   id: number;
   display_name: string;
   order: number | null;
+  arrangements?: string[];
 }
 
 export interface Ensemble {
