@@ -143,7 +143,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             )
             # Keep a stable, typed shape for the frontend
             return [
-                {"id": part.id, "display_name": part.display_name, "order": part.order}
+                {"id": part.id, "display_name": part.display_name, "arrangements": part.get_arrangements(), "order": part.order}
                 for part in parts
             ]
 

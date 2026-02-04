@@ -97,6 +97,16 @@ class PartName(models.Model):
     # Defaults to None, which means it will be set based on creation order
     order = models.PositiveIntegerField(null=True, blank=True)
 
+
+    def get_arrangements(self) -> list:
+        res = []
+        for a in self.ensemble.arrangements.all():
+            #if the arrangement's latest version has a part asset with this part name (OR a mapping to this name), include it
+            v = a.latest_version
+            if PartAsset.objects.filter(arrangement_version=v).filter(part_name=self).exists():
+                res.append(a.title)
+        return res
+
     def save(self, **kwargs):
         if not self.slug:
             self.slug = generate_unique_slug(

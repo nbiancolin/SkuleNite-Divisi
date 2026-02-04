@@ -238,7 +238,7 @@ export default function EnsembleDisplay() {
         if (p && typeof p === 'object') {
           // New backend shape
           if (typeof p.id === 'number' && typeof p.display_name === 'string') {
-            return { id: p.id, display_name: p.display_name } as PartName;
+            return { id: p.id, display_name: p.display_name, arrangements: p.arrangements } as PartName;
           }
           // Old backend shape: { [id]: "name" }
           const entries = Object.entries(p);
@@ -655,6 +655,22 @@ export default function EnsembleDisplay() {
                                   )}
                                   {!latestBook && (
                                     <Text size="xs" c="dimmed">No part book</Text>
+                                  )}
+                                </Group>
+                                <Group>
+                                  {(part.arrangements) && (length <= 2)  && (
+                                    <>
+                                      {part.arrangements.map((arr) => ( 
+                                        <Text size="xs" c="dimmed">{arr} </Text>
+                                      ))}
+                                    </>
+                                  )}
+                                  {(part.arrangements) && (length >2) && (
+                                    <>
+                                      <Text size="xs" c="dimmed">{part.arrangements[0]}</Text>
+                                      <Text size="xs" c="dimmed">... {part.arrangements.length - 1} more</Text>
+                                    {part.arrangements.map((arr) => ( <Text size="xs" c="dimmed">{arr}</Text> ))}
+                                    </>
                                   )}
                                 </Group>
                                 {latestBook?.is_rendered && latestBook.download_url && (
