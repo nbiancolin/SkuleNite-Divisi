@@ -382,9 +382,14 @@ class PartBook(models.Model):
         )
 
         # write buf to filesystem (ensure parent dir exists for FileSystemStorage)
-        if hasattr(default_storage, "path"):
+        # S3-compatible storage doesn't support path(), so we only create dirs for local storage
+        try:
             parent = Path(default_storage.path(self.pdf_file_key)).parent
             parent.mkdir(parents=True, exist_ok=True)
+        except (NotImplementedError, AttributeError):
+            # S3-compatible storage doesn't support absolute paths
+            # Parent directories are created automatically when writing to S3
+            pass
         with default_storage.open(self.pdf_file_key, "wb") as f:
             f.write(buf.getvalue())
 
