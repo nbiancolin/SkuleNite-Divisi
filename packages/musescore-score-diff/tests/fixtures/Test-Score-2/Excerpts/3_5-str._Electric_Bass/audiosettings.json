@@ -1,0 +1,12 @@
+{
+    "tracks": [
+        {
+            "instrumentId": "bb-trumpet",
+            "partId": "6",
+            "soloMuteState": {
+                "mute": true,
+                "solo": false
+            }
+        }
+    ]
+}

@@ -1,0 +1,28 @@
+[project]
+name = "musescore-part-formatter"
+version = "1.0.0"
+authors = [
+  { name="Nicholas Biancolin", email="nicholasbiancolin@gmail.com" },
+]
+description = "A Python utility to process Musescore files and format the scores"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = { file = "LICENSE" }
+
+[project.urls]
+Homepage = "https://github.com/nbiancolin/musescore-part-formatter"
+Issues = "https://github.com/nbiancolin/musescore-part-formatter/issues"
+
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+musescore_part_formatter = ["resources/**/*"]
