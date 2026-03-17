@@ -71,13 +71,14 @@ jobs:
         source venv/bin/activate
 
         echo "[INFO] Installing Python deps"
-        pip install -r apps/backend/requirements.txt
+        cd apps/backend
+        pip install -r requirements.txt
 
         echo "[INFO] Running migrations"
-        python apps/backend/manage.py migrate --noinput
+        python manage.py migrate --noinput
 
         echo "[INFO] Collecting static files"
-        python apps/backend/manage.py collectstatic --noinput
+        python manage.py collectstatic --noinput
 
         echo "[INFO] Restarting services"
         sudo systemctl restart gunicorn
