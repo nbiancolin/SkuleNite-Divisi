@@ -11,7 +11,6 @@ psycopg2-binary
 gunicorn
 boto3
 django-storages
-git+https://github.com/nbiancolin/musescore-part-formatter.git@v1.2.1#egg=musescore_part_formatter
 pytest 
 pytest-django 
 pytest-cov
@@ -23,3 +22,6 @@ requests
 pypdf
 reportlab
 sentry-sdk[django]
+-e ../../packages/musescore-part-formatter
+# -e ../../packages/musescore-score-diff
+# -e ../../packages/scoreforge

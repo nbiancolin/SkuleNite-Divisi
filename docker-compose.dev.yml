@@ -4,9 +4,9 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend.Dockerfile
+      dockerfile: ./apps/backend.Dockerfile
     volumes:
-      - ./backend:/app
+      - ./apps/backend:/app
     ports:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
@@ -27,9 +27,9 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend.Dockerfile
+      dockerfile: ./apps/frontend.Dockerfile
     volumes:
-      - ./frontend:/app
+      - ./apps/frontend:/app
       - /app/node_modules
     ports:
       - "5173:5173"
@@ -54,9 +54,9 @@ services:
   celery:
     build:
       context: .
-      dockerfile: backend.Dockerfile
+      dockerfile: ./apps/backend.Dockerfile
     volumes:
-      - ./backend:/app
+      - ./apps/backend:/app
     command: celery -A backend worker --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
@@ -76,7 +76,7 @@ services:
   musescore-headless:
     build:
       context: .
-      dockerfile: musescore-headless/musescore.Dockerfile
+      dockerfile: ./apps/musescore-headless/musescore.Dockerfile
     restart: unless-stopped
     environment:
       - QT_QPA_PLATFORM=offscreen

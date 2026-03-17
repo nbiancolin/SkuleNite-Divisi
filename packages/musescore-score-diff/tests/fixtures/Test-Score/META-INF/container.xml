@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<container>
+  <rootfiles>
+    <rootfile full-path="score_style.mss"/>
+    <rootfile full-path="Test-Score.mscx"/>
+    <rootfile full-path="Excerpts/0_Trumpet_in_Bb/0_Trumpet_in_Bb.mss"/>
+    <rootfile full-path="Excerpts/0_Trumpet_in_Bb/0_Trumpet_in_Bb.mscx"/>
+    <rootfile full-path="Excerpts/1_Trombone/1_Trombone.mss"/>
+    <rootfile full-path="Excerpts/1_Trombone/1_Trombone.mscx"/>
+    <rootfile full-path="Excerpts/2_Piano/2_Piano.mss"/>
+    <rootfile full-path="Excerpts/2_Piano/2_Piano.mscx"/>
+    <rootfile full-path="Excerpts/3_5-str._Electric_Bass/3_5-str._Electric_Bass.mss"/>
+    <rootfile full-path="Excerpts/3_5-str._Electric_Bass/3_5-str._Electric_Bass.mscx"/>
+    <rootfile full-path="Excerpts/4_Drum_Kit/4_Drum_Kit.mss"/>
+    <rootfile full-path="Excerpts/4_Drum_Kit/4_Drum_Kit.mscx"/>
+    <rootfile full-path="Thumbnails/thumbnail.png"/>
+    <rootfile full-path="audiosettings.json"/>
+    <rootfile full-path="viewsettings.json"/>
+    <rootfile full-path="Excerpts/0_Trumpet_in_Bb/viewsettings.json"/>
+    <rootfile full-path="Excerpts/0_Trumpet_in_Bb/audiosettings.json"/>
+    <rootfile full-path="Excerpts/1_Trombone/viewsettings.json"/>
+    <rootfile full-path="Excerpts/1_Trombone/audiosettings.json"/>
+    <rootfile full-path="Excerpts/2_Piano/viewsettings.json"/>
+    <rootfile full-path="Excerpts/2_Piano/audiosettings.json"/>
+    <rootfile full-path="Excerpts/3_5-str._Electric_Bass/viewsettings.json"/>
+    <rootfile full-path="Excerpts/3_5-str._Electric_Bass/audiosettings.json"/>
+    <rootfile full-path="Excerpts/4_Drum_Kit/viewsettings.json"/>
+    <rootfile full-path="Excerpts/4_Drum_Kit/audiosettings.json"/>
+    </rootfiles>
+  </container>
