@@ -68,7 +68,8 @@ class Measure:
     events: List[Event]
     key_sig: Optional[KeySig] = None
     time_sig: Optional[TimeSig] = None
-    irregular: Optional[float] = None  # Length of irregular measure
+    irregular: Optional[float] = None  # MuseScore irregular flag (0 or 1)
+    measure_len: Optional[str] = None  # Actual length when different from time sig (e.g. "1/4" for pickup)
 
 
 @dataclass

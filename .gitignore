@@ -5,4 +5,4 @@ __pycache__
 blob/
 .env
 venv/
-backend/*.pdf
+apps/backend/*.pdf

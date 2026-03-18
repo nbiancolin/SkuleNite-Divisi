@@ -40,7 +40,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
         key_sig = None
         time_sig = None
         
-        # Parse irregular measure length if present
+        # Parse irregular measure length if present (pickup measures, etc.)
         irregular = None
         irregular_el = measure_el.find("irregular")
         if irregular_el is not None:
@@ -51,9 +51,21 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                 except ValueError:
                     pass
 
+        # Parse measure length when different from time signature (e.g. len="1/4" for pickup)
+        measure_len = measure_el.get("len")
+
         voice_el = measure_el.find("voice")
         if voice_el is None:
-            measures.append(Measure(number=i, events=[], key_sig=key_sig, time_sig=time_sig, irregular=irregular))
+            measures.append(
+                Measure(
+                    number=i,
+                    events=[],
+                    key_sig=key_sig,
+                    time_sig=time_sig,
+                    irregular=irregular,
+                    measure_len=measure_len,
+                )
+            )
             continue
 
         # Parse KeySig and TimeSig from voice element
@@ -216,6 +228,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                 key_sig=key_sig,
                 time_sig=time_sig,
                 irregular=irregular,
+                measure_len=measure_len,
             )
         )
 

@@ -45,7 +45,11 @@ def save_canonical(score: Score, path: Path) -> None:
             # Add irregular measure length if present
             if measure.irregular is not None:
                 meas_obj["irregular"] = measure.irregular
-            
+
+            # Add measure length when different from time sig (e.g. "1/4" for pickup)
+            if measure.measure_len is not None:
+                meas_obj["len"] = measure.measure_len
+
             # Add KeySig if present
             if measure.key_sig is not None:
                 meas_obj["keySig"] = {
@@ -208,7 +212,10 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
     irregular = None
     if "irregular" in measure_data:
         irregular = float(measure_data["irregular"])
-    
+
+    # Parse measure length when different from time sig (e.g. "1/4" for pickup)
+    measure_len = measure_data.get("len")
+
     # Parse KeySig if present
     key_sig = None
     if "keySig" in measure_data:
@@ -344,5 +351,6 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
         key_sig=key_sig,
         time_sig=time_sig,
         irregular=irregular,
+        measure_len=measure_len,
     )
 

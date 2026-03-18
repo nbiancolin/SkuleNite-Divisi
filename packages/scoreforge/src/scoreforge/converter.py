@@ -95,7 +95,13 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
         part_el = ET.SubElement(score_el, "Part", id=part.part_id)
 
         for measure in part.measures:
-            measure_el = ET.SubElement(part_el, "Measure")
+            if measure.measure_len is not None:
+                measure_el = ET.SubElement(
+                    part_el, "Measure", attrib={"len": measure.measure_len}
+                )
+                ET.SubElement(measure_el, "irregular").text = "1"
+            else:
+                measure_el = ET.SubElement(part_el, "Measure")
 
             for event in measure.events:
                 if isinstance(event, Note):
@@ -156,11 +162,16 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
         
         # Add measures to the staff
         for measure in part.measures:
-            measure_el = ET.SubElement(staff_el, "Measure")
-            
-            # Add irregular measure length if present
-            if measure.irregular is not None:
-                ET.SubElement(measure_el, "irregular").text = str(measure.irregular)
+            # Create Measure element with len attribute when measure has non-standard length
+            if measure.measure_len is not None:
+                measure_el = ET.SubElement(
+                    staff_el, "Measure", attrib={"len": measure.measure_len}
+                )
+                ET.SubElement(measure_el, "irregular").text = "1"
+            else:
+                measure_el = ET.SubElement(staff_el, "Measure")
+                if measure.irregular is not None:
+                    ET.SubElement(measure_el, "irregular").text = str(measure.irregular)
             
             voice_el = ET.SubElement(measure_el, "voice")
             
