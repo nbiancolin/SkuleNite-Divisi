@@ -16,3 +16,5 @@ src/scoreforge.egg-info/entry_points.txt
 src/scoreforge.egg-info/requires.txt
 src/scoreforge.egg-info/top_level.txt
 tests/test_generate_canonical_json.py
+tests/test_merger.py
+tests/test_roundtrip.py

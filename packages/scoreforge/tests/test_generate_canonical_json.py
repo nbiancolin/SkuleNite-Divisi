@@ -15,8 +15,17 @@ from scoreforge.serialization import load_score_from_json
 
 @pytest.fixture
 def sample_mscz_path():
-    """Path to the sample MSCZ file."""
-    return Path(__file__).parent / "test-data" / "band-sting-5.mscz"
+    """Path to the sample MSCZ file. Creates from MSCX if MSCZ doesn't exist."""
+    test_data = Path(__file__).parent / "test-data"
+    mscz_path = test_data / "band-sting-5.mscz"
+    mscx_path = test_data / "band-sting-5.mscx"
+
+    if not mscz_path.exists() and mscx_path.exists():
+        # Create MSCZ from MSCX for template workflow (which needs a zip)
+        with zipfile.ZipFile(mscz_path, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(mscx_path, arcname="score.mscx")
+
+    return mscz_path if mscz_path.exists() else mscx_path
 
 
 @pytest.fixture
@@ -454,51 +463,112 @@ def test_keysig_timesig_json_structure(sample_mscz_path, temp_output_dir):
     # But if they exist, they should be in the correct format
 
 
-def test_roundtrip_for_manual_inspection():
-    """Test that converts mscz -> canonical -> mscz for manual inspection.
-    
-    This test performs a full roundtrip conversion and saves the result
-    to the output directory so it can be manually inspected.
-    Uses tests/test-data/band-sting-5.mscz as the input file.
-    """
-    from scoreforge.cli import json_to_mscz
-    from pathlib import Path
-    
-    # Use the specific input file
-    input_mscz = Path(__file__).parent / "test-data" / "band-sting-5.mscz"
-    assert input_mscz.exists(), f"Input file not found: {input_mscz}"
-    
-    # Use the output directory at the project root for easy access
-    output_dir = Path(__file__).parent.parent / "output"
-    output_dir.mkdir(exist_ok=True)
-    
-    # Step 1: Convert mscz to canonical JSON and template
-    output_filename = "roundtrip_test"
+def test_measure_len_in_json(sample_mscz_path, temp_output_dir):
+    """Test that pickup/irregular measures have 'len' field in the generated JSON."""
+    output_filename = "test_output"
+
     mscz_to_json(
-        str(input_mscz),
-        str(output_dir),
-        output_filename
+        str(sample_mscz_path),
+        str(temp_output_dir),
+        output_filename,
     )
-    
-    json_path = output_dir / f"{output_filename}.json"
-    template_path = output_dir / f"{output_filename}.mscz"
-    reconstructed_path = output_dir / f"{output_filename}_reconstructed.mscz"
-    
-    # Step 2: Convert canonical JSON back to mscz
+
+    json_path = temp_output_dir / f"{output_filename}.json"
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # band-sting-5 has a 1/4 pickup measure as the first measure
+    found_measure_len = False
+    for part_id, part in data["parts"].items():
+        measures = part.get("measures", {})
+        if "1" in measures:
+            measure_1 = measures["1"]
+            if "len" in measure_1:
+                assert measure_1["len"] == "1/4", \
+                    "First (pickup) measure should have len='1/4'"
+                found_measure_len = True
+                break
+
+    assert found_measure_len, "At least one part's first measure should have 'len' field (pickup measure)"
+
+
+def test_measure_len_roundtrip(sample_mscz_path, temp_output_dir):
+    """Test that measure length is preserved through mscz -> json -> mscz roundtrip."""
+    from scoreforge.cli import json_to_mscz
+
+    output_filename = "test_output"
+
+    # Create JSON and template from source
+    mscz_to_json(
+        str(sample_mscz_path),
+        str(temp_output_dir),
+        output_filename,
+    )
+
+    json_path = temp_output_dir / f"{output_filename}.json"
+    template_path = temp_output_dir / f"{output_filename}.mscz"
+    reconstructed_path = temp_output_dir / "reconstructed.mscz"
+
+    # Reconstruct MSCZ from JSON and template
     json_to_mscz(
         str(json_path),
         str(reconstructed_path),
-        str(template_path)
+        str(template_path),
     )
-    
-    # Verify the reconstructed file exists
-    assert reconstructed_path.exists(), \
-        f"Reconstructed MSCZ should be created at {reconstructed_path}"
-    
-    print("\n✓ Roundtrip conversion complete!")
-    print(f"  Original: {input_mscz}")
-    print(f"  Canonical JSON: {json_path}")
-    print(f"  Template: {template_path}")
-    print(f"  Reconstructed: {reconstructed_path}")
-    print(f"\nYou can now manually inspect {reconstructed_path}")
+
+    # Parse original and reconstructed, compare measure_len
+    original_tree = extract_mscx(sample_mscz_path)
+    original_score = parse_score(original_tree)
+
+    reconstructed_tree = extract_mscx(reconstructed_path)
+    reconstructed_score = parse_score(reconstructed_tree)
+
+    # First measure (pickup) should have measure_len in both
+    for orig_part, recon_part in zip(original_score.parts, reconstructed_score.parts):
+        assert len(orig_part.measures) > 0 and len(recon_part.measures) > 0
+        orig_m1 = orig_part.measures[0]
+        recon_m1 = recon_part.measures[0]
+        assert orig_m1.measure_len == recon_m1.measure_len, \
+            f"Part {orig_part.part_id}: measure_len should match " \
+            f"({orig_m1.measure_len} vs {recon_m1.measure_len})"
+        if orig_m1.measure_len is not None:
+            assert orig_m1.measure_len == "1/4", \
+                "Pickup measure should have len '1/4'"
+
+
+def test_measure_len_in_reconstructed_xml(sample_mscz_path, temp_output_dir):
+    """Test that reconstructed MSCX has len attribute on pickup measures."""
+    from scoreforge.cli import json_to_mscz
+
+    output_filename = "test_output"
+
+    mscz_to_json(
+        str(sample_mscz_path),
+        str(temp_output_dir),
+        output_filename,
+    )
+
+    json_path = temp_output_dir / f"{output_filename}.json"
+    template_path = temp_output_dir / f"{output_filename}.mscz"
+    reconstructed_path = temp_output_dir / "reconstructed.mscz"
+
+    json_to_mscz(
+        str(json_path),
+        str(reconstructed_path),
+        str(template_path),
+    )
+
+    # Check that Measure elements in output have len attribute for pickup
+    reconstructed_tree = extract_mscx(reconstructed_path)
+    root = reconstructed_tree.getroot()
+    measures_with_len = [
+        m for m in root.findall(".//Measure")
+        if m.get("len") is not None
+    ]
+    assert len(measures_with_len) > 0, \
+        "Reconstructed file should have at least one Measure with len attribute"
+    assert all(m.get("len") == "1/4" for m in measures_with_len[:5]), \
+        "Pickup measures should have len='1/4'"
+
+
 

@@ -206,7 +206,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                 merged_measures.append(
                     Measure(number=out_measure_num, events=user_measures[ui].events,
                             key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
-                            irregular=user_measures[ui].irregular)
+                            irregular=user_measures[ui].irregular,
+                            measure_len=user_measures[ui].measure_len)
                 )
                 out_measure_num += 1
                 user_insertions_idx += 1
@@ -236,25 +237,29 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                     merged_measures.append(
                         Measure(number=out_measure_num, events=base_meas.events,
                                 key_sig=base_meas.key_sig, time_sig=base_meas.time_sig,
-                                irregular=base_meas.irregular)
+                                irregular=base_meas.irregular,
+                                measure_len=base_meas.measure_len)
                     )
                 elif base_hash == head_hash:
                     merged_measures.append(
                         Measure(number=out_measure_num, events=user_meas.events,
                                 key_sig=user_meas.key_sig, time_sig=user_meas.time_sig,
-                                irregular=user_meas.irregular)
+                                irregular=user_meas.irregular,
+                                measure_len=user_meas.measure_len)
                     )
                 elif base_hash == user_hash:
                     merged_measures.append(
                         Measure(number=out_measure_num, events=head_meas.events,
                                 key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular)
+                                irregular=head_meas.irregular,
+                                measure_len=head_meas.measure_len)
                     )
                 elif head_hash == user_hash:
                     merged_measures.append(
                         Measure(number=out_measure_num, events=head_meas.events,
                                 key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular)
+                                irregular=head_meas.irregular,
+                                measure_len=head_meas.measure_len)
                     )
                 else:
                     conflicts[(part_id, out_measure_num)] = (head_meas, user_meas)
@@ -278,7 +283,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
             merged_measures.append(
                 Measure(number=out_measure_num, events=head_measures[hi].events,
                         key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
-                        irregular=head_measures[hi].irregular)
+                        irregular=head_measures[hi].irregular,
+                        measure_len=head_measures[hi].measure_len)
             )
             out_measure_num += 1
 

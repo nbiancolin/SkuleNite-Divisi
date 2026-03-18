@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 def extract_mscx(mscz_path: Path) -> ET.ElementTree:
-    """Extract and parse the MSCX file from a MSCZ archive.
+    """Extract and parse the MSCX file from a MSCZ archive or MSCX file.
     
     MSCZ files are ZIP archives containing an MSCX XML file along with
     other resources (images, audio, etc.). This function extracts and
@@ -26,6 +26,8 @@ def extract_mscx(mscz_path: Path) -> ET.ElementTree:
         >>> tree = extract_mscx(Path("score.mscz"))
         >>> score = parse_score(tree)
     """
+    if mscz_path.suffix.lower() == ".mscx":
+        return ET.parse(mscz_path)
     with zipfile.ZipFile(mscz_path, "r") as z:
         for name in z.namelist():
             if name.endswith(".mscx"):
