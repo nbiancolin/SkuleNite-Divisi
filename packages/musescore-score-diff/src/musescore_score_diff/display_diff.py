@@ -11,6 +11,46 @@ import tempfile
 from .utils import extract_measures, State, _make_cutaway, _make_empty_measure, highlight_measure, make_highlight_end_empty_measure
 from .compute_diff import compute_diff
 
+def _score_staff_id_to_index(score: ET.Element) -> dict[str, int]:
+    """Map score-level <Staff id> to its index in score.findall('Staff')."""
+    res: dict[str, int] = {}
+    for i, staff in enumerate(score.findall("Staff")):
+        staff_id = staff.attrib.get("id")
+        if staff_id is not None:
+            res[staff_id] = i
+    return res
+
+def _score_staff_id_to_elem(score: ET.Element) -> dict[str, ET.Element]:
+    """Map score-level <Staff id> to the staff element."""
+    res: dict[str, ET.Element] = {}
+    for staff in score.findall("Staff"):
+        staff_id = staff.attrib.get("id")
+        if staff_id is not None:
+            res[staff_id] = staff
+    return res
+
+def _part_name_to_end_staff_index(score: ET.Element) -> dict[str, int]:
+    """For each part name, return the end staff index (exclusive) of that part's block
+    in the score-level staff list.
+
+    Uses staff IDs to be robust for multi-staff instruments.
+    """
+    id_to_index = _score_staff_id_to_index(score)
+    result: dict[str, int] = {}
+    for part in score.findall("Part"):
+        name = part.find("trackName")
+        part_name = name.text if name is not None else ""
+        staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
+        indices = [id_to_index[sid] for sid in staff_ids if sid in id_to_index]
+        result[part_name] = (max(indices) + 1) if indices else 0
+    return result
+
+def _shift_end_indices(end_idx: dict[str, int], insert_at: int, delta: int) -> None:
+    """Shift all end indices at/after insert_at by delta (in-place)."""
+    for k, v in list(end_idx.items()):
+        if v >= insert_at:
+            end_idx[k] = v + delta
+
 def new_merge_musescore_files(f1_path, f2_path, output_path=None):
     """
     read in f1 and f2, create diff_score that is union of both scores
@@ -51,29 +91,40 @@ def new_merge_musescore_files(f1_path, f2_path, output_path=None):
     def _make_cutaway() -> ET.Element:
         return ET.fromstring("<cutaway>1</cutaway>")
 
-    for part, staff in zip(score2.findall("Part"), score2.findall("Staff")):
-        # This assertion check only works for the score, not for parts !!
-        # assert part.attrib["id"] == staff.attrib["id"], (
-        #     f"ERROR: part id {part.attrib["id"]} not matching staff id {staff.attrib["id"]}"
-        # )
+    # End staff index (exclusive) per part so multi-staff instruments stay R1 L1 R2 L2
+    part_name_to_end_staff_index = _part_name_to_end_staff_index(score1)
+    score2_staff_by_id = _score_staff_id_to_elem(score2)
+
+    for part in score2.findall("Part"):
         staff_name = part.find("trackName").text
         assert staff_name is not None
+        part_staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
+        part_staves = [deepcopy(score2_staff_by_id[sid]) for sid in part_staff_ids if sid in score2_staff_by_id]
+
         try:
-            index = part_names.index(staff_name)
+            part_index = part_names.index(staff_name)
             p = deepcopy(part)
-            s = p.find("Staff")
-            s.append(_make_cutaway())
-            union_part_list.insert(index +1, p)
-            part_names.insert(index +1, staff_name)
-            union_staff_list.insert(index, deepcopy(staff))
+            for s in p.findall("Staff"):
+                s.append(_make_cutaway())
+            union_part_list.insert(part_index + 1, p)
+            part_names.insert(part_index + 1, staff_name)
+            insert_at = part_name_to_end_staff_index[staff_name]
+            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
+            for s in part_staves:
+                s.append(_make_cutaway())
+                union_staff_list.insert(insert_at, s)
+                insert_at += 1
+            part_name_to_end_staff_index[staff_name] = insert_at
         except ValueError:
-            # append to end of list
             print(f"ValueError: {staff_name}")
-            union_part_list.append(part)
+            union_part_list.append(deepcopy(part))
             part_names.append(staff_name)
-            union_staff_list.append(staff)
-            continue
-        #TODO: Piano staves get added wrong, should be added after the second staff, not the first staff
+            insert_at = len(union_staff_list)
+            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
+            for s in part_staves:
+                s.append(_make_cutaway())
+                union_staff_list.append(s)
+            part_name_to_end_staff_index[staff_name] = len(union_staff_list)
         
 
     diff_score_tree = deepcopy(tree1)
@@ -127,9 +178,11 @@ def new_merge_musescore_files(f1_path, f2_path, output_path=None):
         diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
     return (diff_score_tree, part_names)
 
+
 def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.ElementTree, List[str]]:
     """
     Merge two MuseScore files for diff display (adapted from your new_merge_musescore_files).
+    Multi-staff instruments (e.g. piano) keep linked staves in order: R1 L1 R2 L2.
     """
     tree1 = ET.parse(f1_path)
     tree2 = ET.parse(f2_path)
@@ -147,29 +200,37 @@ def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.Eleme
     part_names = [part.find("trackName").text for part in score1.findall("Part")]
     union_staff_list = [staff for staff in score1.findall("Staff")]
 
-    # Process parts from score2
-    for part, staff in zip(score2.findall("Part"), score2.findall("Staff")):
-        assert part.attrib["id"] == staff.attrib["id"], (
-            "ERROR: Part and staff IDs got out of sync"
-        )
+    # End staff index (exclusive) for each part name so we insert after the full block (R1 L1 then R2 L2)
+    part_name_to_end_staff_index = _part_name_to_end_staff_index(score1)
+
+    score2_staff_by_id = _score_staff_id_to_elem(score2)
+
+    for part in score2.findall("Part"):
         staff_name = part.find("trackName").text
         assert staff_name is not None
-        
+        part_staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
+        part_staves = [deepcopy(score2_staff_by_id[sid]) for sid in part_staff_ids if sid in score2_staff_by_id]
+
         try:
-            index = part_names.index(staff_name)
-            # Add "-1" suffix for diff version
+            part_index = part_names.index(staff_name)
+            # Insert one Part for this instrument (diff version with "-1")
             p = deepcopy(part)
             track_name_elem = p.find("trackName")
             if track_name_elem is not None:
                 track_name_elem.text = f"{staff_name}-1"
-            
-            # Add cutaway for visual distinction
-            s = deepcopy(staff)
-            s.append(_make_cutaway())
-            
-            union_part_list.insert(index + 1, p)
-            part_names.insert(index + 1, f"{staff_name}-1")
-            union_staff_list.insert(index + 1, s)
+
+            union_part_list.insert(part_index + 1, p)
+            part_names.insert(part_index + 1, f"{staff_name}-1")
+
+            # Insert all staves of this part after the existing block (R1 L1 R2 L2)
+            insert_at = part_name_to_end_staff_index[staff_name]
+            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
+            for s in part_staves:
+                s.append(_make_cutaway())
+                union_staff_list.insert(insert_at, s)
+                insert_at += 1
+            part_name_to_end_staff_index[staff_name] = insert_at
+
         except ValueError:
             # Part doesn't exist in score1, append to end
             print(f"New part found: {staff_name}")
@@ -177,10 +238,14 @@ def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.Eleme
             track_name_elem = p.find("trackName")
             if track_name_elem is not None:
                 track_name_elem.text = f"{staff_name}-1"
-            
+
             union_part_list.append(p)
             part_names.append(f"{staff_name}-1")
-            union_staff_list.append(deepcopy(staff))
+            insert_at = len(union_staff_list)
+            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
+            for s in part_staves:
+                union_staff_list.append(deepcopy(s))
+            part_name_to_end_staff_index[staff_name] = len(union_staff_list)
 
     # Create diff score tree
     diff_score_tree = deepcopy(tree1)

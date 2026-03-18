@@ -138,28 +138,6 @@
           </Text>
         </VBox>
       <Measure>
-        <eid>e5KFxNa33RL_De3g3TTvqtP</eid>
-        <voice>
-          <Chord>
-            <eid>L/j+9jRCoME_sVjbFb9IkwF</eid>
-            <durationType>quarter</durationType>
-            <Note>
-              <eid>wC5DjeUUuYP_RW1aBdxky3P</eid>
-              <pitch>60</pitch>
-              <tpc>14</tpc>
-              </Note>
-            </Chord>
-          <Rest>
-            <eid>Oj115UbxQZH_FfTY9rfQJtF</eid>
-            <durationType>quarter</durationType>
-            </Rest>
-          <Rest>
-            <eid>ccRShcd0egG_YOcDN+7BNrC</eid>
-            <durationType>half</durationType>
-            </Rest>
-          </voice>
-        </Measure>
-      <Measure>
         <eid>Zzm47aZuhfC_v7rhm83iFz</eid>
         <voice>
           <KeySig>
@@ -332,19 +310,14 @@
             <durationType>quarter</durationType>
             <Note>
               <eid>LVAF+gyg1MG_6IHPNsC8kFC</eid>
-              <pitch>62</pitch>
-              <tpc>16</tpc>
-              </Note>
-            </Chord>
-          <Chord>
-            <eid>FgmgyUhDgiE_KrhzTukCsVH</eid>
-            <durationType>quarter</durationType>
-            <Note>
-              <eid>err5Nd3e9mN_s+LX9TwFgCH</eid>
               <pitch>60</pitch>
               <tpc>14</tpc>
               </Note>
             </Chord>
+          <Rest>
+            <eid>qdgZcZ/P/VM_haf0rT9DUH</eid>
+            <durationType>quarter</durationType>
+            </Rest>
           </voice>
         </Measure>
       <Measure>
@@ -540,7 +513,7 @@
             </Chord>
           </voice>
         </Measure>
-      </Staff>
+      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
     <Staff id="2">
       <VBox>
         <height>10</height>
@@ -561,7 +534,7 @@
           <text>Composer / arranger</text>
           </Text>
         </VBox>
-      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure>
+      <cutaway>1</cutaway><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure>
         <eid>u2NRPCfTffM_s5b3jbp/MZI</eid>
         <voice>
           <Spanner type="TextLine"><TextLine><color r="0" g="200" b="0" a="100" /><diagonal>1</diagonal><lineWidth>5</lineWidth><Segment><subtype>0</subtype><offset x="0" y="2.3" /><off2 x="0" y="0" /><minDistance>-999</minDistance><color r="0" g="200" b="0" a="100" /></Segment></TextLine><next><location><measures>1</measures></location></next></Spanner><Chord>
@@ -587,16 +560,52 @@
             <durationType>quarter</durationType>
             <Note>
               <eid>LVAF+gyg1MG_6IHPNsC8kFC</eid>
+              <pitch>62</pitch>
+              <tpc>16</tpc>
+              </Note>
+            </Chord>
+          <Chord>
+            <eid>FgmgyUhDgiE_KrhzTukCsVH</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>err5Nd3e9mN_s+LX9TwFgCH</eid>
               <pitch>60</pitch>
               <tpc>14</tpc>
               </Note>
             </Chord>
+          </voice>
+        </Measure>
+      <Measure><voice><Spanner type="TextLine"><prev><location><measures>-1</measures></location></prev></Spanner><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure>
+        <eid>0Q3wV3kMadD_N08mkS20OvB</eid>
+        <voice>
+          <Spanner type="TextLine"><TextLine><color r="0" g="200" b="0" a="100" /><diagonal>1</diagonal><lineWidth>5</lineWidth><Segment><subtype>0</subtype><offset x="0" y="2.3" /><off2 x="0" y="0" /><minDistance>-999</minDistance><color r="0" g="200" b="0" a="100" /></Segment></TextLine><next><location><measures>1</measures></location></next></Spanner><Chord>
+            <eid>884P7Jxm+eN_nN2qdL/O6nD</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>jealfs6v8/E_m3o+pJsaLuB</eid>
+              <pitch>69</pitch>
+              <tpc>17</tpc>
+              </Note>
+            </Chord>
           <Rest>
-            <eid>qdgZcZ/P/VM_haf0rT9DUH</eid>
+            <eid>1F+NCS+TERD_ckbmx+n9ZeD</eid>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Chord>
+            <eid>Au/ZQh4y3BL_dl076T9RIWG</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>aJzTsPUc9KL_NmQrLcJt3nI</eid>
+              <pitch>71</pitch>
+              <tpc>19</tpc>
+              </Note>
+            </Chord>
+          <Rest>
+            <eid>Hi5+4trXJsI_aqdLHWTGvkB</eid>
             <durationType>quarter</durationType>
             </Rest>
           </voice>
         </Measure>
-      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
+      </Staff>
     </Score>
   </museScore>
