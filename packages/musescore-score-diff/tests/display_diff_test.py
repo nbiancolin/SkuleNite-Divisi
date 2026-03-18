@@ -19,13 +19,13 @@ TEST_SCORE2_PATH = "tests/fixtures/single-staff/test-score2/test-score2.mscx"
 TEST_SCORE_OUTPUT_PATH = "tests/fixtures/single-staff/test_score_output/test-score-{}.mscx"
 
 
-# def test_mscz_compare_visually():
-#     compare_mscz_files(
-#         FILE1_MSCZ_PATH,
-#         FILE2_MSCZ_PATH,
-#         "tests/fixtures/_sample_output/Test-Score.mscz",
-#     )
-#     warnings.warn("Check the outputted file that output looks correct!")
+def test_mscz_compare_visually():
+    compare_mscz_files(
+        FILE1_MSCZ_PATH,
+        FILE2_MSCZ_PATH,
+        "tests/fixtures/_sample_output/Test-Score.mscz",
+    )
+    warnings.warn("Check the outputted file that output looks correct!")
 
 def test_initial_diff_score_generated_properly():
     diff_score_tree, _ = merge_musescore_files_for_diff(

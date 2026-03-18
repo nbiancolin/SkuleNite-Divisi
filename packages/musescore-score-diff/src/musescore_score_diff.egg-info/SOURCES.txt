@@ -3,7 +3,6 @@ pyproject.toml
 src/musescore_score_diff/__init__.py
 src/musescore_score_diff/compute_diff.py
 src/musescore_score_diff/display_diff.py
-src/musescore_score_diff/old_display_diff.py
 src/musescore_score_diff/utils.py
 src/musescore_score_diff.egg-info/PKG-INFO
 src/musescore_score_diff.egg-info/SOURCES.txt
