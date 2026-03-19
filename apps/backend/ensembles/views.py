@@ -8,9 +8,10 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.core.files.storage import default_storage
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.db import transaction
 from django.conf import settings
 
-from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
+from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName, Commit
 from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -377,13 +378,19 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
                 email=(user.email or "user@divisi.local"),
             )
 
-            commit_row = commit_canonical_snapshot(
-                arrangement,
-                payload_dir,
-                author=author,
-                message=message,
-                created_by=user,
-            )
+            try:
+                commit_row = commit_canonical_snapshot(
+                    arrangement,
+                    payload_dir,
+                    author=author,
+                    message=message,
+                    created_by=user,
+                )
+            except ArrangementGitError as e:
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         return Response(
             {
@@ -425,8 +432,74 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
     def create_from_commit(self, request):
         serializer = ArrangementVersionFromCommitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-        
+        accessible_arrangements = Arrangement.objects.filter(
+            Q(ensemble__owner=request.user) | Q(ensemble__userships__user=request.user)
+        ).distinct()
+
+        commit_obj = data.get("commit")
+        if commit_obj is not None:
+            if not accessible_arrangements.filter(id=commit_obj.git_repo.arrangement_id).exists():
+                return Response(
+                    {"detail": "Commit not found or inaccessible."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            commit_hash = data.get("commit_hash")
+            commit_obj = (
+                Commit.objects.filter(
+                    sha=commit_hash,
+                    git_repo__arrangement__in=accessible_arrangements,
+                )
+                .select_related("git_repo__arrangement")
+                .first()
+            )
+            if commit_obj is None:
+                return Response(
+                    {"detail": "Commit not found or inaccessible."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+        arrangement = commit_obj.git_repo.arrangement
+        file_name = f"commit-{commit_obj.sha}.mscz"
+
+        # Avoid duplicate version rows for the same commit marker file.
+        existing = ArrangementVersion.objects.filter(arrangement=arrangement, file_name=file_name).first()
+        if existing:
+            return Response(
+                {"detail": "Version already exists for this commit.", "version_id": existing.id},
+                status=status.HTTP_200_OK,
+            )
+
+        try:
+            with transaction.atomic():
+                version = ArrangementVersion(
+                    arrangement=arrangement,
+                    file_name=file_name,
+                    num_measures_per_line_score=data.get("num_measures_per_line_score", 8),
+                    num_measures_per_line_part=data.get("num_measures_per_line_part", 6),
+                    num_lines_per_page=data.get("num_lines_per_page", 8),
+                    is_processing=False,
+                    error_on_export=False,
+                )
+                version.save(version_type=data.get("version_type", "patch"))
+        except Exception as e:
+            return Response(
+                {"detail": f"Failed to create arrangement version from commit: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(
+            {
+                "message": "Arrangement version created from commit.",
+                "version_id": version.id,
+                "version_label": version.version_label,
+                "arrangement_id": arrangement.id,
+                "commit_sha": commit_obj.sha,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     # @action(detail=False, methods=["post"], url_path="upload")
     # def upload_arrangement_version(self, request):

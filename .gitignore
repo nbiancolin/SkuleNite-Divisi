@@ -6,3 +6,4 @@ blob/
 .env
 venv/
 apps/backend/*.pdf
+*.git

@@ -1,4 +1,3 @@
-import dataclasses
 import os
 import subprocess
 import tempfile
@@ -7,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
+from django.utils import timezone
 
 from ensembles.models import Arrangement
 from ensembles.models.commit import Commit
@@ -50,9 +50,8 @@ def _git_root_dir() -> Path:
 
 def init_repo(arrangement: Arrangement) -> str:
     """
-    Ensure a per-arrangement bare git repo exists on disk and is referenced by:
-    - Arrangement.git_repo_path
-    - GitRepo row (ensembles.GitRepo)
+    Ensure a per-arrangement bare git repo exists on disk and is referenced
+    by a GitRepo row (ensembles.GitRepo).
     """
     if arrangement.pk is None:
         raise ArrangementGitError("Arrangement must be saved before initializing a repo.")
@@ -60,14 +59,13 @@ def init_repo(arrangement: Arrangement) -> str:
     root = _git_root_dir()
     root.mkdir(parents=True, exist_ok=True)
 
-    repo_path = arrangement.git_repo_path
-    if not repo_path:
+    # Source of truth is the GitRepo model (not Arrangement fields).
+    repo_row = GitRepo.objects.filter(arrangement=arrangement).order_by("id").first()
+    if repo_row is None:
         repo_path = str(root / f"arr_{arrangement.id}.git")
-        Arrangement.objects.filter(id=arrangement.id).update(git_repo_path=repo_path)
-        arrangement.git_repo_path = repo_path
-
-    # Ensure GitRepo row exists
-    GitRepo.objects.get_or_create(arrangement=arrangement, defaults={"repo_path": repo_path})
+        repo_row = GitRepo.objects.create(arrangement=arrangement, repo_path=repo_path)
+    else:
+        repo_path = repo_row.repo_path
 
     repo_dir = Path(repo_path)
     if not repo_dir.exists():
@@ -75,7 +73,12 @@ def init_repo(arrangement: Arrangement) -> str:
 
     # If it doesn't look like a git repo yet, initialize it as bare.
     if not (repo_dir / "HEAD").exists():
-        _run_git(["init", "--bare", str(repo_dir)])
+        # Prefer initializing with main to avoid master-branch warnings.
+        try:
+            _run_git(["init", "--bare", "--initial-branch=main", str(repo_dir)])
+        except ArrangementGitError:
+            # Fallback for older git versions that don't support --initial-branch.
+            _run_git(["init", "--bare", str(repo_dir)])
 
     # Configure scoreforge merge driver (repo-local)
     # This enables `.gitattributes` with `merge=scoreforge` to work without global config.
@@ -84,7 +87,7 @@ def init_repo(arrangement: Arrangement) -> str:
     _run_git(["--git-dir", str(repo_dir), "config", "merge.scoreforge.driver", driver_cmd])
 
     # Ensure default branch exists as the symbolic HEAD (doesn't create a commit).
-    default_branch = arrangement.git_default_branch or "main"
+    default_branch = "main"
     _run_git(["--git-dir", str(repo_dir), "symbolic-ref", "HEAD", f"refs/heads/{default_branch}"])
 
     return repo_path
@@ -104,7 +107,12 @@ def commit_canonical_snapshot(
     Returns the created Commit row.
     """
     repo_path = Path(init_repo(arrangement))
-    default_branch = arrangement.git_default_branch or "main"
+    default_branch = "main"
+    git_repo = GitRepo.objects.filter(arrangement=arrangement, repo_path=str(repo_path)).order_by("id").first()
+    if git_repo is None:
+        raise ArrangementGitError(
+            f"Could not find GitRepo row for arrangement {arrangement.id} at {repo_path}"
+        )
 
     with tempfile.TemporaryDirectory(prefix="arr_git_work_") as tmp:
         tmp_dir = Path(tmp)
@@ -129,6 +137,17 @@ def commit_canonical_snapshot(
             dest.write_bytes(src.read_bytes())
 
         _run_git(["add", "-A"], cwd=workdir)
+        status_porcelain = _run_git(["status", "--porcelain"], cwd=workdir)
+
+        # If canonical payload is unchanged, reuse current HEAD commit.
+        if not status_porcelain.strip():
+            sha = _run_git(["rev-parse", "HEAD"], cwd=workdir)
+            existing = Commit.objects.filter(git_repo=git_repo, sha=sha).first()
+            if existing is not None:
+                return existing
+            raise ArrangementGitError(
+                "No changes detected in canonical snapshot and no existing Commit row found for HEAD."
+            )
 
         env: dict[str, str] = {}
         if timestamp is not None:
@@ -158,10 +177,8 @@ def commit_canonical_snapshot(
 
         _run_git(["push", "origin", default_branch], cwd=workdir)
 
-    git_repo = GitRepo.objects.get(arrangement=arrangement, repo_path=str(repo_path))
-
-    authored_at = timestamp or datetime.utcnow()
-    committed_at = timestamp or datetime.utcnow()
+    authored_at = timestamp or timezone.now()
+    committed_at = timestamp or timezone.now()
 
     return Commit.objects.create(
         git_repo=git_repo,

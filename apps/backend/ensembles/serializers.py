@@ -313,8 +313,16 @@ class ArrangementVersionFromCommitSerializer(serializers.Serializer):
     default_error_messages = {
         "bad_payload": "Either commit or commit hash must be provided (not both)"
     }
-    commit = serializers.PrimaryKeyRelatedField(required=False, queryset=Commit.objects.all()),
+    commit = serializers.PrimaryKeyRelatedField(required=False, queryset=Commit.objects.all())
     commit_hash = serializers.CharField(required=False)
+    version_type = serializers.ChoiceField(
+        required=False,
+        choices=[t[0] for t in VERSION_TYPES],
+        default="patch",
+    )
+    num_measures_per_line_score = serializers.IntegerField(required=False, default=8)
+    num_measures_per_line_part = serializers.IntegerField(required=False, default=6)
+    num_lines_per_page = serializers.IntegerField(required=False, default=8)
 
     def validate(self, attrs):
         if not (attrs.get("commit") or attrs.get("commit_hash")):
