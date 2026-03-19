@@ -38,6 +38,7 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
+  IconGitCommit,
   //TODO[SC-262]: Uncomment these for the diff viewer
   // IconGitCompare,
   // IconEye,
@@ -46,7 +47,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
+import type { Arrangement, EditableArrangementData, VersionHistoryItem, ArrangementCommitListItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
@@ -111,6 +112,10 @@ export default function ArrangementDisplay() {
     download_url: string;
   }>>([]);
   const [latestVersionPartsLoading, setLatestVersionPartsLoading] = useState(false);
+  const [commits, setCommits] = useState<ArrangementCommitListItem[]>([]);
+  const [commitsLoading, setCommitsLoading] = useState(false);
+  const [showCommitHistory, setShowCommitHistory] = useState(false);
+  const [createVersionLoadingBySha, setCreateVersionLoadingBySha] = useState<Record<string, boolean>>({});
 
   //TODO[SC-262]: uncomment when new score diff is ready
   // Diff functionality states
@@ -209,6 +214,31 @@ export default function ArrangementDisplay() {
       setLatestVersionParts([]);
     } finally {
       setLatestVersionPartsLoading(false);
+    }
+  };
+
+  const fetchCommits = async (arrangementId: number) => {
+    try {
+      setCommitsLoading(true);
+      const commitData = await apiService.getArrangementCommits(arrangementId);
+      setCommits(commitData);
+    } catch (err) {
+      console.error('Failed to fetch commit history:', err);
+    } finally {
+      setCommitsLoading(false);
+    }
+  };
+
+  const handleCreateVersionFromCommit = async (commitSha: string) => {
+    try {
+      setCreateVersionLoadingBySha((prev) => ({ ...prev, [commitSha]: true }));
+      await apiService.createArrangementVersionFromCommit(commitSha);
+      await fetchArrangement(+arrangementId);
+      await fetchCommits(+arrangementId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create version from commit');
+    } finally {
+      setCreateVersionLoadingBySha((prev) => ({ ...prev, [commitSha]: false }));
     }
   };
 
@@ -329,6 +359,7 @@ export default function ArrangementDisplay() {
 
       // Fetch version history
       await fetchVersionHistory(id);
+      await fetchCommits(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch arrangement');
     } finally {
@@ -837,6 +868,76 @@ export default function ArrangementDisplay() {
             ) : (
               <Text c="dimmed" ta="center" py="xl">
                 No version history available
+              </Text>
+            )}
+          </Collapse>
+        </Card>
+
+        <Card shadow="xs" padding="lg" radius="md" withBorder mt="lg">
+          <Group justify="space-between" mb="md">
+            <Group>
+              <IconGitCommit size={20} />
+              <Title order={3}>Latest Commits</Title>
+              <Badge variant="light" color="grape">
+                {commits.length} commits
+              </Badge>
+            </Group>
+            <Button
+              variant="subtle"
+              rightSection={showCommitHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
+              onClick={() => setShowCommitHistory(!showCommitHistory)}
+              loading={commitsLoading}
+            >
+              {showCommitHistory ? 'Hide' : 'Show'} Commits
+            </Button>
+          </Group>
+
+          <Collapse in={showCommitHistory}>
+            {commits.length > 0 ? (
+              <ScrollArea>
+                <Table striped highlightOnHover>
+                  <Table.Thead>
+                    <Table.Tr>
+                      <Table.Th>SHA</Table.Th>
+                      <Table.Th>Message</Table.Th>
+                      <Table.Th>Date</Table.Th>
+                      <Table.Th>Action</Table.Th>
+                    </Table.Tr>
+                  </Table.Thead>
+                  <Table.Tbody>
+                    {commits.map((commit) => (
+                      <Table.Tr key={commit.id}>
+                        <Table.Td>
+                          <Text ff="monospace">{commit.sha.slice(0, 8)}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{commit.message || "(no message)"}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">{formatTimestamp(commit.committed_at)}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          {commit.has_version ? (
+                            <Badge color="green" variant="light">Version created</Badge>
+                          ) : (
+                            <Button
+                              size="xs"
+                              variant="light"
+                              onClick={() => handleCreateVersionFromCommit(commit.sha)}
+                              loading={!!createVersionLoadingBySha[commit.sha]}
+                            >
+                              Create Version
+                            </Button>
+                          )}
+                        </Table.Td>
+                      </Table.Tr>
+                    ))}
+                  </Table.Tbody>
+                </Table>
+              </ScrollArea>
+            ) : (
+              <Text c="dimmed" ta="center" py="xl">
+                No commit history available
               </Text>
             )}
           </Collapse>

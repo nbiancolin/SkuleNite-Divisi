@@ -118,6 +118,10 @@ export interface ArrangementCommit {
   created_by: number;
 }
 
+export interface ArrangementCommitListItem extends ArrangementCommit {
+  has_version: boolean;
+}
+
 // export interface DiffData {
 //   id: number;
 //   from_version: number;
@@ -619,6 +623,27 @@ export const apiService = {
       }
       throw new Error(
         `Failed to create arrangement version from commit (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+
+    return response.json();
+  },
+
+  async getArrangementCommits(arrangementId: number): Promise<ArrangementCommitListItem[]> {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/commits/`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch arrangement commits (status: ${response.status}) - ${errorDetails}`
       );
     }
 

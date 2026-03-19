@@ -329,6 +329,44 @@ class ArrangementViewSet(BaseArrangementViewSet):
 class ArrangementByIdViewSet(BaseArrangementViewSet):
     lookup_field = "id"
 
+    @action(detail=True, methods=["get"], url_path="commits")
+    def commits(self, request, id=None, *args, **kwargs):
+        arrangement = self.get_object()
+
+        # Versions created from commits are currently marked via file_name.
+        version_commit_shas = {
+            v.file_name[len("commit-") : -len(".mscz")]
+            for v in ArrangementVersion.objects.filter(arrangement=arrangement)
+            if v.file_name.startswith("commit-") and v.file_name.endswith(".mscz")
+        }
+
+        commit_rows = (
+            Commit.objects.filter(git_repo__arrangement=arrangement)
+            .order_by("-committed_at")
+            .values(
+                "id",
+                "sha",
+                "message",
+                "author_name",
+                "author_email",
+                "authored_at",
+                "committed_at",
+                "parent_sha",
+                "tag",
+                "created_by_id",
+            )[:30]
+        )
+
+        return Response(
+            [
+                {
+                    **row,
+                    "has_version": row["sha"] in version_commit_shas,
+                }
+                for row in commit_rows
+            ]
+        )
+
     @action(detail=True, methods=["post"], url_path="new-commit")
     def new_commit(self, request, arrangement_id=None, *args, **kwargs):
         arrangement = self.get_queryset().get(id=arrangement_id)
