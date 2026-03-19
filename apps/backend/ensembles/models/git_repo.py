@@ -1,8 +1,6 @@
 from django.db import models
-from django.core.files.storage import default_storage
 
 import os
-from logging import getLogger
 
 from ensembles.models.arrangement import Arrangement
 

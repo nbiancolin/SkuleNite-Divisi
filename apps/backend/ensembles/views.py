@@ -15,7 +15,7 @@ from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer,
-    CreateArrangementVersionMsczSerializer,
+    ArrangementVersionFromCommitSerializer,
     CreateArrangementCommitSerializer,
     EnsemblePartNameMergeSerializer,
 )
@@ -419,22 +419,30 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         return ArrangementVersion.objects.filter(
             Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
         ).distinct()
+    
 
-    @action(detail=False, methods=["post"], url_path="upload")
-    def upload_arrangement_version(self, request):
-        serializer = CreateArrangementVersionMsczSerializer(data=request.data)
+    @action(detail=False, methods=["post"])
+    def create_from_commit(self, request):
+        serializer = ArrangementVersionFromCommitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        res = serializer.save()
-        if "error" in res.keys():
-            return Response(
-                {"message": "Error", "details": res["error"]}
-            )
+        
 
-        return Response(
-            {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
-            status=status.HTTP_202_ACCEPTED,
-        )
+    # @action(detail=False, methods=["post"], url_path="upload")
+    # def upload_arrangement_version(self, request):
+    #     serializer = CreateArrangementVersionMsczSerializer(data=request.data)
+    #     serializer.is_valid(raise_exception=True)
+
+    #     res = serializer.save()
+    #     if "error" in res.keys():
+    #         return Response(
+    #             {"message": "Error", "details": res["error"]}
+    #         )
+
+    #     return Response(
+    #         {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
+    #         status=status.HTTP_202_ACCEPTED,
+    #     )
     
     #TODO[SC-278]: Make this have a serializer omg
     @action(detail=True, methods=["get"])

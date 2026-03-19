@@ -1,13 +1,11 @@
 import io
 from rest_framework import serializers
-from rest_framework import status
 
 from django.db import transaction
-from django.db.models import F
 from django.core.files.storage import default_storage
 from django.conf import settings
 
-from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook, PartName
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook, PartName, Commit
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
 from django.contrib.auth import get_user_model
@@ -308,3 +306,24 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
 class CreateArrangementCommitSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
     message = serializers.CharField(required=False, allow_blank=True)
+
+
+
+class ArrangementVersionFromCommitSerializer(serializers.Serializer):
+    default_error_messages = {
+        "bad_payload": "Either commit or commit hash must be provided (not both)"
+    }
+    commit = serializers.PrimaryKeyRelatedField(required=False, queryset=Commit.objects.all()),
+    commit_hash = serializers.CharField(required=False)
+
+    def validate(self, attrs):
+        if not (attrs.get("commit") or attrs.get("commit_hash")):
+            self.fail("bad_payload")
+        if attrs.get("commit") and attrs.get("commit_hash"):
+            self.fail("bad_payload")
+
+        return super().validate(attrs)
+    
+
+    # def save(self, **kwargs):
+    #     # Should generate an arrangement version from a commit
