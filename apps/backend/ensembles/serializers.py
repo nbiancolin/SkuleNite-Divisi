@@ -303,3 +303,8 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
         # export_arrangement_version(version.pk, action="mxl")
 
         return {"success": True, "version_id": version.id}
+
+
+class CreateArrangementCommitSerializer(serializers.Serializer):
+    file = serializers.FileField(allow_empty_file=False)
+    message = serializers.CharField(required=False, allow_blank=True)

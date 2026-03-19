@@ -4,7 +4,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
 from django.core.exceptions import ValidationError
@@ -17,13 +16,20 @@ from ensembles.serializers import (
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
+    CreateArrangementCommitSerializer,
     EnsemblePartNameMergeSerializer,
 )
-from logging import getLogger
 from django.db.models.expressions import RawSQL
 
 from ensembles.tasks import export_arrangement_version
 from ensembles.tasks.part_books import generate_books_for_ensemble
+
+from scoreforge.cli import mscz_to_json
+import tempfile
+from pathlib import Path
+import hashlib
+
+from ensembles.services.arrangement_git import ArrangementGitError, GitAuthor, commit_canonical_snapshot, init_repo
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -322,6 +328,82 @@ class ArrangementViewSet(BaseArrangementViewSet):
 class ArrangementByIdViewSet(BaseArrangementViewSet):
     lookup_field = "id"
 
+    @action(detail=True, methods=["post"], url_path="new-commit")
+    def new_commit(self, request, arrangement_id=None, *args, **kwargs):
+        arrangement = self.get_queryset().get(id=arrangement_id)
+
+        serializer = CreateArrangementCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uploaded = serializer.validated_data["file"]
+        message = (serializer.validated_data.get("message") or "").strip()
+        if not message:
+            message = f"{arrangement.slug} new commit"
+
+        # Repo is normally created when Arrangement is created (signal/backfill),
+        # but we still ensure it exists here for robustness.
+        try:
+            init_repo(arrangement)
+        except ArrangementGitError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        with tempfile.TemporaryDirectory(prefix="arr_new_commit_") as tmp:
+            tmp_dir = Path(tmp)
+            in_path = tmp_dir / "input.mscz"
+            out_dir = tmp_dir / "canonical"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save upload to disk
+            content = b"".join(chunk for chunk in uploaded.chunks())
+            in_path.write_bytes(content)
+
+            # Canonicalize via scoreforge
+            mscz_to_json(str(in_path), str(out_dir), "canonical")
+            canonical_json = out_dir / "canonical.json"
+
+            tree_hash = hashlib.sha256(canonical_json.read_bytes()).hexdigest()
+
+            payload_dir = tmp_dir / "commit_payload"
+            payload_dir.mkdir(parents=True, exist_ok=True)
+            (payload_dir / "canonical.json").write_bytes(canonical_json.read_bytes())
+            (payload_dir / ".gitattributes").write_text(
+                "canonical.json merge=scoreforge\n",
+                encoding="utf-8",
+            )
+
+            user = request.user
+            author = GitAuthor(
+                name=(user.get_full_name() or user.username or "User"),
+                email=(user.email or "user@divisi.local"),
+            )
+
+            commit_row = commit_canonical_snapshot(
+                arrangement,
+                payload_dir,
+                author=author,
+                message=message,
+                created_by=user,
+            )
+
+        return Response(
+            {
+                "commit": {
+                    "id": commit_row.id,
+                    "sha": commit_row.sha,
+                    "message": commit_row.message,
+                    "author_name": commit_row.author_name,
+                    "author_email": commit_row.author_email,
+                    "authored_at": commit_row.authored_at,
+                    "committed_at": commit_row.committed_at,
+                    "parent_sha": commit_row.parent_sha,
+                    "tag": commit_row.tag,
+                    "created_by": commit_row.created_by_id,
+                },
+                "canonical_tree_hash": tree_hash,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
     serializer_class = ArrangementVersionSerializer
@@ -541,7 +623,7 @@ class JoinEnsembleView(APIView):
             )
         
         # Create the usership
-        usership = EnsembleUsership.objects.create(ensemble=ensemble, user=user)
+        EnsembleUsership.objects.create(ensemble=ensemble, user=user)
         
         return Response(
             {
