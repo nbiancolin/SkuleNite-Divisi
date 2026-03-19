@@ -28,6 +28,39 @@ Backend:
 - `divisi` contains everything needed to do the part-prep stuff
 - `ensembles` contains everything needed for score management
 
+## Git-per-arrangement repos (canonical history)
+
+This codebase stores a **bare git repo per `Arrangement`** on the backend filesystem. Each `ArrangementVersion` points at the exact canonical snapshot commit via:
+
+- `Arrangement.git_repo_path` (bare repo path)
+- `ArrangementVersion.git_commit_sha` + `git_tag` (e.g. `v1.2.3`)
+
+### Repo root
+
+Set `DIVISI_ARRANGEMENT_REPO_ROOT` (default: `/srv/divisi-arrangement-repos/`). Repos are named `arr_<arrangementId>.git`.
+
+### Backfill existing versions
+
+Run in the backend container:
+
+```bash
+python manage.py backfill_arrangement_git_repos --dry-run --limit 10
+python manage.py backfill_arrangement_git_repos --continue-on-error
+```
+
+### Backups (recommended)
+
+Use git bundles uploaded to your configured Django `default_storage` (S3/DO Spaces or local):
+
+```bash
+python manage.py backup_arrangement_git_repos --dry-run
+python manage.py backup_arrangement_git_repos --gc
+```
+
+- **Retention**: keep at least 7–30 days of bundles (or daily + weekly) so you can restore after disk loss/corruption.
+- **Disk usage**: run `git gc` periodically (or pass `--gc` during backup) to reduce packfile bloat after backfills.
+- **Restore**: download a `.bundle` and run `git clone <bundle> <new-repo-dir>` (or `git init --bare` + `git fetch <bundle> 'refs/*:refs/*'`).
+
 
 # TODO: Fix this documentation
 

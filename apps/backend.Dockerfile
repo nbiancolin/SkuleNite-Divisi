@@ -28,7 +28,8 @@ RUN apt-get update && apt-get install -y \
 # --------------------------------------------------
 # Python dependencies
 # --------------------------------------------------
-COPY backend/requirements.txt .
+COPY apps/backend/requirements.txt requirements.txt
+COPY packages /packages
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --------------------------------------------------
@@ -43,7 +44,7 @@ RUN mkdir -p /usr/share/fonts/truetype/custom && \
 # --------------------------------------------------
 # Application code
 # --------------------------------------------------
-COPY backend .
+COPY apps/backend .
 
 EXPOSE 8000
 
