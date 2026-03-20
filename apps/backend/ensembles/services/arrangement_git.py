@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -46,6 +47,22 @@ def _git_root_dir() -> Path:
         return Path(root)
     # backend/backend is BASE_DIR; keep repos near it by default
     return Path(settings.BASE_DIR) / "arrangement_git_repos"
+
+
+def remove_repo_files(repo_path: str) -> None:
+    """
+    Best-effort removal of on-disk repo data for a deleted GitRepo row.
+    Only deletes paths that resolve under ARRANGEMENT_GIT_ROOT / default root.
+    """
+    root = _git_root_dir().resolve()
+    path = Path(repo_path).expanduser()
+    path = path.resolve() if path.is_absolute() else (root / path).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
 
 
 def init_repo(arrangement: Arrangement) -> str:

@@ -95,14 +95,7 @@ class ArrangementVersion(models.Model):
         return default_storage.url(self.audio_file_key)
 
     def _bump_version_label(self, version_type, old_version_label):
-        try:
-            parts = [int(p) for p in str(old_version_label).split(".")]
-            while len(parts) < 3:
-                parts.append(0)
-            major, minor, patch = parts[:3]
-        except (TypeError, ValueError):
-            # Be tolerant of legacy/non-semver labels in existing data.
-            major, minor, patch = 0, 0, 0
+        major, minor, patch = map(int, old_version_label.split("."))
         if version_type == "major":
             major += 1
             minor = 0
