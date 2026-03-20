@@ -5,6 +5,7 @@ import xml.etree.ElementTree as ET
 from scoreforge.models import (
     Score, Note, Measure, Part, Rest, Event, KeySig, TimeSig, Dynamic,
     SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
+    ChordGroup, ChordNote,
 )
 from scoreforge.converter import midi_to_pitch
 
@@ -147,59 +148,68 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                                         active_slur_starts.pop()
                                     slur_end = SlurEnd(prev_fractions=fractions)
 
-                notes = []
+                chord_notes: list[ChordNote] = []
                 for note_el in el.findall("Note"):
                     pitch = int(note_el.findtext("pitch"))
-                    
-                    # Parse tie information from Note
+
                     tie_start = None
                     tie_end = None
                     for spanner_el in note_el.findall("Spanner"):
                         if spanner_el.get("type") == "Tie":
-                            # Check for next (start of tie)
                             next_el = spanner_el.find("next")
                             if next_el is not None:
                                 location_el = next_el.find("location")
                                 if location_el is not None:
-                                    # Check for fractions (within measure) or measures (across measures)
                                     fractions = location_el.findtext("fractions")
                                     measures_offset = location_el.findtext("measures")
                                     offset = fractions if fractions else measures_offset
                                     if offset:
                                         tie_start = TieStart(next_fractions=offset)
-                                        # Track this tie start for matching with end
                                         active_tie_starts.append(offset)
-                            
-                            # Check for prev (end of tie) - typically does NOT have Tie element
+
                             prev_el = spanner_el.find("prev")
                             if prev_el is not None:
                                 location_el = prev_el.find("location")
                                 if location_el is not None:
-                                    # Check for fractions (within measure) or measures (across measures)
                                     fractions = location_el.findtext("fractions")
                                     measures_offset = location_el.findtext("measures")
                                     offset = fractions if fractions else measures_offset
                                     if offset:
-                                        # Match with the most recent tie start
                                         if active_tie_starts:
-                                            # Remove the matched start from the list
                                             active_tie_starts.pop()
                                         tie_end = TieEnd(prev_fractions=offset)
-                    
-                    notes.append(
-                        Note(
+
+                    chord_notes.append(
+                        ChordNote(
                             pitch=midi_to_pitch(pitch),
-                            duration=base_duration,  # Store base duration
-                            dots=dots,  # Store dots separately
-                            slur_start=slur_start,
-                            slur_end=slur_end,
                             tie_start=tie_start,
                             tie_end=tie_end,
                         )
                     )
 
-                # v0: flatten single-note chords
-                events.extend(notes)
+                if len(chord_notes) == 1:
+                    cn = chord_notes[0]
+                    events.append(
+                        Note(
+                            pitch=cn.pitch,
+                            duration=base_duration,
+                            dots=dots,
+                            slur_start=slur_start,
+                            slur_end=slur_end,
+                            tie_start=cn.tie_start,
+                            tie_end=cn.tie_end,
+                        )
+                    )
+                else:
+                    events.append(
+                        ChordGroup(
+                            notes=tuple(chord_notes),
+                            duration=base_duration,
+                            dots=dots,
+                            slur_start=slur_start,
+                            slur_end=slur_end,
+                        )
+                    )
 
             # ---- REST ----
             elif el.tag == "Rest":

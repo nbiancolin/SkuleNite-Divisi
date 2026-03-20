@@ -1,7 +1,19 @@
 import xml.etree.ElementTree as ET
 import re
+from typing import Optional
 
-from scoreforge.models import Score, Note, Rest, Dynamic, MeasureRepeat
+from scoreforge.models import (
+    Score,
+    Note,
+    Rest,
+    Dynamic,
+    MeasureRepeat,
+    ChordGroup,
+    SlurStart,
+    SlurEnd,
+    TieStart,
+    TieEnd,
+)
 
 # Duration type mapping for MSCX format (canonical float -> MuseScore durationType)
 DURATION_TYPE = {
@@ -77,6 +89,58 @@ def pitch_to_midi(pitch: str) -> int:
     return (octave + 1) * 12 + semitone
 
 
+def _append_chord_xml(
+    parent_el: ET.Element,
+    *,
+    duration: float,
+    dots: int,
+    slur_start: Optional[SlurStart],
+    slur_end: Optional[SlurEnd],
+    pitch_ties: list[tuple[str, Optional[TieStart], Optional[TieEnd]]],
+) -> None:
+    """Emit one MuseScore <Chord> with one or more <Note> children."""
+    chord = ET.SubElement(parent_el, "Chord")
+    if dots > 0:
+        ET.SubElement(chord, "dots").text = str(dots)
+    ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(duration, "quarter")
+
+    if slur_start is not None:
+        spanner = ET.SubElement(chord, "Spanner", type="Slur")
+        ET.SubElement(spanner, "Slur")
+        next_el = ET.SubElement(spanner, "next")
+        location_el = ET.SubElement(next_el, "location")
+        ET.SubElement(location_el, "fractions").text = slur_start.next_fractions
+
+    if slur_end is not None:
+        spanner = ET.SubElement(chord, "Spanner", type="Slur")
+        prev_el = ET.SubElement(spanner, "prev")
+        location_el = ET.SubElement(prev_el, "location")
+        ET.SubElement(location_el, "fractions").text = slur_end.prev_fractions
+
+    for pitch, tie_start, tie_end in pitch_ties:
+        note_el = ET.SubElement(chord, "Note")
+        ET.SubElement(note_el, "pitch").text = str(pitch_to_midi(pitch))
+
+        if tie_start is not None:
+            spanner = ET.SubElement(note_el, "Spanner", type="Tie")
+            ET.SubElement(spanner, "Tie")
+            next_el = ET.SubElement(spanner, "next")
+            location_el = ET.SubElement(next_el, "location")
+            if "/" in tie_start.next_fractions:
+                ET.SubElement(location_el, "fractions").text = tie_start.next_fractions
+            else:
+                ET.SubElement(location_el, "measures").text = tie_start.next_fractions
+
+        if tie_end is not None:
+            spanner = ET.SubElement(note_el, "Spanner", type="Tie")
+            prev_el = ET.SubElement(spanner, "prev")
+            location_el = ET.SubElement(prev_el, "location")
+            if "/" in tie_end.prev_fractions:
+                ET.SubElement(location_el, "fractions").text = tie_end.prev_fractions
+            else:
+                ET.SubElement(location_el, "measures").text = tie_end.prev_fractions
+
+
 def score_to_mscx(score: Score) -> ET.ElementTree:
     """Convert a Score object to an MSCX XML ElementTree.
     
@@ -126,16 +190,25 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
 
             for event in measure.events:
                 if isinstance(event, Note):
-                    chord = ET.SubElement(measure_el, "Chord")
-                    ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
+                    _append_chord_xml(
+                        measure_el,
+                        duration=event.duration,
+                        dots=event.dots,
+                        slur_start=event.slur_start,
+                        slur_end=event.slur_end,
+                        pitch_ties=[(event.pitch, event.tie_start, event.tie_end)],
                     )
-
-                    note_el = ET.SubElement(chord, "Note")
-                    ET.SubElement(note_el, "pitch").text = str(
-                        pitch_to_midi(event.pitch)
+                elif isinstance(event, ChordGroup):
+                    _append_chord_xml(
+                        measure_el,
+                        duration=event.duration,
+                        dots=event.dots,
+                        slur_start=event.slur_start,
+                        slur_end=event.slur_end,
+                        pitch_ties=[
+                            (cn.pitch, cn.tie_start, cn.tie_end) for cn in event.notes
+                        ],
                     )
-
                 elif isinstance(event, Rest):
                     rest = ET.SubElement(measure_el, "Rest")
                     if event.measure_duration is not None:
@@ -219,57 +292,25 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
             # Add events to the voice
             for event in measure.events:
                 if isinstance(event, Note):
-                    chord = ET.SubElement(voice_el, "Chord")
-                    # Write dots before durationType to match MuseScore XML structure
-                    if event.dots > 0:
-                        ET.SubElement(chord, "dots").text = str(event.dots)
-                    ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
+                    _append_chord_xml(
+                        voice_el,
+                        duration=event.duration,
+                        dots=event.dots,
+                        slur_start=event.slur_start,
+                        slur_end=event.slur_end,
+                        pitch_ties=[(event.pitch, event.tie_start, event.tie_end)],
                     )
-                    
-                    # Write slur spanner on Chord if present
-                    if event.slur_start is not None:
-                        spanner = ET.SubElement(chord, "Spanner", type="Slur")
-                        slur_el = ET.SubElement(spanner, "Slur")
-                        next_el = ET.SubElement(spanner, "next")
-                        location_el = ET.SubElement(next_el, "location")
-                        ET.SubElement(location_el, "fractions").text = event.slur_start.next_fractions
-                    
-                    if event.slur_end is not None:
-                        # For slur end, don't include Slur element - only prev element
-                        spanner = ET.SubElement(chord, "Spanner", type="Slur")
-                        prev_el = ET.SubElement(spanner, "prev")
-                        location_el = ET.SubElement(prev_el, "location")
-                        ET.SubElement(location_el, "fractions").text = event.slur_end.prev_fractions
-                    
-                    note_el = ET.SubElement(chord, "Note")
-                    ET.SubElement(note_el, "pitch").text = str(
-                        pitch_to_midi(event.pitch)
+                elif isinstance(event, ChordGroup):
+                    _append_chord_xml(
+                        voice_el,
+                        duration=event.duration,
+                        dots=event.dots,
+                        slur_start=event.slur_start,
+                        slur_end=event.slur_end,
+                        pitch_ties=[
+                            (cn.pitch, cn.tie_start, cn.tie_end) for cn in event.notes
+                        ],
                     )
-                    
-                    # Write tie spanner on Note if present
-                    if event.tie_start is not None:
-                        spanner = ET.SubElement(note_el, "Spanner", type="Tie")
-                        tie_el = ET.SubElement(spanner, "Tie")
-                        next_el = ET.SubElement(spanner, "next")
-                        location_el = ET.SubElement(next_el, "location")
-                        # Check if it's a measure offset (just a number) or fractions (contains "/")
-                        if "/" in event.tie_start.next_fractions:
-                            ET.SubElement(location_el, "fractions").text = event.tie_start.next_fractions
-                        else:
-                            ET.SubElement(location_el, "measures").text = event.tie_start.next_fractions
-                    
-                    if event.tie_end is not None:
-                        # For tie end, don't include Tie element - only prev element
-                        spanner = ET.SubElement(note_el, "Spanner", type="Tie")
-                        prev_el = ET.SubElement(spanner, "prev")
-                        location_el = ET.SubElement(prev_el, "location")
-                        # Check if it's a measure offset (just a number, possibly negative) or fractions (contains "/")
-                        if "/" in event.tie_end.prev_fractions:
-                            ET.SubElement(location_el, "fractions").text = event.tie_end.prev_fractions
-                        else:
-                            ET.SubElement(location_el, "measures").text = event.tie_end.prev_fractions
-                
                 elif isinstance(event, Rest):
                     rest = ET.SubElement(voice_el, "Rest")
                     # Write dots before durationType to match MuseScore XML structure

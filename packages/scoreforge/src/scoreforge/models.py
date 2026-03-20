@@ -38,6 +38,26 @@ class Note:
 
 
 @dataclass(frozen=True)
+class ChordNote:
+    """One pitch inside a multi-note chord (ties only; slurs live on ChordGroup)."""
+
+    pitch: str
+    tie_start: Optional[TieStart] = None
+    tie_end: Optional[TieEnd] = None
+
+
+@dataclass(frozen=True)
+class ChordGroup:
+    """Simultaneous chord: one rhythmic unit, multiple stacked pitches (MuseScore one <Chord>)."""
+
+    notes: tuple[ChordNote, ...]
+    duration: float
+    dots: int = 0
+    slur_start: Optional[SlurStart] = None
+    slur_end: Optional[SlurEnd] = None
+
+
+@dataclass(frozen=True)
 class Rest:
     duration: float  # Base duration (without dots); unused when measure_duration is set
     dots: int = 0  # Number of augmentation dots (0, 1, or 2)
@@ -58,7 +78,7 @@ class MeasureRepeat:
     duration: str  # e.g. "4/4" — span relative to time signature
 
 
-Event = Union[Note, Rest, Dynamic, MeasureRepeat]
+Event = Union[Note, ChordGroup, Rest, Dynamic, MeasureRepeat]
 
 
 @dataclass(frozen=True)

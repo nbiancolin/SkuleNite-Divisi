@@ -4,6 +4,7 @@ from pathlib import Path
 from scoreforge.models import (
     Score, Part, Measure, Event, Note, Rest, KeySig, TimeSig, Dynamic,
     SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
+    ChordGroup, ChordNote,
 )
 
 
@@ -91,6 +92,35 @@ def save_canonical(score: Score, path: Path) -> None:
                         event_obj["tieEnd"] = {
                             "prevFractions": e.tie_end.prev_fractions,
                         }
+                    meas_obj["events"].append(event_obj)
+
+                elif isinstance(e, ChordGroup):
+                    event_obj = {
+                        "type": "chord",
+                        "duration": e.duration,
+                        "notes": [],
+                    }
+                    if e.dots > 0:
+                        event_obj["dots"] = e.dots
+                    if e.slur_start is not None:
+                        event_obj["slurStart"] = {
+                            "nextFractions": e.slur_start.next_fractions,
+                        }
+                    if e.slur_end is not None:
+                        event_obj["slurEnd"] = {
+                            "prevFractions": e.slur_end.prev_fractions,
+                        }
+                    for cn in e.notes:
+                        nd: dict = {"pitch": cn.pitch}
+                        if cn.tie_start is not None:
+                            nd["tieStart"] = {
+                                "nextFractions": cn.tie_start.next_fractions,
+                            }
+                        if cn.tie_end is not None:
+                            nd["tieEnd"] = {
+                                "prevFractions": cn.tie_end.prev_fractions,
+                            }
+                        event_obj["notes"].append(nd)
                     meas_obj["events"].append(event_obj)
 
                 elif isinstance(e, Rest):
@@ -302,6 +332,35 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     slur_end=slur_end,
                     tie_start=tie_start,
                     tie_end=tie_end,
+                )
+            )
+        elif event_type == "chord":
+            slur_start = None
+            if "slurStart" in event_data:
+                sd = event_data["slurStart"]
+                slur_start = SlurStart(next_fractions=sd["nextFractions"])
+            slur_end = None
+            if "slurEnd" in event_data:
+                sd = event_data["slurEnd"]
+                slur_end = SlurEnd(prev_fractions=sd["prevFractions"])
+            chord_notes: list[ChordNote] = []
+            for nd in event_data["notes"]:
+                ts = None
+                if "tieStart" in nd:
+                    ts = TieStart(next_fractions=nd["tieStart"]["nextFractions"])
+                te = None
+                if "tieEnd" in nd:
+                    te = TieEnd(prev_fractions=nd["tieEnd"]["prevFractions"])
+                chord_notes.append(
+                    ChordNote(pitch=nd["pitch"], tie_start=ts, tie_end=te)
+                )
+            events.append(
+                ChordGroup(
+                    notes=tuple(chord_notes),
+                    duration=float(event_data["duration"]),
+                    dots=dots,
+                    slur_start=slur_start,
+                    slur_end=slur_end,
                 )
             )
         # Rest

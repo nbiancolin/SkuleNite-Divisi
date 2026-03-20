@@ -11,7 +11,7 @@ from scoreforge.cli import mscz_to_json
 from scoreforge.io import extract_mscx
 from scoreforge.parser import parse_score
 from scoreforge.serialization import load_score_from_json
-from scoreforge.models import MeasureRepeat
+from scoreforge.models import MeasureRepeat, ChordGroup
 
 
 @pytest.fixture
@@ -242,6 +242,10 @@ def test_json_to_mscz_with_template_roundtrip(sample_mscz_path, temp_output_dir)
                     f"Event types should match: {type(orig_event)} vs {type(recon_event)}"
 
                 if isinstance(orig_event, MeasureRepeat):
+                    assert orig_event == recon_event
+                    continue
+
+                if isinstance(orig_event, ChordGroup):
                     assert orig_event == recon_event
                     continue
                 
