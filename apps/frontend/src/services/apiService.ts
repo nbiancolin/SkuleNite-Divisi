@@ -579,7 +579,7 @@ export const apiService = {
       formData.append("message", message.trim());
     }
 
-    const response = await fetch(`${API_BASE_URL}/arrangements/${arrangementId}/new-commit/`, {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/new-commit/`, {
       method: "POST",
       headers: {
         Accept: "application/json",

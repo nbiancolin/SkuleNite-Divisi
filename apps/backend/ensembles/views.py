@@ -368,8 +368,26 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
         )
 
     @action(detail=True, methods=["post"], url_path="new-commit")
-    def new_commit(self, request, arrangement_id=None, *args, **kwargs):
-        arrangement = self.get_queryset().get(id=arrangement_id)
+    def new_commit(self, request, id=None, *args, **kwargs):
+        # This endpoint is invoked via `arrangements-by-id/<id>/new-commit/`.
+        # We load the arrangement directly by id (so "exists but excluded from
+        # the user-filtered queryset" doesn't turn into a 404).
+        arrangement = Arrangement.objects.filter(id=id).first()
+        if arrangement is None:
+            return Response(
+                {"detail": "Arrangement not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Explicit access check to return a clearer 403 vs a misleading 404.
+        user = request.user
+        if not (
+            arrangement.ensemble.owner == user
+            or EnsembleUsership.objects.filter(ensemble=arrangement.ensemble, user=user).exists()
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have access to this ensemble.")
 
         serializer = CreateArrangementCommitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

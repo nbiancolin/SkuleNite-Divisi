@@ -671,7 +671,7 @@ export default function ArrangementDisplay() {
                       size="sm"
                       rightSection={<IconUpload size={16} />}
                     >
-                      Upload new Version
+                      Upload new file
                     </Button>
 
                     {arrangement.latest_version && !exportLoading && !exportError && (
