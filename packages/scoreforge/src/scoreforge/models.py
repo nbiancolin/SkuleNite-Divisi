@@ -70,6 +70,24 @@ class Dynamic:
 
 
 @dataclass(frozen=True)
+class HairpinStart:
+    """Start of a hairpin (crescendo / diminuendo) — MuseScore <Spanner type=\"HairPin\"> with <next>."""
+
+    subtype: str  # MuseScore hairpin kind (e.g. "1" cresc., "3" dim. — preserve for round-trip)
+    next_measures: Optional[str] = None
+    next_fractions: Optional[str] = None
+    direction: Optional[str] = None  # e.g. "up", "down"
+
+
+@dataclass(frozen=True)
+class HairpinEnd:
+    """End anchor for a hairpin — <Spanner type=\"HairPin\"> with <prev> only."""
+
+    prev_measures: Optional[str] = None
+    prev_fractions: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class MeasureRepeat:
     """One-measure repeat sign (percent) as in MuseScore <MeasureRepeat>."""
 
@@ -78,7 +96,15 @@ class MeasureRepeat:
     duration: str  # e.g. "4/4" — span relative to time signature
 
 
-Event = Union[Note, ChordGroup, Rest, Dynamic, MeasureRepeat]
+Event = Union[
+    Note,
+    ChordGroup,
+    Rest,
+    Dynamic,
+    HairpinStart,
+    HairpinEnd,
+    MeasureRepeat,
+]
 
 
 @dataclass(frozen=True)

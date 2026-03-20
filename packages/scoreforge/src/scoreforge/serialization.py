@@ -5,6 +5,7 @@ from scoreforge.models import (
     Score, Part, Measure, Event, Note, Rest, KeySig, TimeSig, Dynamic,
     SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
     ChordGroup, ChordNote,
+    HairpinStart, HairpinEnd,
 )
 
 
@@ -139,6 +140,27 @@ def save_canonical(score: Score, path: Path) -> None:
                         "type": "dynamic",
                         "subtype": e.subtype,
                     })
+
+                elif isinstance(e, HairpinStart):
+                    ho: dict = {
+                        "type": "hairpinStart",
+                        "subtype": e.subtype,
+                    }
+                    if e.next_measures is not None:
+                        ho["nextMeasures"] = e.next_measures
+                    if e.next_fractions is not None:
+                        ho["nextFractions"] = e.next_fractions
+                    if e.direction is not None:
+                        ho["direction"] = e.direction
+                    meas_obj["events"].append(ho)
+
+                elif isinstance(e, HairpinEnd):
+                    he: dict = {"type": "hairpinEnd"}
+                    if e.prev_measures is not None:
+                        he["prevMeasures"] = e.prev_measures
+                    if e.prev_fractions is not None:
+                        he["prevFractions"] = e.prev_fractions
+                    meas_obj["events"].append(he)
 
                 elif isinstance(e, MeasureRepeat):
                     meas_obj["events"].append({
@@ -378,6 +400,22 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
             events.append(
                 Dynamic(
                     subtype=event_data["subtype"],
+                )
+            )
+        elif event_type == "hairpinStart":
+            events.append(
+                HairpinStart(
+                    subtype=str(event_data["subtype"]),
+                    next_measures=event_data.get("nextMeasures"),
+                    next_fractions=event_data.get("nextFractions"),
+                    direction=event_data.get("direction"),
+                )
+            )
+        elif event_type == "hairpinEnd":
+            events.append(
+                HairpinEnd(
+                    prev_measures=event_data.get("prevMeasures"),
+                    prev_fractions=event_data.get("prevFractions"),
                 )
             )
         elif event_type == "measureRepeat":

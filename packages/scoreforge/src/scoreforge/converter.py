@@ -9,6 +9,8 @@ from scoreforge.models import (
     Dynamic,
     MeasureRepeat,
     ChordGroup,
+    HairpinStart,
+    HairpinEnd,
     SlurStart,
     SlurEnd,
     TieStart,
@@ -327,6 +329,28 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
                 elif isinstance(event, Dynamic):
                     dynamic_el = ET.SubElement(voice_el, "Dynamic")
                     ET.SubElement(dynamic_el, "subtype").text = event.subtype
+
+                elif isinstance(event, HairpinStart):
+                    spanner = ET.SubElement(voice_el, "Spanner", type="HairPin")
+                    hp = ET.SubElement(spanner, "HairPin")
+                    ET.SubElement(hp, "subtype").text = event.subtype
+                    if event.direction is not None:
+                        ET.SubElement(hp, "direction").text = event.direction
+                    next_el = ET.SubElement(spanner, "next")
+                    loc = ET.SubElement(next_el, "location")
+                    if event.next_measures is not None:
+                        ET.SubElement(loc, "measures").text = event.next_measures
+                    if event.next_fractions is not None:
+                        ET.SubElement(loc, "fractions").text = event.next_fractions
+
+                elif isinstance(event, HairpinEnd):
+                    spanner = ET.SubElement(voice_el, "Spanner", type="HairPin")
+                    prev_el = ET.SubElement(spanner, "prev")
+                    loc = ET.SubElement(prev_el, "location")
+                    if event.prev_measures is not None:
+                        ET.SubElement(loc, "measures").text = event.prev_measures
+                    if event.prev_fractions is not None:
+                        ET.SubElement(loc, "fractions").text = event.prev_fractions
 
                 elif isinstance(event, MeasureRepeat):
                     mr_el = ET.SubElement(voice_el, "MeasureRepeat")

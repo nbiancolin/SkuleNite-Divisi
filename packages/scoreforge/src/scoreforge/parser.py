@@ -6,11 +6,19 @@ from scoreforge.models import (
     Score, Note, Measure, Part, Rest, Event, KeySig, TimeSig, Dynamic,
     SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
     ChordGroup, ChordNote,
+    HairpinStart, HairpinEnd,
 )
 from scoreforge.converter import midi_to_pitch
 
 
 # Duration mapping from MSCX format to numeric values (base length, dots separate)
+def _opt_text(txt: str | None) -> str | None:
+    if txt is None:
+        return None
+    s = str(txt).strip()
+    return s if s else None
+
+
 DURATION_MAP = {
     "whole": 4,
     "half": 2,
@@ -256,6 +264,37 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                     )
                 continue
 
+            # ---- HAIRPIN (crescendo / diminuendo) ----
+            elif el.tag == "Spanner" and el.get("type") == "HairPin":
+                next_el = el.find("next")
+                prev_el = el.find("prev")
+                if next_el is not None:
+                    loc = next_el.find("location")
+                    nm = _opt_text(loc.findtext("measures")) if loc is not None else None
+                    nf = _opt_text(loc.findtext("fractions")) if loc is not None else None
+                    hp_inner = el.find("HairPin")
+                    subtype = "0"
+                    direction = None
+                    if hp_inner is not None:
+                        subtype = _opt_text(hp_inner.findtext("subtype")) or "0"
+                        direction = _opt_text(hp_inner.findtext("direction"))
+                    events.append(
+                        HairpinStart(
+                            subtype=subtype,
+                            next_measures=nm,
+                            next_fractions=nf,
+                            direction=direction,
+                        )
+                    )
+                elif prev_el is not None:
+                    loc = prev_el.find("location")
+                    pm = _opt_text(loc.findtext("measures")) if loc is not None else None
+                    pf = _opt_text(loc.findtext("fractions")) if loc is not None else None
+                    events.append(
+                        HairpinEnd(prev_measures=pm, prev_fractions=pf)
+                    )
+                continue
+
             # ---- MEASURE REPEAT (percent sign) ----
             elif el.tag == "MeasureRepeat":
                 subtype = el.findtext("subtype", "1") or "1"
@@ -297,8 +336,8 @@ def parse_score(tree: ET.ElementTree) -> Score:
     """Parse an MSCX ElementTree into a Score object.
     
     This function extracts all musical content from a MuseScore XML file,
-    including parts, measures, notes, rests, dynamics, key signatures,
-    time signatures, slurs, and ties.
+    including parts, measures, notes, rests, dynamics, hairpins (cresc./dim.),
+    key signatures, time signatures, slurs, and ties.
     
     Args:
         tree: ElementTree representing the MSCX file (typically obtained
