@@ -52,7 +52,8 @@ export default function UploadArrangementVersionPage() {
         file,
         commitMessage
       );
-      await apiService.createArrangementVersionFromCommit(commitResponse.commit.sha);
+      // Don't want commit automatically
+      // await apiService.createArrangementVersionFromCommit(commitResponse.commit.sha);
       navigate(`/app/arrangements/${arrangementId}`)
     } catch (err: any) {
       console.error("Upload error:", err);
