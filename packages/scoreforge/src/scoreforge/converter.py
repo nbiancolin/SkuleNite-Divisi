@@ -11,6 +11,7 @@ from scoreforge.models import (
     ChordGroup,
     HairpinStart,
     HairpinEnd,
+    Event,
     SlurStart,
     SlurEnd,
     TieStart,
@@ -143,6 +144,70 @@ def _append_chord_xml(
                 ET.SubElement(location_el, "measures").text = tie_end.prev_fractions
 
 
+def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> None:
+    """Write canonical events under a <voice> or minimal <Measure> container."""
+    for event in events:
+        if isinstance(event, Note):
+            _append_chord_xml(
+                parent_el,
+                duration=event.duration,
+                dots=event.dots,
+                slur_start=event.slur_start,
+                slur_end=event.slur_end,
+                pitch_ties=[(event.pitch, event.tie_start, event.tie_end)],
+            )
+        elif isinstance(event, ChordGroup):
+            _append_chord_xml(
+                parent_el,
+                duration=event.duration,
+                dots=event.dots,
+                slur_start=event.slur_start,
+                slur_end=event.slur_end,
+                pitch_ties=[
+                    (cn.pitch, cn.tie_start, cn.tie_end) for cn in event.notes
+                ],
+            )
+        elif isinstance(event, Rest):
+            rest = ET.SubElement(parent_el, "Rest")
+            if event.dots > 0:
+                ET.SubElement(rest, "dots").text = str(event.dots)
+            if event.measure_duration is not None:
+                ET.SubElement(rest, "durationType").text = "measure"
+                ET.SubElement(rest, "duration").text = event.measure_duration
+            else:
+                ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
+                    event.duration, "quarter"
+                )
+        elif isinstance(event, Dynamic):
+            dynamic_el = ET.SubElement(parent_el, "Dynamic")
+            ET.SubElement(dynamic_el, "subtype").text = event.subtype
+        elif isinstance(event, HairpinStart):
+            spanner = ET.SubElement(parent_el, "Spanner", type="HairPin")
+            hp = ET.SubElement(spanner, "HairPin")
+            ET.SubElement(hp, "subtype").text = event.subtype
+            if event.direction is not None:
+                ET.SubElement(hp, "direction").text = event.direction
+            next_el = ET.SubElement(spanner, "next")
+            loc = ET.SubElement(next_el, "location")
+            if event.next_measures is not None:
+                ET.SubElement(loc, "measures").text = event.next_measures
+            if event.next_fractions is not None:
+                ET.SubElement(loc, "fractions").text = event.next_fractions
+        elif isinstance(event, HairpinEnd):
+            spanner = ET.SubElement(parent_el, "Spanner", type="HairPin")
+            prev_el = ET.SubElement(spanner, "prev")
+            loc = ET.SubElement(prev_el, "location")
+            if event.prev_measures is not None:
+                ET.SubElement(loc, "measures").text = event.prev_measures
+            if event.prev_fractions is not None:
+                ET.SubElement(loc, "fractions").text = event.prev_fractions
+        elif isinstance(event, MeasureRepeat):
+            mr_el = ET.SubElement(parent_el, "MeasureRepeat")
+            ET.SubElement(mr_el, "subtype").text = event.subtype
+            ET.SubElement(mr_el, "durationType").text = event.duration_type
+            ET.SubElement(mr_el, "duration").text = event.duration
+
+
 def score_to_mscx(score: Score) -> ET.ElementTree:
     """Convert a Score object to an MSCX XML ElementTree.
     
@@ -190,36 +255,10 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
                     measure.measure_repeat_count
                 )
 
-            for event in measure.events:
-                if isinstance(event, Note):
-                    _append_chord_xml(
-                        measure_el,
-                        duration=event.duration,
-                        dots=event.dots,
-                        slur_start=event.slur_start,
-                        slur_end=event.slur_end,
-                        pitch_ties=[(event.pitch, event.tie_start, event.tie_end)],
-                    )
-                elif isinstance(event, ChordGroup):
-                    _append_chord_xml(
-                        measure_el,
-                        duration=event.duration,
-                        dots=event.dots,
-                        slur_start=event.slur_start,
-                        slur_end=event.slur_end,
-                        pitch_ties=[
-                            (cn.pitch, cn.tie_start, cn.tie_end) for cn in event.notes
-                        ],
-                    )
-                elif isinstance(event, Rest):
-                    rest = ET.SubElement(measure_el, "Rest")
-                    if event.measure_duration is not None:
-                        ET.SubElement(rest, "durationType").text = "measure"
-                        ET.SubElement(rest, "duration").text = event.measure_duration
-                    else:
-                        ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                            event.duration, "quarter"
-                        )
+            vk_list = sorted(measure.voices.keys(), key=int) if measure.voices else ["0"]
+            for vk in vk_list:
+                voice_el = ET.SubElement(measure_el, "voice")
+                _append_events_to_container(voice_el, measure.voices.get(vk, []))
 
     return ET.ElementTree(root)
 
@@ -278,85 +317,19 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
                     measure.measure_repeat_count
                 )
 
-            voice_el = ET.SubElement(measure_el, "voice")
-            
-            # Add KeySig if present (inside voice, before events)
-            if measure.key_sig is not None:
-                key_sig_el = ET.SubElement(voice_el, "KeySig")
-                ET.SubElement(key_sig_el, "concertKey").text = str(measure.key_sig.concert_key)
-            
-            # Add TimeSig if present (inside voice, before events)
-            if measure.time_sig is not None:
-                time_sig_el = ET.SubElement(voice_el, "TimeSig")
-                ET.SubElement(time_sig_el, "sigN").text = str(measure.time_sig.sig_n)
-                ET.SubElement(time_sig_el, "sigD").text = str(measure.time_sig.sig_d)
-            
-            # Add events to the voice
-            for event in measure.events:
-                if isinstance(event, Note):
-                    _append_chord_xml(
-                        voice_el,
-                        duration=event.duration,
-                        dots=event.dots,
-                        slur_start=event.slur_start,
-                        slur_end=event.slur_end,
-                        pitch_ties=[(event.pitch, event.tie_start, event.tie_end)],
+            vk_list = sorted(measure.voices.keys(), key=int) if measure.voices else ["0"]
+            for vi, vk in enumerate(vk_list):
+                voice_el = ET.SubElement(measure_el, "voice")
+                if vi == 0 and measure.key_sig is not None:
+                    key_sig_el = ET.SubElement(voice_el, "KeySig")
+                    ET.SubElement(key_sig_el, "concertKey").text = str(
+                        measure.key_sig.concert_key
                     )
-                elif isinstance(event, ChordGroup):
-                    _append_chord_xml(
-                        voice_el,
-                        duration=event.duration,
-                        dots=event.dots,
-                        slur_start=event.slur_start,
-                        slur_end=event.slur_end,
-                        pitch_ties=[
-                            (cn.pitch, cn.tie_start, cn.tie_end) for cn in event.notes
-                        ],
-                    )
-                elif isinstance(event, Rest):
-                    rest = ET.SubElement(voice_el, "Rest")
-                    # Write dots before durationType to match MuseScore XML structure
-                    if event.dots > 0:
-                        ET.SubElement(rest, "dots").text = str(event.dots)
-                    if event.measure_duration is not None:
-                        ET.SubElement(rest, "durationType").text = "measure"
-                        ET.SubElement(rest, "duration").text = event.measure_duration
-                    else:
-                        ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                            event.duration, "quarter"
-                        )
-                
-                elif isinstance(event, Dynamic):
-                    dynamic_el = ET.SubElement(voice_el, "Dynamic")
-                    ET.SubElement(dynamic_el, "subtype").text = event.subtype
+                if vi == 0 and measure.time_sig is not None:
+                    time_sig_el = ET.SubElement(voice_el, "TimeSig")
+                    ET.SubElement(time_sig_el, "sigN").text = str(measure.time_sig.sig_n)
+                    ET.SubElement(time_sig_el, "sigD").text = str(measure.time_sig.sig_d)
+                _append_events_to_container(voice_el, measure.voices.get(vk, []))
 
-                elif isinstance(event, HairpinStart):
-                    spanner = ET.SubElement(voice_el, "Spanner", type="HairPin")
-                    hp = ET.SubElement(spanner, "HairPin")
-                    ET.SubElement(hp, "subtype").text = event.subtype
-                    if event.direction is not None:
-                        ET.SubElement(hp, "direction").text = event.direction
-                    next_el = ET.SubElement(spanner, "next")
-                    loc = ET.SubElement(next_el, "location")
-                    if event.next_measures is not None:
-                        ET.SubElement(loc, "measures").text = event.next_measures
-                    if event.next_fractions is not None:
-                        ET.SubElement(loc, "fractions").text = event.next_fractions
-
-                elif isinstance(event, HairpinEnd):
-                    spanner = ET.SubElement(voice_el, "Spanner", type="HairPin")
-                    prev_el = ET.SubElement(spanner, "prev")
-                    loc = ET.SubElement(prev_el, "location")
-                    if event.prev_measures is not None:
-                        ET.SubElement(loc, "measures").text = event.prev_measures
-                    if event.prev_fractions is not None:
-                        ET.SubElement(loc, "fractions").text = event.prev_fractions
-
-                elif isinstance(event, MeasureRepeat):
-                    mr_el = ET.SubElement(voice_el, "MeasureRepeat")
-                    ET.SubElement(mr_el, "subtype").text = event.subtype
-                    ET.SubElement(mr_el, "durationType").text = event.duration_type
-                    ET.SubElement(mr_el, "duration").text = event.duration
-    
     return ET.ElementTree(root)
 

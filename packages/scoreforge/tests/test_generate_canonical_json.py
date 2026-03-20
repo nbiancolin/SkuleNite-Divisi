@@ -11,7 +11,6 @@ from scoreforge.cli import mscz_to_json
 from scoreforge.io import extract_mscx
 from scoreforge.parser import parse_score
 from scoreforge.serialization import load_score_from_json
-from scoreforge.models import MeasureRepeat, ChordGroup, HairpinStart, HairpinEnd
 
 
 @pytest.fixture
@@ -233,50 +232,8 @@ def test_json_to_mscz_with_template_roundtrip(sample_mscz_path, temp_output_dir)
                 f"Measure numbers should match: {orig_measure.number} vs {recon_measure.number}"
             assert orig_measure.measure_repeat_count == recon_measure.measure_repeat_count, \
                 f"measureRepeatCount: {orig_measure.measure_repeat_count} vs {recon_measure.measure_repeat_count}"
-            assert len(recon_measure.events) == len(orig_measure.events), \
-                f"Measure {orig_measure.number} should have same number of events"
-            
-            # Compare events
-            for orig_event, recon_event in zip(orig_measure.events, recon_measure.events):
-                assert isinstance(orig_event, type(recon_event)) or isinstance(recon_event, type(orig_event)), \
-                    f"Event types should match: {type(orig_event)} vs {type(recon_event)}"
-
-                if isinstance(orig_event, MeasureRepeat):
-                    assert orig_event == recon_event
-                    continue
-
-                if isinstance(orig_event, ChordGroup):
-                    assert orig_event == recon_event
-                    continue
-
-                if isinstance(orig_event, (HairpinStart, HairpinEnd)):
-                    assert orig_event == recon_event
-                    continue
-                
-                # Compare duration for Note and Rest events
-                if hasattr(orig_event, "duration") and hasattr(recon_event, "duration"):
-                    assert orig_event.duration == recon_event.duration, \
-                        f"Event durations should match: {orig_event.duration} vs {recon_event.duration}"
-                # Full-measure rests
-                om = getattr(orig_event, "measure_duration", None)
-                rm = getattr(recon_event, "measure_duration", None)
-                assert om == rm, \
-                    f"measure_duration should match: {om!r} vs {rm!r}"
-                
-                # Compare dots for Note and Rest events
-                if hasattr(orig_event, "dots") and hasattr(recon_event, "dots"):
-                    assert orig_event.dots == recon_event.dots, \
-                        f"Event dots should match: {orig_event.dots} vs {recon_event.dots}"
-                
-                # Compare pitch for Note events
-                if hasattr(orig_event, "pitch") and hasattr(recon_event, "pitch"):
-                    assert orig_event.pitch == recon_event.pitch, \
-                        f"Event pitches should match: {orig_event.pitch} vs {recon_event.pitch}"
-                
-                # Compare subtype for Dynamic events
-                if hasattr(orig_event, "subtype") and hasattr(recon_event, "subtype"):
-                    assert orig_event.subtype == recon_event.subtype, \
-                        f"Dynamic subtypes should match: {orig_event.subtype} vs {recon_event.subtype}"
+            assert recon_measure.voices == orig_measure.voices, \
+                f"Measure {orig_measure.number} voices should match"
 
 
 def test_json_to_mscz_with_template_has_measures(sample_mscz_path, temp_output_dir):

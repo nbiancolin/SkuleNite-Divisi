@@ -9,6 +9,109 @@ from scoreforge.models import (
 )
 
 
+def _serialize_events_list(events: list[Event]) -> list[dict]:
+    """Convert canonical events to JSON-serializable dicts."""
+    out: list[dict] = []
+    for e in events:
+        if isinstance(e, Note):
+            event_obj = {
+                "type": "note",
+                "pitch": e.pitch,
+                "duration": e.duration,
+            }
+            if e.dots > 0:
+                event_obj["dots"] = e.dots
+            if e.slur_start is not None:
+                event_obj["slurStart"] = {
+                    "nextFractions": e.slur_start.next_fractions,
+                }
+            if e.slur_end is not None:
+                event_obj["slurEnd"] = {
+                    "prevFractions": e.slur_end.prev_fractions,
+                }
+            if e.tie_start is not None:
+                event_obj["tieStart"] = {
+                    "nextFractions": e.tie_start.next_fractions,
+                }
+            if e.tie_end is not None:
+                event_obj["tieEnd"] = {
+                    "prevFractions": e.tie_end.prev_fractions,
+                }
+            out.append(event_obj)
+        elif isinstance(e, ChordGroup):
+            event_obj = {
+                "type": "chord",
+                "duration": e.duration,
+                "notes": [],
+            }
+            if e.dots > 0:
+                event_obj["dots"] = e.dots
+            if e.slur_start is not None:
+                event_obj["slurStart"] = {
+                    "nextFractions": e.slur_start.next_fractions,
+                }
+            if e.slur_end is not None:
+                event_obj["slurEnd"] = {
+                    "prevFractions": e.slur_end.prev_fractions,
+                }
+            for cn in e.notes:
+                nd: dict = {"pitch": cn.pitch}
+                if cn.tie_start is not None:
+                    nd["tieStart"] = {
+                        "nextFractions": cn.tie_start.next_fractions,
+                    }
+                if cn.tie_end is not None:
+                    nd["tieEnd"] = {
+                        "prevFractions": cn.tie_end.prev_fractions,
+                    }
+                event_obj["notes"].append(nd)
+            out.append(event_obj)
+        elif isinstance(e, Rest):
+            event_obj = {
+                "type": "rest",
+                "duration": e.duration,
+            }
+            if e.dots > 0:
+                event_obj["dots"] = e.dots
+            if e.measure_duration is not None:
+                event_obj["measureDuration"] = e.measure_duration
+            out.append(event_obj)
+        elif isinstance(e, Dynamic):
+            out.append({
+                "type": "dynamic",
+                "subtype": e.subtype,
+            })
+        elif isinstance(e, HairpinStart):
+            ho: dict = {
+                "type": "hairpinStart",
+                "subtype": e.subtype,
+            }
+            if e.next_measures is not None:
+                ho["nextMeasures"] = e.next_measures
+            if e.next_fractions is not None:
+                ho["nextFractions"] = e.next_fractions
+            if e.direction is not None:
+                ho["direction"] = e.direction
+            out.append(ho)
+        elif isinstance(e, HairpinEnd):
+            he: dict = {"type": "hairpinEnd"}
+            if e.prev_measures is not None:
+                he["prevMeasures"] = e.prev_measures
+            if e.prev_fractions is not None:
+                he["prevFractions"] = e.prev_fractions
+            out.append(he)
+        elif isinstance(e, MeasureRepeat):
+            out.append({
+                "type": "measureRepeat",
+                "subtype": e.subtype,
+                "durationType": e.duration_type,
+                "duration": e.duration,
+            })
+        else:
+            raise TypeError(f"Unknown event type: {type(e)}")
+    return out
+
+
 def save_canonical(score: Score, path: Path) -> None:
     """Save a Score object to a canonical JSON file.
     
@@ -40,25 +143,19 @@ def save_canonical(score: Score, path: Path) -> None:
         measures_dict = {}
 
         for measure in part.measures:
-            meas_obj = {
-                "events": []
-            }
-            
-            # Add irregular measure length if present
+            meas_obj: dict = {}
+
             if measure.irregular is not None:
                 meas_obj["irregular"] = measure.irregular
 
-            # Add measure length when different from time sig (e.g. "1/4" for pickup)
             if measure.measure_len is not None:
                 meas_obj["len"] = measure.measure_len
 
-            # Add KeySig if present
             if measure.key_sig is not None:
                 meas_obj["keySig"] = {
                     "concertKey": measure.key_sig.concert_key,
                 }
-            
-            # Add TimeSig if present
+
             if measure.time_sig is not None:
                 meas_obj["timeSig"] = {
                     "sigN": measure.time_sig.sig_n,
@@ -68,112 +165,17 @@ def save_canonical(score: Score, path: Path) -> None:
             if measure.measure_repeat_count is not None:
                 meas_obj["measureRepeatCount"] = measure.measure_repeat_count
 
-            for e in measure.events:
-                if isinstance(e, Note):
-                    event_obj = {
-                        "type": "note",
-                        "pitch": e.pitch,
-                        "duration": e.duration,
+            if not measure.voices:
+                meas_obj["events"] = []
+            elif set(measure.voices.keys()) == {"0"}:
+                meas_obj["events"] = _serialize_events_list(measure.voices["0"])
+            else:
+                meas_obj["voices"] = {}
+                for vk in sorted(measure.voices.keys(), key=int):
+                    meas_obj["voices"][vk] = {
+                        "events": _serialize_events_list(measure.voices[vk]),
                     }
-                    if e.dots > 0:
-                        event_obj["dots"] = e.dots
-                    if e.slur_start is not None:
-                        event_obj["slurStart"] = {
-                            "nextFractions": e.slur_start.next_fractions,
-                        }
-                    if e.slur_end is not None:
-                        event_obj["slurEnd"] = {
-                            "prevFractions": e.slur_end.prev_fractions,
-                        }
-                    if e.tie_start is not None:
-                        event_obj["tieStart"] = {
-                            "nextFractions": e.tie_start.next_fractions,
-                        }
-                    if e.tie_end is not None:
-                        event_obj["tieEnd"] = {
-                            "prevFractions": e.tie_end.prev_fractions,
-                        }
-                    meas_obj["events"].append(event_obj)
 
-                elif isinstance(e, ChordGroup):
-                    event_obj = {
-                        "type": "chord",
-                        "duration": e.duration,
-                        "notes": [],
-                    }
-                    if e.dots > 0:
-                        event_obj["dots"] = e.dots
-                    if e.slur_start is not None:
-                        event_obj["slurStart"] = {
-                            "nextFractions": e.slur_start.next_fractions,
-                        }
-                    if e.slur_end is not None:
-                        event_obj["slurEnd"] = {
-                            "prevFractions": e.slur_end.prev_fractions,
-                        }
-                    for cn in e.notes:
-                        nd: dict = {"pitch": cn.pitch}
-                        if cn.tie_start is not None:
-                            nd["tieStart"] = {
-                                "nextFractions": cn.tie_start.next_fractions,
-                            }
-                        if cn.tie_end is not None:
-                            nd["tieEnd"] = {
-                                "prevFractions": cn.tie_end.prev_fractions,
-                            }
-                        event_obj["notes"].append(nd)
-                    meas_obj["events"].append(event_obj)
-
-                elif isinstance(e, Rest):
-                    event_obj = {
-                        "type": "rest",
-                        "duration": e.duration,
-                    }
-                    if e.dots > 0:
-                        event_obj["dots"] = e.dots
-                    if e.measure_duration is not None:
-                        event_obj["measureDuration"] = e.measure_duration
-                    meas_obj["events"].append(event_obj)
-                
-                elif isinstance(e, Dynamic):
-                    meas_obj["events"].append({
-                        "type": "dynamic",
-                        "subtype": e.subtype,
-                    })
-
-                elif isinstance(e, HairpinStart):
-                    ho: dict = {
-                        "type": "hairpinStart",
-                        "subtype": e.subtype,
-                    }
-                    if e.next_measures is not None:
-                        ho["nextMeasures"] = e.next_measures
-                    if e.next_fractions is not None:
-                        ho["nextFractions"] = e.next_fractions
-                    if e.direction is not None:
-                        ho["direction"] = e.direction
-                    meas_obj["events"].append(ho)
-
-                elif isinstance(e, HairpinEnd):
-                    he: dict = {"type": "hairpinEnd"}
-                    if e.prev_measures is not None:
-                        he["prevMeasures"] = e.prev_measures
-                    if e.prev_fractions is not None:
-                        he["prevFractions"] = e.prev_fractions
-                    meas_obj["events"].append(he)
-
-                elif isinstance(e, MeasureRepeat):
-                    meas_obj["events"].append({
-                        "type": "measureRepeat",
-                        "subtype": e.subtype,
-                        "durationType": e.duration_type,
-                        "duration": e.duration,
-                    })
-
-                else:
-                    raise TypeError(f"Unknown event type: {type(e)}")
-
-            # Use measure number as string key
             measures_dict[str(measure.number)] = meas_obj
 
         obj["parts"][part.part_id] = {
@@ -268,56 +270,14 @@ def load_score_from_json(path: Path) -> Score:
     return Score(parts=parts, score_id=score_id)
 
 
-def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
-    """Parse a measure from JSON data.
-    
-    Args:
-        measure_data: Dictionary containing measure data
-        measure_number: The measure number (extracted from key in new format)
-        
-    Returns:
-        Measure object
-    """
+def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
     events: list[Event] = []
-    
-    # Parse irregular measure length if present
-    irregular = None
-    if "irregular" in measure_data:
-        irregular = float(measure_data["irregular"])
-
-    # Parse measure length when different from time sig (e.g. "1/4" for pickup)
-    measure_len = measure_data.get("len")
-
-    # Parse KeySig if present
-    key_sig = None
-    if "keySig" in measure_data:
-        key_sig_data = measure_data["keySig"]
-        key_sig = KeySig(
-            concert_key=int(key_sig_data["concertKey"]),
-        )
-    
-    # Parse TimeSig if present
-    time_sig = None
-    if "timeSig" in measure_data:
-        time_sig_data = measure_data["timeSig"]
-        time_sig = TimeSig(
-            sig_n=int(time_sig_data["sigN"]),
-            sig_d=int(time_sig_data["sigD"]),
-        )
-
-    measure_repeat_count = measure_data.get("measureRepeatCount")
-    if measure_repeat_count is not None:
-        measure_repeat_count = int(measure_repeat_count)
-
-    for event_data in measure_data.get("events", []):
+    for event_data in event_data_list:
         event_type = event_data.get("type")
         dots = int(event_data.get("dots", 0))
-        # Clamp dots to valid range
         dots = max(0, min(2, dots))
-        
-        # Note
+
         if event_type == "note" or "pitch" in event_data:
-            # Parse slur information
             slur_start = None
             if "slurStart" in event_data:
                 slur_data = event_data["slurStart"]
@@ -330,8 +290,7 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                 slur_end = SlurEnd(
                     prev_fractions=slur_data["prevFractions"],
                 )
-            
-            # Parse tie information
+
             tie_start = None
             if "tieStart" in event_data:
                 tie_data = event_data["tieStart"]
@@ -344,7 +303,7 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                 tie_end = TieEnd(
                     prev_fractions=tie_data["prevFractions"],
                 )
-            
+
             events.append(
                 Note(
                     pitch=event_data["pitch"],
@@ -385,7 +344,6 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     slur_end=slur_end,
                 )
             )
-        # Rest
         elif event_type == "rest":
             md = event_data.get("measureDuration")
             events.append(
@@ -395,7 +353,6 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     measure_duration=md,
                 )
             )
-        # Dynamic
         elif event_type == "dynamic":
             events.append(
                 Dynamic(
@@ -427,9 +384,7 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                 )
             )
         else:
-            # Fallback for old format (no type field)
             if "pitch" in event_data:
-                # Parse slur information
                 slur_start = None
                 if "slurStart" in event_data:
                     slur_data = event_data["slurStart"]
@@ -442,8 +397,7 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     slur_end = SlurEnd(
                         prev_fractions=slur_data["prevFractions"],
                     )
-                
-                # Parse tie information
+
                 tie_start = None
                 if "tieStart" in event_data:
                     tie_data = event_data["tieStart"]
@@ -456,7 +410,7 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     tie_end = TieEnd(
                         prev_fractions=tie_data["prevFractions"],
                     )
-                
+
                 events.append(
                     Note(
                         pitch=event_data["pitch"],
@@ -477,10 +431,61 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                         measure_duration=md,
                     )
                 )
+    return events
+
+
+def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
+    """Parse a measure from JSON data.
+    
+    Args:
+        measure_data: Dictionary containing measure data
+        measure_number: The measure number (extracted from key in new format)
+        
+    Returns:
+        Measure object
+    """
+    # Parse irregular measure length if present
+    irregular = None
+    if "irregular" in measure_data:
+        irregular = float(measure_data["irregular"])
+
+    # Parse measure length when different from time sig (e.g. "1/4" for pickup)
+    measure_len = measure_data.get("len")
+
+    # Parse KeySig if present
+    key_sig = None
+    if "keySig" in measure_data:
+        key_sig_data = measure_data["keySig"]
+        key_sig = KeySig(
+            concert_key=int(key_sig_data["concertKey"]),
+        )
+    
+    # Parse TimeSig if present
+    time_sig = None
+    if "timeSig" in measure_data:
+        time_sig_data = measure_data["timeSig"]
+        time_sig = TimeSig(
+            sig_n=int(time_sig_data["sigN"]),
+            sig_d=int(time_sig_data["sigD"]),
+        )
+
+    measure_repeat_count = measure_data.get("measureRepeatCount")
+    if measure_repeat_count is not None:
+        measure_repeat_count = int(measure_repeat_count)
+
+    if "voices" in measure_data:
+        voices: dict[str, list[Event]] = {}
+        for vk in sorted(measure_data["voices"].keys(), key=int):
+            ved = measure_data["voices"][vk]
+            voices[str(vk)] = _parse_events_from_json_list(ved.get("events", []))
+    elif "events" in measure_data:
+        voices = {"0": _parse_events_from_json_list(measure_data["events"])}
+    else:
+        voices = {}
 
     return Measure(
         number=measure_number,
-        events=events,
+        voices=voices,
         key_sig=key_sig,
         time_sig=time_sig,
         irregular=irregular,

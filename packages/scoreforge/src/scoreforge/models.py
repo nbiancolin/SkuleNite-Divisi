@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import List, Union, Optional
+from dataclasses import dataclass, field
+from typing import List, Union, Optional, Dict
 
 
 @dataclass(frozen=True)
@@ -121,12 +121,17 @@ class TimeSig:
 @dataclass
 class Measure:
     number: int
-    events: List[Event]
+    voices: Dict[str, List[Event]] = field(default_factory=dict)
     key_sig: Optional[KeySig] = None
     time_sig: Optional[TimeSig] = None
     irregular: Optional[float] = None  # MuseScore irregular flag (0 or 1)
     measure_len: Optional[str] = None  # Actual length when different from time sig (e.g. "1/4" for pickup)
     measure_repeat_count: Optional[int] = None  # MuseScore <measureRepeatCount> on Measure (e.g. 1)
+
+    @property
+    def events(self) -> List[Event]:
+        """Voice 0 only; kept for backward compatibility with single-voice scores."""
+        return self.voices.get("0", [])
 
 
 @dataclass

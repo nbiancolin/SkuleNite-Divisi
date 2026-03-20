@@ -40,59 +40,17 @@ def _parse_measure_repeat_count(measure_el: ET.Element) -> int | None:
         return None
 
 
-def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
-    """Parse measures from a Staff XML element.
-    
-    Args:
-        staff_el: Staff XML element
-        
-    Returns:
-        List of Measure objects
-    """
-    measures: list[Measure] = []
+def _parse_single_voice_content(
+    voice_el: ET.Element,
+    active_slur_starts: list,
+    active_tie_starts: list,
+) -> tuple[list[Event], KeySig | None, TimeSig | None]:
+    """Parse one <voice> container: events plus any KeySig/TimeSig inside it."""
+    events: list[Event] = []
+    key_sig = None
+    time_sig = None
 
-    # Track slur and tie starts across all measures in this staff
-    # This allows matching start/end pairs that span multiple measures
-    active_slur_starts = []  # Stack of slur start offsets (for nested slurs)
-    active_tie_starts = []  # List of tie start offsets (for matching)
-
-    for i, measure_el in enumerate(staff_el.findall("Measure"), start=1):
-        events: list[Event] = []
-        key_sig = None
-        time_sig = None
-        
-        # Parse irregular measure length if present (pickup measures, etc.)
-        irregular = None
-        irregular_el = measure_el.find("irregular")
-        if irregular_el is not None:
-            irregular_text = irregular_el.text
-            if irregular_text is not None:
-                try:
-                    irregular = float(irregular_text)
-                except ValueError:
-                    pass
-
-        # Parse measure length when different from time signature (e.g. len="1/4" for pickup)
-        measure_len = measure_el.get("len")
-        measure_repeat_count = _parse_measure_repeat_count(measure_el)
-
-        voice_el = measure_el.find("voice")
-        if voice_el is None:
-            measures.append(
-                Measure(
-                    number=i,
-                    events=[],
-                    key_sig=key_sig,
-                    time_sig=time_sig,
-                    irregular=irregular,
-                    measure_len=measure_len,
-                    measure_repeat_count=measure_repeat_count,
-                )
-            )
-            continue
-
-        # Parse KeySig and TimeSig from voice element
-        for el in list(voice_el):
+    for el in list(voice_el):
             # ---- KEYSIG ----
             if el.tag == "KeySig":
                 concert_key_text = el.findtext("concertKey")
@@ -317,12 +275,68 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
             else:
                 continue
 
+    return events, key_sig, time_sig
+
+
+def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
+    """Parse measures from a Staff XML element (all direct-child <voice> blocks per measure)."""
+    measures: list[Measure] = []
+    active_slur_starts_by_voice: dict[str, list] = {}
+    active_tie_starts_by_voice: dict[str, list] = {}
+
+    for i, measure_el in enumerate(staff_el.findall("Measure"), start=1):
+        irregular = None
+        irregular_el = measure_el.find("irregular")
+        if irregular_el is not None and irregular_el.text is not None:
+            try:
+                irregular = float(irregular_el.text)
+            except ValueError:
+                pass
+
+        measure_len = measure_el.get("len")
+        measure_repeat_count = _parse_measure_repeat_count(measure_el)
+
+        voice_children = [c for c in measure_el if c.tag == "voice"]
+        if not voice_children:
+            measures.append(
+                Measure(
+                    number=i,
+                    voices={"0": []},
+                    key_sig=None,
+                    time_sig=None,
+                    irregular=irregular,
+                    measure_len=measure_len,
+                    measure_repeat_count=measure_repeat_count,
+                )
+            )
+            continue
+
+        voices_out: dict[str, list[Event]] = {}
+        measure_key_sig = None
+        measure_time_sig = None
+
+        for vi, voice_el in enumerate(voice_children):
+            vk = str(vi)
+            if vk not in active_slur_starts_by_voice:
+                active_slur_starts_by_voice[vk] = []
+                active_tie_starts_by_voice[vk] = []
+            evs, ksig, tsig = _parse_single_voice_content(
+                voice_el,
+                active_slur_starts_by_voice[vk],
+                active_tie_starts_by_voice[vk],
+            )
+            voices_out[vk] = evs
+            if measure_key_sig is None and ksig is not None:
+                measure_key_sig = ksig
+            if measure_time_sig is None and tsig is not None:
+                measure_time_sig = tsig
+
         measures.append(
             Measure(
                 number=i,
-                events=events,
-                key_sig=key_sig,
-                time_sig=time_sig,
+                voices=voices_out,
+                key_sig=measure_key_sig,
+                time_sig=measure_time_sig,
                 irregular=irregular,
                 measure_len=measure_len,
                 measure_repeat_count=measure_repeat_count,
