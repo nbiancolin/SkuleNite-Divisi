@@ -14,7 +14,7 @@ import { X, UploadCloud } from "lucide-react";
 import { apiService } from "../../services/apiService";
 import type { Arrangement } from "../../services/apiService";
 
-export default function UploadArrangementVersionPage() {
+export default function UploadArrangementVersionFromCommitPage() {
   const { arrangementId = "0"} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement |undefined>(undefined)
   const [file, setFile] = useState<File | null>(null);
@@ -47,7 +47,8 @@ export default function UploadArrangementVersionPage() {
     if (!file) return;
     setIsUploading(true);
     try {
-      const commitResponse = await apiService.createArrangementCommit(
+      // const commitResponse = 
+      await apiService.createArrangementCommit(
         Number(arrangementId),
         file,
         commitMessage
@@ -95,7 +96,7 @@ export default function UploadArrangementVersionPage() {
         fullWidth
         loading={isUploading}
       >
-        Upload New Commit and Create Version
+        Upload New Commit
       </Button>
       {error && (
         <Notification

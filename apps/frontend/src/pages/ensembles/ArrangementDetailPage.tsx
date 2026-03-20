@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   Container,
   Button,
+  Menu,
   Paper,
   Title,
   Text,
@@ -664,16 +665,37 @@ export default function ArrangementDisplay() {
                       v{arrangement.latest_version_num || 'N/A'}
                     </Badge>
                     {/* Fix spacing of these buttons */}
-                    <Button
-                      component={Link}
-                      to={`/app/arrangements/${arrangement.id}/new-version`}
-                      variant={arrangement.latest_version ? "subtle" : "filled"}
-                      size="sm"
-                      rightSection={<IconUpload size={16} />}
-                    >
-                      Upload new file
-                    </Button>
-
+                    <Group wrap="nowrap" gap={0}>
+                      <Button
+                        component={Link}
+                        to={`/app/arrangements/${arrangement.id}/new-commit`}
+                        variant={arrangement.latest_version ? "subtle" : "filled"}
+                        size="sm"
+                        rightSection={<IconUpload size={16} />}
+                      >
+                        Upload new file
+                      </Button>
+                      <Menu transitionProps={{ transition: 'pop' }} position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant={arrangement.latest_version ? "subtle" : "filled"}
+                            size={36}
+                            aria-label="More options"
+                          >
+                            <IconChevronDown size={16} stroke={1.5} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            component={Link}
+                            to={`/app/arrangements/${arrangement.id}/new-version`}
+                            leftSection={<IconCalendar size={16} stroke={1.5}/>}
+                          >
+                            Directly Create Version
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
                     {arrangement.latest_version && !exportLoading && !exportError && (
                     <>
                       <Button

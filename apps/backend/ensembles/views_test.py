@@ -308,3 +308,80 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
     # Part with null order should come last
     assert part_names[2]["id"] == part3.id
     assert part_names[2]["order"] is None
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.prep_and_export_mscz.delay")
+@patch("ensembles.views.default_storage.save")
+@patch("ensembles.views.json_to_mscz")
+@patch("ensembles.views.subprocess.run")
+@patch("ensembles.views.init_repo")
+def test_create_from_commit_triggers_export(
+    mock_init_repo,
+    mock_subprocess_run,
+    mock_json_to_mscz,
+    mock_default_storage_save,
+    mock_prep_export,
+    arrangement,
+    ensemble,
+    user,
+    client,
+):
+    from django.utils import timezone
+    from ensembles.models import Commit, GitRepo
+    from pathlib import Path
+
+    # Avoid touching the real git repo on disk.
+    mock_init_repo.return_value = "test-repo-path"
+    mock_subprocess_run.return_value = type(
+        "CP",
+        (),
+        {"returncode": 0, "stdout": "", "stderr": ""},
+    )()
+
+    # Ensure the helper can open the produced `.mscz`.
+    def _fake_json_to_mscz(input_path: str, out_mscz: str, template_mscz_path=None) -> None:
+        Path(out_mscz).write_bytes(b"dummy-mscz")
+
+    mock_json_to_mscz.side_effect = _fake_json_to_mscz
+    mock_default_storage_save.return_value = "saved.mscz"  # name is irrelevant for this test
+
+    # Create a minimal git-backed commit row.
+    git_repo, _ = GitRepo.objects.get_or_create(
+        arrangement=arrangement,
+        defaults={"repo_path": "test-repo-path"},
+    )
+    sha = "a" * 40
+    Commit.objects.create(
+        git_repo=git_repo,
+        created_by=user,
+        sha=sha,
+        message="test commit",
+        author_name="Test Author",
+        author_email="author@example.com",
+        authored_at=timezone.now(),
+        committed_at=timezone.now(),
+        parent_sha=None,
+        tag=None,
+    )
+
+    url = reverse("ensembles:arrangementversion-create-from-commit")
+    r = client.post(
+        url,
+        data={"commit_hash": sha},
+        content_type="application/json",
+    )
+
+    assert r.status_code == 201
+
+    version = ArrangementVersion.objects.get(
+        arrangement=arrangement,
+        file_name=f"commit-{sha}.mscz",
+    )
+    assert version.is_processing is True
+
+    # Raw `.mscz` should be stored to the canonical storage key.
+    assert mock_default_storage_save.call_count == 1
+    assert mock_default_storage_save.call_args[0][0] == version.mscz_file_key
+
+    mock_prep_export.assert_called_once_with(version.pk)

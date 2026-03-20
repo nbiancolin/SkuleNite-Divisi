@@ -310,6 +310,7 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
 
 
 class ArrangementVersionFromCommitSerializer(serializers.Serializer):
+    #TODO: Add Version type here
     default_error_messages = {
         "bad_payload": "Either commit or commit hash must be provided (not both)"
     }
