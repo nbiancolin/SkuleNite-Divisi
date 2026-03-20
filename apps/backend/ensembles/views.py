@@ -362,6 +362,7 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
 
 
 class ArrangementViewSet(BaseArrangementViewSet):
+    # TODO: Is this even used anywhere?
     lookup_field = "slug"
 
 
@@ -411,6 +412,7 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
         # This endpoint is invoked via `arrangements-by-id/<id>/new-commit/`.
         # We load the arrangement directly by id (so "exists but excluded from
         # the user-filtered queryset" doesn't turn into a 404).
+        #TODO: Serializer here
         arrangement = Arrangement.objects.filter(id=id).first()
         if arrangement is None:
             return Response(
@@ -489,6 +491,7 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
 
         return Response(
             {
+                #TODO: Commit Serializer
                 "commit": {
                     "id": commit_row.id,
                     "sha": commit_row.sha,
@@ -559,58 +562,6 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         arrangement = commit_obj.git_repo.arrangement
         file_name = f"commit-{commit_obj.sha}.mscz"
 
-        # Avoid duplicate version rows for the same commit marker file.
-        # (When the endpoint is retried, we re-trigger export instead of creating a new version label.)
-        # existing = ArrangementVersion.objects.filter(
-        #     arrangement=arrangement, file_name=file_name
-        # ).first()
-
-        # if existing:
-        #     existing.is_processing = True
-        #     existing.error_on_export = False
-        #     existing.save(update_fields=["is_processing", "error_on_export"])
-
-        #     # Restore the raw `.mscz` if it was missing (older versions may have been created
-        #     # before we materialized the commit payload into storage).
-        #     if not default_storage.exists(existing.mscz_file_key):
-        #         try:
-        #             _materialize_commit_mscz_to_version(
-        #                 arrangement=arrangement,
-        #                 commit_sha=commit_obj.sha,
-        #                 version=existing,
-        #             )
-        #         except Exception as e:
-        #             existing.is_processing = False
-        #             existing.error_on_export = True
-        #             existing.save(update_fields=["is_processing", "error_on_export"])
-        #             ExportFailureLog.objects.create(arrangement_version=existing)
-        #             return Response(
-        #                 {
-        #                     "detail": f"Failed to materialize raw mscz from commit: {e}"
-        #                 },
-        #                 status=status.HTTP_400_BAD_REQUEST,
-        #             )
-
-
-
-
-
-            # # Run the same pipeline as normal version creation/upload:
-            # # 1) format mscz -> processed mscz
-            # # 2) export score parts + PDFs
-            # prep_and_export_mscz.delay(existing.pk)
-
-            # return Response(
-            #     {
-            #         "message": "Arrangement version already exists for this commit; export re-triggered.",
-            #         "version_id": existing.id,
-            #         "version_label": existing.version_label,
-            #         "arrangement_id": arrangement.id,
-            #         "commit_sha": commit_obj.sha,
-            #     },
-            #     status=status.HTTP_200_OK,
-            # )
-
         try:
             with transaction.atomic():
                 version = ArrangementVersion(
@@ -623,6 +574,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                         "num_measures_per_line_part", 6
                     ),
                     num_lines_per_page=data.get("num_lines_per_page", 8),
+                    commit=commit_obj
                 )
                 version.save(version_type=data.get("version_type", "patch"))
         except Exception as e:
