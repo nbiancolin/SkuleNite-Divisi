@@ -2,6 +2,17 @@
 One test to see if the roundtrip works
 """
 
+import pytest
+
+from scoreforge.converter import pitch_to_midi
+
+
+def test_pitch_to_midi_accepts_flat_and_negative_octave():
+    """Regression: Bb; negative octave (D-1 matches midi_to_pitch(2))."""
+    assert pitch_to_midi("D-1") == 2
+    assert pitch_to_midi("Bb3") == 58
+
+
 def test_roundtrip_for_manual_inspection():
     """Test that converts mscz -> canonical -> mscz for manual inspection.
     
@@ -13,7 +24,8 @@ def test_roundtrip_for_manual_inspection():
     from pathlib import Path
     
     # Use the specific input file
-    input_mscz = Path(__file__).parent / "test-data" / "band-sting-5.mscz"
+    # input_mscz = Path(__file__).parent / "test-data" / "band-sting-5.mscz"
+    input_mscz = Path(__file__).parent / "test-data" / "10-Mirror-Blue Night.mscz"
     assert input_mscz.exists(), f"Input file not found: {input_mscz}"
     
     # Use the output directory at the project root for easy access
@@ -49,3 +61,37 @@ def test_roundtrip_for_manual_inspection():
     print(f"  Template: {template_path}")
     print(f"  Reconstructed: {reconstructed_path}")
     print(f"\nYou can now manually inspect {reconstructed_path}")
+
+
+def test_mirror_blue_night_mscz_roundtrip_parse_equality():
+    """Regression for MS4 scores: excerpts in MSCZ, 16th notes, measure rests."""
+    from scoreforge.cli import json_to_mscz, mscz_to_json
+    from scoreforge.io import extract_mscx
+    from scoreforge.parser import parse_score
+    from pathlib import Path
+    import tempfile
+
+    input_mscz = Path(__file__).parent / "test-data" / "10-Mirror-Blue Night.mscz"
+    if not input_mscz.exists():
+        pytest.skip("test-data/10-Mirror-Blue Night.mscz not present")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp)
+        name = "mirror"
+        mscz_to_json(str(input_mscz), str(out), name)
+        json_path = out / f"{name}.json"
+        template_path = out / f"{name}.mscz"
+        recon_path = out / "reconstructed.mscz"
+        json_to_mscz(str(json_path), str(recon_path), str(template_path))
+
+        original_score = parse_score(extract_mscx(input_mscz))
+        reconstructed_score = parse_score(extract_mscx(recon_path))
+
+        assert len(reconstructed_score.parts) == len(original_score.parts)
+        for orig_part, recon_part in zip(original_score.parts, reconstructed_score.parts):
+            assert orig_part.part_id == recon_part.part_id
+            assert len(recon_part.measures) == len(orig_part.measures)
+            for om, rm in zip(orig_part.measures, recon_part.measures):
+                assert om.number == rm.number
+                assert om.measure_repeat_count == rm.measure_repeat_count
+                assert om.events == rm.events

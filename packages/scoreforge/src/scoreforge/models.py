@@ -39,8 +39,9 @@ class Note:
 
 @dataclass(frozen=True)
 class Rest:
-    duration: float  # Base duration (without dots)
+    duration: float  # Base duration (without dots); unused when measure_duration is set
     dots: int = 0  # Number of augmentation dots (0, 1, or 2)
+    measure_duration: Optional[str] = None  # e.g. "4/4" for full-measure rests (durationType measure)
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,16 @@ class Dynamic:
     subtype: str  # e.g., "p", "f", "mf", etc.
 
 
-Event = Union[Note, Rest, Dynamic]
+@dataclass(frozen=True)
+class MeasureRepeat:
+    """One-measure repeat sign (percent) as in MuseScore <MeasureRepeat>."""
+
+    subtype: str  # e.g. "1" for single-slash staff repeat
+    duration_type: str  # typically "measure"
+    duration: str  # e.g. "4/4" — span relative to time signature
+
+
+Event = Union[Note, Rest, Dynamic, MeasureRepeat]
 
 
 @dataclass(frozen=True)
@@ -70,6 +80,7 @@ class Measure:
     time_sig: Optional[TimeSig] = None
     irregular: Optional[float] = None  # MuseScore irregular flag (0 or 1)
     measure_len: Optional[str] = None  # Actual length when different from time sig (e.g. "1/4" for pickup)
+    measure_repeat_count: Optional[int] = None  # MuseScore <measureRepeatCount> on Measure (e.g. 1)
 
 
 @dataclass

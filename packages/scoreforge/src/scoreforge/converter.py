@@ -1,14 +1,17 @@
 import xml.etree.ElementTree as ET
+import re
 
-from scoreforge.models import Score, Note, Rest, Dynamic
+from scoreforge.models import Score, Note, Rest, Dynamic, MeasureRepeat
 
-# Duration type mapping for MSCX format
+# Duration type mapping for MSCX format (canonical float -> MuseScore durationType)
 DURATION_TYPE = {
     4: "whole",
     2: "half",
     1: "quarter",
     0.5: "eighth",
-    # TODO: Fill this in more
+    0.25: "16th",
+    0.125: "32nd",
+    0.0625: "64th",
 }
 
 
@@ -53,12 +56,25 @@ def pitch_to_midi(pitch: str) -> int:
         >>> pitch_to_midi('C#4')
         61
     """
-    name, octave = pitch[:-1], int(pitch[-1])
-    names = {
-        "C": 0, "C#": 1, "D": 2, "D#": 3, "E": 4, "F": 5,
-        "F#": 6, "G": 7, "G#": 8, "A": 9, "A#": 10, "B": 11
+    # Accidental is only # or b; '-' before digits is a negative octave (not flat)
+    match = re.fullmatch(r"([A-Ga-g])([#b]?)(-?\d+)", pitch.strip())
+    if match is None:
+        raise ValueError(f"Invalid pitch format: {pitch!r}")
+
+    letter, accidental, octave_str = match.groups()
+    octave = int(octave_str)
+
+    base_names = {
+        "C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11
     }
-    return (octave + 1) * 12 + names[name]
+    semitone = base_names[letter.upper()]
+
+    if accidental == "#":
+        semitone += 1
+    elif accidental in {"b", "-"}:
+        semitone -= 1
+
+    return (octave + 1) * 12 + semitone
 
 
 def score_to_mscx(score: Score) -> ET.ElementTree:
@@ -103,6 +119,11 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
             else:
                 measure_el = ET.SubElement(part_el, "Measure")
 
+            if measure.measure_repeat_count is not None:
+                ET.SubElement(measure_el, "measureRepeatCount").text = str(
+                    measure.measure_repeat_count
+                )
+
             for event in measure.events:
                 if isinstance(event, Note):
                     chord = ET.SubElement(measure_el, "Chord")
@@ -117,9 +138,13 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
 
                 elif isinstance(event, Rest):
                     rest = ET.SubElement(measure_el, "Rest")
-                    ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
+                    if event.measure_duration is not None:
+                        ET.SubElement(rest, "durationType").text = "measure"
+                        ET.SubElement(rest, "duration").text = event.measure_duration
+                    else:
+                        ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
+                            event.duration, "quarter"
+                        )
 
     return ET.ElementTree(root)
 
@@ -172,7 +197,12 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
                 measure_el = ET.SubElement(staff_el, "Measure")
                 if measure.irregular is not None:
                     ET.SubElement(measure_el, "irregular").text = str(measure.irregular)
-            
+
+            if measure.measure_repeat_count is not None:
+                ET.SubElement(measure_el, "measureRepeatCount").text = str(
+                    measure.measure_repeat_count
+                )
+
             voice_el = ET.SubElement(measure_el, "voice")
             
             # Add KeySig if present (inside voice, before events)
@@ -245,13 +275,23 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
                     # Write dots before durationType to match MuseScore XML structure
                     if event.dots > 0:
                         ET.SubElement(rest, "dots").text = str(event.dots)
-                    ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
+                    if event.measure_duration is not None:
+                        ET.SubElement(rest, "durationType").text = "measure"
+                        ET.SubElement(rest, "duration").text = event.measure_duration
+                    else:
+                        ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
+                            event.duration, "quarter"
+                        )
                 
                 elif isinstance(event, Dynamic):
                     dynamic_el = ET.SubElement(voice_el, "Dynamic")
                     ET.SubElement(dynamic_el, "subtype").text = event.subtype
+
+                elif isinstance(event, MeasureRepeat):
+                    mr_el = ET.SubElement(voice_el, "MeasureRepeat")
+                    ET.SubElement(mr_el, "subtype").text = event.subtype
+                    ET.SubElement(mr_el, "durationType").text = event.duration_type
+                    ET.SubElement(mr_el, "duration").text = event.duration
     
     return ET.ElementTree(root)
 

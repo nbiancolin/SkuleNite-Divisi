@@ -3,7 +3,7 @@ from pathlib import Path
 
 from scoreforge.models import (
     Score, Part, Measure, Event, Note, Rest, KeySig, TimeSig, Dynamic,
-    SlurStart, SlurEnd, TieStart, TieEnd
+    SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
 )
 
 
@@ -63,6 +63,9 @@ def save_canonical(score: Score, path: Path) -> None:
                     "sigD": measure.time_sig.sig_d,
                 }
 
+            if measure.measure_repeat_count is not None:
+                meas_obj["measureRepeatCount"] = measure.measure_repeat_count
+
             for e in measure.events:
                 if isinstance(e, Note):
                     event_obj = {
@@ -97,12 +100,22 @@ def save_canonical(score: Score, path: Path) -> None:
                     }
                     if e.dots > 0:
                         event_obj["dots"] = e.dots
+                    if e.measure_duration is not None:
+                        event_obj["measureDuration"] = e.measure_duration
                     meas_obj["events"].append(event_obj)
                 
                 elif isinstance(e, Dynamic):
                     meas_obj["events"].append({
                         "type": "dynamic",
                         "subtype": e.subtype,
+                    })
+
+                elif isinstance(e, MeasureRepeat):
+                    meas_obj["events"].append({
+                        "type": "measureRepeat",
+                        "subtype": e.subtype,
+                        "durationType": e.duration_type,
+                        "duration": e.duration,
                     })
 
                 else:
@@ -117,6 +130,11 @@ def save_canonical(score: Score, path: Path) -> None:
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=2, sort_keys=True)
+
+
+def _measure_keys_sorted_numeric(measures_data: dict) -> list[str]:
+    """Iterate measure keys in score order (1,2,…,9,10,…), not lexicographic."""
+    return sorted(measures_data.keys(), key=lambda k: int(k))
 
 
 def load_score_from_json(path: Path) -> Score:
@@ -166,7 +184,8 @@ def load_score_from_json(path: Path) -> Score:
                     measures.append(_parse_measure(measure_data, measure_number))
             else:
                 # New format: dict of measures
-                for measure_num_str, measure_data in measures_data.items():
+                for measure_num_str in _measure_keys_sorted_numeric(measures_data):
+                    measure_data = measures_data[measure_num_str]
                     measure_number = int(measure_num_str)
                     measures.append(_parse_measure(measure_data, measure_number))
             
@@ -182,7 +201,8 @@ def load_score_from_json(path: Path) -> Score:
             measures: list[Measure] = []
             measures_data = part_data.get("measures", {})
             
-            for measure_num_str, measure_data in measures_data.items():
+            for measure_num_str in _measure_keys_sorted_numeric(measures_data):
+                measure_data = measures_data[measure_num_str]
                 measure_number = int(measure_num_str)
                 measures.append(_parse_measure(measure_data, measure_number))
             
@@ -233,6 +253,10 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
             sig_d=int(time_sig_data["sigD"]),
         )
 
+    measure_repeat_count = measure_data.get("measureRepeatCount")
+    if measure_repeat_count is not None:
+        measure_repeat_count = int(measure_repeat_count)
+
     for event_data in measure_data.get("events", []):
         event_type = event_data.get("type")
         dots = int(event_data.get("dots", 0))
@@ -282,10 +306,12 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
             )
         # Rest
         elif event_type == "rest":
+            md = event_data.get("measureDuration")
             events.append(
                 Rest(
                     duration=float(event_data["duration"]),
                     dots=dots,
+                    measure_duration=md,
                 )
             )
         # Dynamic
@@ -293,6 +319,14 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
             events.append(
                 Dynamic(
                     subtype=event_data["subtype"],
+                )
+            )
+        elif event_type == "measureRepeat":
+            events.append(
+                MeasureRepeat(
+                    subtype=str(event_data["subtype"]),
+                    duration_type=str(event_data.get("durationType", "measure")),
+                    duration=str(event_data["duration"]),
                 )
             )
         else:
@@ -338,10 +372,12 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
                     )
                 )
             else:
+                md = event_data.get("measureDuration")
                 events.append(
                     Rest(
                         duration=float(event_data["duration"]),
                         dots=dots,
+                        measure_duration=md,
                     )
                 )
 
@@ -352,5 +388,6 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
         time_sig=time_sig,
         irregular=irregular,
         measure_len=measure_len,
+        measure_repeat_count=measure_repeat_count,
     )
 

@@ -4,19 +4,31 @@ import xml.etree.ElementTree as ET
 
 from scoreforge.models import (
     Score, Note, Measure, Part, Rest, Event, KeySig, TimeSig, Dynamic,
-    SlurStart, SlurEnd, TieStart, TieEnd
+    SlurStart, SlurEnd, TieStart, TieEnd, MeasureRepeat,
 )
 from scoreforge.converter import midi_to_pitch
 
 
-# Duration mapping from MSCX format to numeric values
+# Duration mapping from MSCX format to numeric values (base length, dots separate)
 DURATION_MAP = {
     "whole": 4,
     "half": 2,
     "quarter": 1,
     "eighth": 0.5,
-    # TODO: Fill this in more
+    "16th": 0.25,
+    "32nd": 0.125,
+    "64th": 0.0625,
 }
+
+
+def _parse_measure_repeat_count(measure_el: ET.Element) -> int | None:
+    t = measure_el.findtext("measureRepeatCount")
+    if t is None or not str(t).strip():
+        return None
+    try:
+        return int(t.strip())
+    except ValueError:
+        return None
 
 
 def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
@@ -53,6 +65,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
 
         # Parse measure length when different from time signature (e.g. len="1/4" for pickup)
         measure_len = measure_el.get("len")
+        measure_repeat_count = _parse_measure_repeat_count(measure_el)
 
         voice_el = measure_el.find("voice")
         if voice_el is None:
@@ -64,6 +77,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                     time_sig=time_sig,
                     irregular=irregular,
                     measure_len=measure_len,
+                    measure_repeat_count=measure_repeat_count,
                 )
             )
             continue
@@ -190,8 +204,23 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
             # ---- REST ----
             elif el.tag == "Rest":
                 dur_type = el.findtext("durationType", "quarter")
+                if dur_type == "measure":
+                    md = el.findtext("duration")
+                    if md is None or not str(md).strip():
+                        md = "4/4"
+                    else:
+                        md = str(md).strip()
+                    events.append(
+                        Rest(
+                            duration=0.0,
+                            dots=0,
+                            measure_duration=md,
+                        )
+                    )
+                    continue
+
                 base_duration = DURATION_MAP.get(dur_type, 1)
-                
+
                 # Parse dots
                 dots_text = el.findtext("dots", "0")
                 try:
@@ -200,7 +229,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                     dots = 0
                 # Clamp dots to valid range (0-2)
                 dots = max(0, min(2, dots))
-                
+
                 events.append(
                     Rest(
                         duration=base_duration,  # Store base duration
@@ -217,6 +246,24 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                     )
                 continue
 
+            # ---- MEASURE REPEAT (percent sign) ----
+            elif el.tag == "MeasureRepeat":
+                subtype = el.findtext("subtype", "1") or "1"
+                dur_type = el.findtext("durationType", "measure") or "measure"
+                dur_frac = el.findtext("duration", "4/4")
+                if dur_frac is None or not str(dur_frac).strip():
+                    dur_frac = "4/4"
+                else:
+                    dur_frac = str(dur_frac).strip()
+                events.append(
+                    MeasureRepeat(
+                        subtype=subtype.strip(),
+                        duration_type=dur_type.strip(),
+                        duration=dur_frac,
+                    )
+                )
+                continue
+
             # ---- IGNORE other elements in voice ----
             else:
                 continue
@@ -229,6 +276,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                 time_sig=time_sig,
                 irregular=irregular,
                 measure_len=measure_len,
+                measure_repeat_count=measure_repeat_count,
             )
         )
 
