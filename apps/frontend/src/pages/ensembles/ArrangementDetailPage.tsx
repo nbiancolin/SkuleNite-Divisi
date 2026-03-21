@@ -342,6 +342,13 @@ export default function ArrangementDisplay() {
         await getDownloadLinks(data.latest_version.id);
         // Fetch parts for latest version
         await fetchLatestVersionParts(data.latest_version.id);
+      } else {
+        setExportLoading(false);
+        setExportError(false);
+        setRawMsczUrl(data.latest_commit_mscz_download_url ?? "");
+        setMsczUrl("");
+        setScoreUrl("");
+        setAudioUrl("");
       }
 
       // Fetch version history
@@ -715,7 +722,7 @@ export default function ArrangementDisplay() {
                         size="sm"
                         rightSection={<IconDownload size={16} />} 
                       >
-                        Download Formatted MSCZ file
+                        Download latest version MSCZ
                       </Button>
                       <Button
                         component={Link}
@@ -725,7 +732,7 @@ export default function ArrangementDisplay() {
                         size="sm"
                         rightSection={<IconDownload size={16} />}
                       >
-                        Download Raw MSCZ file
+                        Download MSCZ from latest commit
                       </Button>
                     </>
                     )}
@@ -740,7 +747,7 @@ export default function ArrangementDisplay() {
                           size="sm"
                           rightSection={<IconDownload size={16} />}
                         >
-                          Download Raw MSCZ file
+                          Download MSCZ from latest commit
                         </Button>
                         <Container>
                           <Group justify="center" py="xl">
@@ -761,7 +768,7 @@ export default function ArrangementDisplay() {
                           size="sm"
                           rightSection={<IconDownload size={16} />}
                         >
-                          Download Raw MSCZ file
+                          Download MSCZ from latest commit
                         </Button>
                         <Container>
                           <Group justify="center" py="xl">
@@ -769,6 +776,19 @@ export default function ArrangementDisplay() {
                           </Group>
                         </Container>
                       </>
+                    )}
+
+                    {!arrangement.latest_version && rawMsczUrl && (
+                      <Button
+                        component={Link}
+                        target="_blank"
+                        to={rawMsczUrl}
+                        variant="subtle"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />}
+                      >
+                        Download MSCZ from latest commit
+                      </Button>
                     )}
                   </Group>
 
@@ -998,7 +1018,7 @@ export default function ArrangementDisplay() {
                   rightSection={<IconDownload size={16} />}
                   disabled={!versionDownloadLinks.msczUrl}
                 >
-                  Formatted MSCZ
+                  Latest version MSCZ
                 </Button>
                 
                 <Button
@@ -1009,7 +1029,7 @@ export default function ArrangementDisplay() {
                   rightSection={<IconDownload size={16} />}
                   disabled={!versionDownloadLinks.rawMsczUrl}
                 >
-                  Raw MSCZ
+                  MSCZ from latest commit
                 </Button>
               </Group>
 

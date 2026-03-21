@@ -39,6 +39,7 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
+    latest_commit_mscz_download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Arrangement
@@ -55,12 +56,22 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "style",
             "latest_version",
             "latest_version_num",
+            "latest_commit_mscz_download_url",
         ]
         read_only_fields = [
             "slug",
             "ensemble_name",
             "ensemble_slug",
         ]
+
+    def get_latest_commit_mscz_download_url(self, obj: Arrangement) -> str | None:
+        request = self.context.get("request")
+        if not request:
+            return None
+        if not Commit.objects.filter(git_repo__arrangement=obj).exists():
+            return None
+        path = f"/api/arrangements-by-id/{obj.id}/download_latest_commit_mscz/"
+        return request.build_absolute_uri(path)
 
 
 class EnsembleSerializer(serializers.ModelSerializer):

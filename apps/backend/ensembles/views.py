@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.core.files.storage import default_storage
 from django.core.files import File
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
+import io
 from django.db.models import Q
 from django.db import transaction
 from django.conf import settings
@@ -20,6 +22,7 @@ from ensembles.serializers import (
     ArrangementVersionFromCommitSerializer,
     CreateArrangementCommitSerializer,
     EnsemblePartNameMergeSerializer,
+    CreateArrangementVersionMsczSerializer
 )
 from django.db.models.expressions import RawSQL
 
@@ -38,6 +41,7 @@ from ensembles.git import (
     init_repo,
     materialize_commit_mscz_to_version,
 )
+from ensembles.git.materialize import build_mscz_bytes_from_commit
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -343,11 +347,8 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
 
         # Versions created from commits: prefer FK; legacy rows used commit-<sha>.mscz filenames.
         version_commit_shas = set()
-        for v in ArrangementVersion.objects.filter(arrangement=arrangement).select_related("commit"):
-            if v.commit_id:
-                version_commit_shas.add(v.commit.sha)
-            elif v.file_name.startswith("commit-") and v.file_name.endswith(".mscz"):
-                version_commit_shas.add(v.file_name[len("commit-") : -len(".mscz")])
+        for v in ArrangementVersion.objects.filter(arrangement=arrangement, commit__isnull=False).select_related("commit"):
+            version_commit_shas.add(v.commit.sha)
 
         commit_rows = (
             Commit.objects.filter(git_repo__arrangement=arrangement)
@@ -374,6 +375,45 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
                 }
                 for row in commit_rows
             ]
+        )
+
+    @action(detail=True, methods=["get"], url_path="download_latest_commit_mscz")
+    def download_latest_commit_mscz(self, request, id=None, *args, **kwargs):
+        """Build and download MSCZ from the latest git commit for this arrangement (not tied to a version)."""
+        arrangement = self.get_object()
+
+        latest = (
+            Commit.objects.filter(git_repo__arrangement=arrangement)
+            .order_by("-committed_at")
+            .first()
+        )
+        if latest is None:
+            return Response(
+                {"detail": "No commits for this arrangement yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            mscz_bytes = build_mscz_bytes_from_commit(
+                arrangement=arrangement, commit_sha=latest.sha
+            )
+        except ArrangementGitError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Failed to build MSCZ: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        filename = f"{arrangement.title}-commit-{latest.sha[:8]}.mscz"
+        return FileResponse(
+            io.BytesIO(mscz_bytes),
+            as_attachment=True,
+            filename=filename,
+            content_type="application/octet-stream",
         )
 
     @action(detail=True, methods=["post"], url_path="new-commit")
@@ -525,7 +565,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             )
 
         arrangement = commit_obj.git_repo.arrangement
-        file_name = f"commit-{commit_obj.sha}.mscz"
+        file_name = f"{arrangement.title}-{commit_obj.sha}.mscz"
 
         try:
             with transaction.atomic():
@@ -578,32 +618,36 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    # @action(detail=False, methods=["post"], url_path="upload")
-    # def upload_arrangement_version(self, request):
-    #     serializer = CreateArrangementVersionMsczSerializer(data=request.data)
-    #     serializer.is_valid(raise_exception=True)
+    @action(detail=False, methods=["post"], url_path="upload")
+    def upload_arrangement_version(self, request):
+        serializer = CreateArrangementVersionMsczSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-    #     res = serializer.save()
-    #     if "error" in res.keys():
-    #         return Response(
-    #             {"message": "Error", "details": res["error"]}
-    #         )
+        res = serializer.save()
+        if "error" in res.keys():
+            return Response(
+                {"message": "Error", "details": res["error"]}
+            )
 
-    #     return Response(
-    #         {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
-    #         status=status.HTTP_202_ACCEPTED,
-    #     )
-    
+        return Response(
+            {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
     #TODO[SC-278]: Make this have a serializer omg
     @action(detail=True, methods=["get"])
     def get_download_links(self, request, pk=None):
         version = self.get_object()
 
+        latest_commit_mscz_path = (
+            f"/api/arrangements-by-id/{version.arrangement_id}/download_latest_commit_mscz/"
+        )
         response_data = {
             "message": "Successfully created download links",
             "is_processing": version.is_processing,
             "error": version.error_on_export,
-            "raw_mscz_url": request.build_absolute_uri(version.mscz_file_url),
+            "raw_mscz_url": request.build_absolute_uri(latest_commit_mscz_path),
             "processed_mscz_url": request.build_absolute_uri(version.output_file_url),
             "score_parts_pdf_link": None,  # Will be set from Part model or old file
             "score_pdf_url": None,  # Individual score PDF
@@ -611,8 +655,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "parts": []  # List of individual part URLs
         }
 
-        # Only include URLs for files that actually exist
-        if not default_storage.exists(version.mscz_file_key):
+        # Latest-commit MSCZ is built on demand from git; require at least one commit
+        if not Commit.objects.filter(git_repo__arrangement_id=version.arrangement_id).exists():
             response_data["raw_mscz_url"] = None
 
         if not default_storage.exists(version.output_file_key):
@@ -651,7 +695,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_pdf_url)
 
         return Response(response_data)
-    
+
     @action(detail=True, methods=["post"])
     def trigger_audio_export(self, request, pk=None):
         version = self.get_object()

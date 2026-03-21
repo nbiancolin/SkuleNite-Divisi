@@ -36,8 +36,9 @@ export interface Arrangement {
   slug: string;
   composer: string | null;
   mvt_no: string;
-  latest_version: ArrangementVersion;
+  latest_version: ArrangementVersion | null;
   latest_version_num: string;
+  latest_commit_mscz_download_url?: string | null;
   style: string;
 }
 
