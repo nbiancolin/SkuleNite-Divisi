@@ -3,7 +3,25 @@
 import hashlib
 from typing import Dict, List, Tuple
 
-from scoreforge.models import Score, Measure
+from scoreforge.models import Score, Measure, Event
+
+
+def _copy_voices(m: Measure) -> dict[str, list[Event]]:
+    return {k: list(v) for k, v in m.voices.items()}
+
+
+def _measure_clone(source: Measure, number: int) -> Measure:
+    return Measure(
+        number=number,
+        voices=_copy_voices(source),
+        key_sig=source.key_sig,
+        time_sig=source.time_sig,
+        irregular=source.irregular,
+        measure_len=source.measure_len,
+        measure_repeat_count=source.measure_repeat_count,
+        double_bar=source.double_bar,
+        layout_breaks=source.layout_breaks,
+    )
 
 
 class MergeConflict(Exception):
@@ -204,10 +222,7 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                 if user_idx is not None and ui >= user_idx:
                     break
                 merged_measures.append(
-                    Measure(number=out_measure_num, events=user_measures[ui].events,
-                            key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
-                            irregular=user_measures[ui].irregular,
-                            measure_len=user_measures[ui].measure_len)
+                    _measure_clone(user_measures[ui], out_measure_num)
                 )
                 out_measure_num += 1
                 user_insertions_idx += 1
@@ -217,9 +232,7 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                 if head_idx is not None and hi >= head_idx:
                     break
                 merged_measures.append(
-                    Measure(number=out_measure_num, events=head_measures[hi].events,
-                            key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
-                            irregular=head_measures[hi].irregular)
+                    _measure_clone(head_measures[hi], out_measure_num)
                 )
                 out_measure_num += 1
                 head_insertions_idx += 1
@@ -234,33 +247,13 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
 
             if head_meas and user_meas:
                 if base_hash == head_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=base_meas.events,
-                                key_sig=base_meas.key_sig, time_sig=base_meas.time_sig,
-                                irregular=base_meas.irregular,
-                                measure_len=base_meas.measure_len)
-                    )
+                    merged_measures.append(_measure_clone(base_meas, out_measure_num))
                 elif base_hash == head_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=user_meas.events,
-                                key_sig=user_meas.key_sig, time_sig=user_meas.time_sig,
-                                irregular=user_meas.irregular,
-                                measure_len=user_meas.measure_len)
-                    )
+                    merged_measures.append(_measure_clone(user_meas, out_measure_num))
                 elif base_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=head_meas.events,
-                                key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular,
-                                measure_len=head_meas.measure_len)
-                    )
+                    merged_measures.append(_measure_clone(head_meas, out_measure_num))
                 elif head_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=head_meas.events,
-                                key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular,
-                                measure_len=head_meas.measure_len)
-                    )
+                    merged_measures.append(_measure_clone(head_meas, out_measure_num))
                 else:
                     conflicts[(part_id, out_measure_num)] = (head_meas, user_meas)
                 out_measure_num += 1
@@ -268,39 +261,119 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                 if base_hash == head_hash:
                     pass  # User removed
                 else:
-                    empty_meas = Measure(number=out_measure_num, events=[])
+                    empty_meas = Measure(
+                        number=out_measure_num,
+                        voices={"0": []},
+                        double_bar=False,
+                        layout_breaks=(),
+                    )
                     conflicts[(part_id, out_measure_num)] = (head_meas, empty_meas)
                     out_measure_num += 1
             elif user_meas and not head_meas:
                 if base_hash == user_hash:
                     pass  # Head removed
                 else:
-                    empty_meas = Measure(number=out_measure_num, events=[])
+                    empty_meas = Measure(
+                        number=out_measure_num,
+                        voices={"0": []},
+                        double_bar=False,
+                        layout_breaks=(),
+                    )
                     conflicts[(part_id, out_measure_num)] = (empty_meas, user_meas)
                     out_measure_num += 1
 
         for hi in head_insertions_sorted[head_insertions_idx:]:
-            merged_measures.append(
-                Measure(number=out_measure_num, events=head_measures[hi].events,
-                        key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
-                        irregular=head_measures[hi].irregular,
-                        measure_len=head_measures[hi].measure_len)
-            )
+            merged_measures.append(_measure_clone(head_measures[hi], out_measure_num))
             out_measure_num += 1
 
         for ui in user_insertions_sorted[user_insertions_idx:]:
-            merged_measures.append(
-                Measure(number=out_measure_num, events=user_measures[ui].events,
-                        key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
-                        irregular=user_measures[ui].irregular)
-            )
+            merged_measures.append(_measure_clone(user_measures[ui], out_measure_num))
             out_measure_num += 1
 
         if not conflicts:
-            merged_parts.append(Part(part_id=part_id, measures=merged_measures))
+            vbox = (
+                user_part.vbox_frames
+                or head_part.vbox_frames
+                or base_part.vbox_frames
+            )
+            extras = (
+                user_part.staff_extras
+                or head_part.staff_extras
+                or base_part.staff_extras
+            )
+            merged_parts.append(
+                Part(
+                    part_id=part_id,
+                    measures=merged_measures,
+                    vbox_frames=vbox,
+                    staff_extras=extras,
+                )
+            )
 
     if conflicts:
         raise MergeConflict(conflicts)
 
     score_id = user_score.score_id or head_score.score_id or base_score.score_id
-    return Score(parts=merged_parts, score_id=score_id)
+
+    def _pick_int(a: int | None, b: int | None, c: int | None) -> int | None:
+        for x in (a, b, c):
+            if x is not None:
+                return x
+        return None
+
+    order_tree = (
+        user_score.order_tree or head_score.order_tree or base_score.order_tree
+    )
+    part_definitions = (
+        user_score.part_definitions
+        or head_score.part_definitions
+        or base_score.part_definitions
+    )
+    meta_merged = {**base_score.meta_tags, **head_score.meta_tags, **user_score.meta_tags}
+
+    return Score(
+        parts=merged_parts,
+        score_id=score_id,
+        muse_score_version=(
+            user_score.muse_score_version
+            or head_score.muse_score_version
+            or base_score.muse_score_version
+        ),
+        division=_pick_int(
+            user_score.division, head_score.division, base_score.division
+        ),
+        program_version=(
+            user_score.program_version
+            or head_score.program_version
+            or base_score.program_version
+        ),
+        program_revision=(
+            user_score.program_revision
+            or head_score.program_revision
+            or base_score.program_revision
+        ),
+        show_invisible=_pick_int(
+            user_score.show_invisible,
+            head_score.show_invisible,
+            base_score.show_invisible,
+        ),
+        show_unprintable=_pick_int(
+            user_score.show_unprintable,
+            head_score.show_unprintable,
+            base_score.show_unprintable,
+        ),
+        show_frames=_pick_int(
+            user_score.show_frames, head_score.show_frames, base_score.show_frames
+        ),
+        show_margins=_pick_int(
+            user_score.show_margins,
+            head_score.show_margins,
+            base_score.show_margins,
+        ),
+        score_open=_pick_int(
+            user_score.score_open, head_score.score_open, base_score.score_open
+        ),
+        meta_tags=meta_merged,
+        order_tree=order_tree,
+        part_definitions=part_definitions,
+    )

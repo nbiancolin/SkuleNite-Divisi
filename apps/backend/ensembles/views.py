@@ -4,26 +4,44 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
+from django.core.files import File
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
+import io
 from django.db.models import Q
+from django.db import transaction
 from django.conf import settings
 
-from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
+from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName, Commit
 from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer,
-    CreateArrangementVersionMsczSerializer,
+    ArrangementVersionFromCommitSerializer,
+    CreateArrangementCommitSerializer,
     EnsemblePartNameMergeSerializer,
+    CreateArrangementVersionMsczSerializer
 )
-from logging import getLogger
 from django.db.models.expressions import RawSQL
 
 from ensembles.tasks import export_arrangement_version
 from ensembles.tasks.part_books import generate_books_for_ensemble
+
+from scoreforge.cli import mscz_to_json
+import tempfile
+from pathlib import Path
+import hashlib
+
+from ensembles.git import (
+    ArrangementGitError,
+    GitAuthor,
+    commit_canonical_snapshot,
+    init_repo,
+    materialize_commit_mscz_to_version,
+)
+from ensembles.git.materialize import build_mscz_bytes_from_commit
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -316,11 +334,192 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
 
 
 class ArrangementViewSet(BaseArrangementViewSet):
+    # TODO: Is this even used anywhere?
     lookup_field = "slug"
 
 
 class ArrangementByIdViewSet(BaseArrangementViewSet):
     lookup_field = "id"
+
+    @action(detail=True, methods=["get"], url_path="commits")
+    def commits(self, request, id=None, *args, **kwargs):
+        arrangement = self.get_object()
+
+        # Versions created from commits: prefer FK; legacy rows used commit-<sha>.mscz filenames.
+        version_commit_shas = set()
+        for v in ArrangementVersion.objects.filter(arrangement=arrangement, commit__isnull=False).select_related("commit"):
+            version_commit_shas.add(v.commit.sha)
+
+        commit_rows = (
+            Commit.objects.filter(git_repo__arrangement=arrangement)
+            .order_by("-committed_at")
+            .values(
+                "id",
+                "sha",
+                "message",
+                "author_name",
+                "author_email",
+                "authored_at",
+                "committed_at",
+                "parent_sha",
+                "tag",
+                "created_by_id",
+            )[:30]
+        )
+
+        return Response(
+            [
+                {
+                    **row,
+                    "has_version": row["sha"] in version_commit_shas,
+                }
+                for row in commit_rows
+            ]
+        )
+
+    @action(detail=True, methods=["get"], url_path="download_latest_commit_mscz")
+    def download_latest_commit_mscz(self, request, id=None, *args, **kwargs):
+        """Build and download MSCZ from the latest git commit for this arrangement (not tied to a version)."""
+        arrangement = self.get_object()
+
+        latest = (
+            Commit.objects.filter(git_repo__arrangement=arrangement)
+            .order_by("-committed_at")
+            .first()
+        )
+        if latest is None:
+            return Response(
+                {"detail": "No commits for this arrangement yet."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            mscz_bytes = build_mscz_bytes_from_commit(
+                arrangement=arrangement, commit_sha=latest.sha
+            )
+        except ArrangementGitError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Failed to build MSCZ: {e}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        filename = f"{arrangement.title}-commit-{latest.sha[:8]}.mscz"
+        return FileResponse(
+            io.BytesIO(mscz_bytes),
+            as_attachment=True,
+            filename=filename,
+            content_type="application/octet-stream",
+        )
+
+    @action(detail=True, methods=["post"], url_path="new-commit")
+    def new_commit(self, request, id=None, *args, **kwargs):
+        # This endpoint is invoked via `arrangements-by-id/<id>/new-commit/`.
+        # We load the arrangement directly by id (so "exists but excluded from
+        # the user-filtered queryset" doesn't turn into a 404).
+        #TODO: Serializer here
+        arrangement = Arrangement.objects.filter(id=id).first()
+        if arrangement is None:
+            return Response(
+                {"detail": "Arrangement not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Explicit access check to return a clearer 403 vs a misleading 404.
+        user = request.user
+        if not (
+            arrangement.ensemble.owner == user
+            or EnsembleUsership.objects.filter(ensemble=arrangement.ensemble, user=user).exists()
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied("You do not have access to this ensemble.")
+
+        serializer = CreateArrangementCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        uploaded = serializer.validated_data["file"]
+        message = (serializer.validated_data.get("message") or "").strip()
+        if not message:
+            message = f"{arrangement.slug} new commit"
+
+        # Repo is normally created when Arrangement is created (signal/backfill),
+        # but we still ensure it exists here for robustness.
+        try:
+            init_repo(arrangement)
+        except ArrangementGitError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        with tempfile.TemporaryDirectory(prefix="arr_new_commit_") as tmp:
+            tmp_dir = Path(tmp)
+            in_path = tmp_dir / "input.mscz"
+            out_dir = tmp_dir / "canonical"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            # Save upload to disk
+            content = b"".join(chunk for chunk in uploaded.chunks())
+            in_path.write_bytes(content)
+
+            # Canonicalize via scoreforge
+            mscz_to_json(str(in_path), str(out_dir), "canonical")
+            canonical_json = out_dir / "canonical.json"
+
+            tree_hash = hashlib.sha256(canonical_json.read_bytes()).hexdigest()
+
+            payload_dir = tmp_dir / "commit_payload"
+            payload_dir.mkdir(parents=True, exist_ok=True)
+            (payload_dir / "canonical.json").write_bytes(canonical_json.read_bytes())
+            canonical_template = out_dir / "canonical.mscz"
+            if canonical_template.is_file():
+                (payload_dir / "canonical.mscz").write_bytes(canonical_template.read_bytes())
+            (payload_dir / ".gitattributes").write_text(
+                "canonical.json merge=scoreforge\n",
+                encoding="utf-8",
+            )
+
+            user = request.user
+            author = GitAuthor(
+                name=(user.get_full_name() or user.username or "User"),
+                email=(user.email or "user@divisi.local"),
+            )
+
+            try:
+                commit_row = commit_canonical_snapshot(
+                    arrangement,
+                    payload_dir,
+                    author=author,
+                    message=message,
+                    created_by=user,
+                )
+            except ArrangementGitError as e:
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        return Response(
+            {
+                #TODO: Commit Serializer
+                "commit": {
+                    "id": commit_row.id,
+                    "sha": commit_row.sha,
+                    "message": commit_row.message,
+                    "author_name": commit_row.author_name,
+                    "author_email": commit_row.author_email,
+                    "authored_at": commit_row.authored_at,
+                    "committed_at": commit_row.committed_at,
+                    "parent_sha": commit_row.parent_sha,
+                    "tag": commit_row.tag,
+                    "created_by": commit_row.created_by_id,
+                },
+                "canonical_tree_hash": tree_hash,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ArrangementVersionViewSet(viewsets.ModelViewSet):
@@ -337,6 +536,89 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         return ArrangementVersion.objects.filter(
             Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
         ).distinct()
+    
+
+    @action(detail=False, methods=["post"])
+    def create_from_commit(self, request):
+        serializer = ArrangementVersionFromCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        accessible_arrangements = Arrangement.objects.filter(
+            Q(ensemble__owner=request.user) | Q(ensemble__userships__user=request.user)
+        ).distinct()
+
+
+        commit_hash = data.get("commit_hash")
+        commit_obj = (
+            Commit.objects.filter(
+                sha=commit_hash,
+                git_repo__arrangement__in=accessible_arrangements,
+            )
+            .select_related("git_repo__arrangement")
+            .first()
+        )
+        if commit_obj is None:
+            return Response(
+                {"detail": "Commit not found or inaccessible."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        arrangement = commit_obj.git_repo.arrangement
+        file_name = f"{arrangement.title}-{commit_obj.sha}.mscz"
+
+        try:
+            with transaction.atomic():
+                version = ArrangementVersion(
+                    arrangement=arrangement,
+                    file_name=file_name,
+                    num_measures_per_line_score=data.get(
+                        "num_measures_per_line_score", 8
+                    ),
+                    num_measures_per_line_part=data.get(
+                        "num_measures_per_line_part", 6
+                    ),
+                    num_lines_per_page=data.get("num_lines_per_page", 8),
+                    commit=commit_obj
+                )
+                version.save(version_type=data.get("version_type", "patch"))
+        except Exception as e:
+            return Response(
+                {"detail": f"Failed to create arrangement version from commit: {e}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # try:
+        materialize_commit_mscz_to_version(
+            arrangement=arrangement,
+            commit_sha=commit_obj.sha,
+            version=version,
+        )
+        
+        #TODO: Add this back eventually, we have sentry so we can catch errors easier now
+        # except Exception as e:
+        #     version.is_processing = False
+        #     version.error_on_export = True
+        #     version.save(update_fields=["is_processing", "error_on_export"])
+        #     return Response(
+        #         {"detail": f"Failed to materialize raw mscz from commit: {e}"},
+        #         status=status.HTTP_400_BAD_REQUEST,
+        #     )
+
+        # Export PDFs/parts from the materialized MSCZ only — do not run musescore_part_formatter
+        # (prep_and_export_mscz), which rewrites layout vs. the git-derived score.
+        export_arrangement_version.delay(version.pk)
+
+        return Response(
+            {
+                "message": "Arrangement version created from commit.",
+                "version_id": version.id,
+                "version_label": version.version_label,
+                "arrangement_id": arrangement.id,
+                "commit_sha": commit_obj.sha,
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_arrangement_version(self, request):
@@ -353,17 +635,21 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             {"message": "File Uploaded Successfully", "version_id": res["version_id"]},
             status=status.HTTP_202_ACCEPTED,
         )
-    
+
+
     #TODO[SC-278]: Make this have a serializer omg
     @action(detail=True, methods=["get"])
     def get_download_links(self, request, pk=None):
         version = self.get_object()
 
+        latest_commit_mscz_path = (
+            f"/api/arrangements-by-id/{version.arrangement_id}/download_latest_commit_mscz/"
+        )
         response_data = {
             "message": "Successfully created download links",
             "is_processing": version.is_processing,
             "error": version.error_on_export,
-            "raw_mscz_url": request.build_absolute_uri(version.mscz_file_url),
+            "raw_mscz_url": request.build_absolute_uri(latest_commit_mscz_path),
             "processed_mscz_url": request.build_absolute_uri(version.output_file_url),
             "score_parts_pdf_link": None,  # Will be set from Part model or old file
             "score_pdf_url": None,  # Individual score PDF
@@ -371,8 +657,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "parts": []  # List of individual part URLs
         }
 
-        # Only include URLs for files that actually exist
-        if not default_storage.exists(version.mscz_file_key):
+        # Latest-commit MSCZ is built on demand from git; require at least one commit
+        if not Commit.objects.filter(git_repo__arrangement_id=version.arrangement_id).exists():
             response_data["raw_mscz_url"] = None
 
         if not default_storage.exists(version.output_file_key):
@@ -411,7 +697,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_pdf_url)
 
         return Response(response_data)
-    
+
     @action(detail=True, methods=["post"])
     def trigger_audio_export(self, request, pk=None):
         version = self.get_object()
@@ -541,7 +827,7 @@ class JoinEnsembleView(APIView):
             )
         
         # Create the usership
-        usership = EnsembleUsership.objects.create(ensemble=ensemble, user=user)
+        EnsembleUsership.objects.create(ensemble=ensemble, user=user)
         
         return Response(
             {

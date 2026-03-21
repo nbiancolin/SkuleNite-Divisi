@@ -7,6 +7,7 @@ services:
       dockerfile: ./apps/backend.Dockerfile
     volumes:
       - ./apps/backend:/app
+      - ./packages:/packages
     ports:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
@@ -20,6 +21,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DISCORD_CLIENT_ID=1454625091517284455
       - DISCORD_CLIENT_SECRET=pwwrXKWn81RzpiipzU2ChrzrDu0Dkewh
+      - DIVISI_ARRANGEMENT_REPO_ROOT=/tmp/divisi-arrangement-repos
     depends_on:
       - db
       - redis
@@ -57,6 +59,7 @@ services:
       dockerfile: ./apps/backend.Dockerfile
     volumes:
       - ./apps/backend:/app
+      - ./packages:/packages
     command: celery -A backend worker --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
@@ -68,6 +71,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - DISCORD_CLIENT_ID=1454625091517284455
       - DISCORD_CLIENT_SECRET=pwwrXKWn81RzpiipzU2ChrzrDu0Dkewh
+      - DIVISI_ARRANGEMENT_REPO_ROOT=/tmp/divisi-arrangement-repos
     depends_on:
       - backend
       - redis

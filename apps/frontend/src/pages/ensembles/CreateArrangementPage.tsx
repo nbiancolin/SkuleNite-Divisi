@@ -186,6 +186,7 @@ const emptyEnsemble = (): Ensemble => ({
       <Button
         onClick={createArrangment}
         fullWidth
+        disabled={!(title && mvtNo)}
       >
         Create Arrangement
       </Button>

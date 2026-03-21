@@ -5,6 +5,7 @@ import os
 from logging import getLogger
 
 from ensembles.models.arrangement import Arrangement
+from ensembles.models.commit import Commit
 
 from typing import TYPE_CHECKING
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 logger = getLogger("app")
 
+
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="versions", on_delete=models.CASCADE
@@ -21,14 +23,15 @@ class ArrangementVersion(models.Model):
 
     if TYPE_CHECKING:
         from django.db.models.manager import RelatedManager
+
         parts: RelatedManager["PartAsset"]
 
     file_name = models.CharField(max_length=128)
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
-    
-    #TODO[SC-241]: Convert these fields to a state field
+
+    # TODO[SC-241]: Convert these fields to a state field
     is_processing = models.BooleanField(default=True)
     error_on_export = models.BooleanField(default=False)
 
@@ -38,12 +41,23 @@ class ArrangementVersion(models.Model):
         COMPLETE = "C", "complete"
         ERROR = "E", "error"
 
-
-    audio_state = models.CharField(max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE)
+    audio_state = models.CharField(
+        max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE
+    )
 
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
     num_lines_per_page = models.IntegerField()
+
+    # Canonical snapshot: ArrangementVersion built from a git commit (optional).
+    commit = models.ForeignKey(
+        null=True,
+        blank=True,
+        to=Commit,
+        on_delete=models.CASCADE,
+        related_name="arrangement_versions",
+        help_text="If set, this version's score was materialized from this git snapshot.",
+    )
 
     @property
     def version_label_full(self) -> str:
@@ -62,7 +76,7 @@ class ArrangementVersion(models.Model):
     def score_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
-    
+
     @property
     def audio_file_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
@@ -136,12 +150,12 @@ class ArrangementVersion(models.Model):
             self.score_pdf_key,
             self.score_parts_pdf_key,
         ]
-        
+
         # Also delete all part PDFs
         for part in self.parts.all():
             if part.file_key not in keys_to_delete:
                 keys_to_delete.append(part.file_key)
-        
+
         logger.warning("Deleting ArrangementVersion")
 
         for key in keys_to_delete:
@@ -171,7 +185,7 @@ class ArrangementVersion(models.Model):
     @property
     def ensemble_slug(self):
         return self.arrangement.ensemble_slug
-    
+
     @property
     def ensemble(self):
         return self.arrangement.ensemble

@@ -20,7 +20,7 @@ import type { Arrangement } from "../../services/apiService";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-export default function UploadArrangementVersionPage() {
+export default function UploadArrangementVersionDirectlyPage() {
   const { arrangementId = "0"} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement |undefined>(undefined)
   const [file, setFile] = useState<File | null>(null);
