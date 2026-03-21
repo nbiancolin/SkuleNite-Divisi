@@ -25,7 +25,8 @@ def test_roundtrip_for_manual_inspection():
     
     # Use the specific input file
     # input_mscz = Path(__file__).parent / "test-data" / "band-sting-5.mscz"
-    input_mscz = Path(__file__).parent / "test-data" / "10-Mirror-Blue Night.mscz"
+    # input_mscz = Path(__file__).parent / "test-data" / "10-Mirror-Blue Night.mscz"
+    input_mscz = Path(__file__).parent / "test-data" / "My Funny Valentine.mscz"
     assert input_mscz.exists(), f"Input file not found: {input_mscz}"
     
     # Use the output directory at the project root for easy access

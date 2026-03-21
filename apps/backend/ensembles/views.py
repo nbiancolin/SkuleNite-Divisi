@@ -26,7 +26,7 @@ from ensembles.serializers import (
 )
 from django.db.models.expressions import RawSQL
 
-from ensembles.tasks import export_arrangement_version, prep_and_export_mscz
+from ensembles.tasks import export_arrangement_version
 from ensembles.tasks.part_books import generate_books_for_ensemble
 
 from scoreforge.cli import mscz_to_json
@@ -605,7 +605,9 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         #         status=status.HTTP_400_BAD_REQUEST,
         #     )
 
-        prep_and_export_mscz.delay(version.pk)
+        # Export PDFs/parts from the materialized MSCZ only — do not run musescore_part_formatter
+        # (prep_and_export_mscz), which rewrites layout vs. the git-derived score.
+        export_arrangement_version.delay(version.pk)
 
         return Response(
             {
