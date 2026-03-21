@@ -1,9 +1,11 @@
-"""Score merging functionality for combining scores based on their canonical form."""
+"""Score merging functionality for canonical dataclass score models."""
 
-import hashlib
-from typing import Dict, List, Tuple
+from __future__ import annotations
 
-from scoreforge.models import Score, Measure
+from typing import Dict, Tuple
+
+from scoreforge.models import Measure, Part, Score, Staff
+from scoreforge.parser import canonical_hash
 
 
 class MergeConflict(Exception):
@@ -46,44 +48,7 @@ class MergeConflict(Exception):
 
 
 def _hash_measure(measure: Measure) -> str:
-    """Return a stable hash of the measure's content for quick comparison."""
-    raw = str(measure)
-    normalized = "".join(raw.split()).encode("utf-8")
-    return hashlib.md5(normalized).hexdigest()
-
-
-def _lcs_align(seq_base: List[str], seq_other: List[str]) -> List[Tuple[int | None, int | None]]:
-    """
-    Align seq_base with seq_other using LCS.
-    Returns list of (base_idx, other_idx) for each match; base_idx or other_idx is None
-    for insertions. Walk through in order of the merged sequence.
-    """
-    n, m = len(seq_base), len(seq_other)
-    L = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(n):
-        for j in range(m):
-            if seq_base[i] == seq_other[j]:
-                L[i + 1][j + 1] = L[i][j] + 1
-            else:
-                L[i + 1][j + 1] = max(L[i][j + 1], L[i + 1][j])
-
-    # Backtrack to get aligned pairs
-    result: List[Tuple[int | None, int | None]] = []
-    i, j = n, m
-    while i > 0 or j > 0:
-        if i > 0 and j > 0 and seq_base[i - 1] == seq_other[j - 1]:
-            result.append((i - 1, j - 1))
-            i -= 1
-            j -= 1
-        elif j > 0 and (i == 0 or L[i][j - 1] >= L[i - 1][j]):
-            result.append((None, j - 1))
-            j -= 1
-        elif i > 0 and (j == 0 or L[i][j - 1] < L[i - 1][j]):
-            result.append((i - 1, None))
-            i -= 1
-
-    result.reverse()
-    return result
+    return canonical_hash(measure)
 
 
 def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Score) -> Score:
@@ -111,196 +76,81 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
     Raises:
         MergeConflict: When both head and user modified the same measure
     """
-    from scoreforge.models import Part, Measure
+    def score_maps(score: Score) -> dict[tuple[str, int, int], Measure]:
+        out: dict[tuple[str, int, int], Measure] = {}
+        for part in score.parts:
+            for staff in part.staves:
+                for measure in staff.measures:
+                    out[(part.part_id, staff.staff_id, measure.number)] = measure
+        return out
 
-    def _part_by_id(score: Score, part_id: str) -> Part | None:
-        for p in score.parts:
-            if p.part_id == part_id:
-                return p
-        return None
-
-    part_ids = (
-        {p.part_id for p in base_score.parts}
-        | {p.part_id for p in head_score.parts}
-        | {p.part_id for p in user_score.parts}
-    )
+    base_measures = score_maps(base_score)
+    head_measures = score_maps(head_score)
+    user_measures = score_maps(user_score)
+    all_keys = set(base_measures) | set(head_measures) | set(user_measures)
 
     conflicts: Dict[Tuple[str, int], Tuple[Measure, Measure]] = {}
-    merged_parts: list[Part] = []
+    merged_measures: dict[tuple[str, int, int], Measure] = {}
+    for part_id, staff_id, number in sorted(all_keys):
+        b = base_measures.get((part_id, staff_id, number))
+        h = head_measures.get((part_id, staff_id, number))
+        u = user_measures.get((part_id, staff_id, number))
 
-    for part_id in sorted(part_ids):
-        base_part = _part_by_id(base_score, part_id)
-        head_part = _part_by_id(head_score, part_id)
-        user_part = _part_by_id(user_score, part_id)
-
-        if base_part is None and head_part is None:
-            if user_part is not None:
-                merged_parts.append(user_part)
-            continue
-        if base_part is None and user_part is None:
-            if head_part is not None:
-                merged_parts.append(head_part)
-            continue
-        if head_part is None and user_part is None:
-            if base_part is not None:
-                merged_parts.append(base_part)
+        if h == u:
+            chosen = h
+        elif b == h:
+            chosen = u
+        elif b == u:
+            chosen = h
+        else:
+            if h is not None and u is not None:
+                conflicts[(part_id, number)] = (h, u)
             continue
 
-        base_part = base_part or Part(part_id=part_id, measures=[])
-        head_part = head_part or Part(part_id=part_id, measures=[])
-        user_part = user_part or Part(part_id=part_id, measures=[])
-
-        base_measures = list(base_part.measures)
-        head_measures = list(head_part.measures)
-        user_measures = list(user_part.measures)
-
-        base_hashes = [_hash_measure(m) for m in base_measures]
-        head_hashes = [_hash_measure(m) for m in head_measures]
-        user_hashes = [_hash_measure(m) for m in user_measures]
-
-        align_base_head = _lcs_align(base_hashes, head_hashes)
-        align_base_user = _lcs_align(base_hashes, user_hashes)
-
-        base_to_head: Dict[int, int | None] = {}
-        base_to_user: Dict[int, int | None] = {}
-        head_insertions: List[int] = []
-        user_insertions: List[int] = []
-
-        for bi, hi in align_base_head:
-            if bi is not None:
-                base_to_head[bi] = hi
-            elif hi is not None:
-                head_insertions.append(hi)
-
-        for bi, ui in align_base_user:
-            if bi is not None:
-                base_to_user[bi] = ui
-            elif ui is not None:
-                user_insertions.append(ui)
-
-        # When both sides have the same length as base, use position-based alignment
-        # to correctly detect conflicts (LCS treats different content as remove+insert
-        # and would add both versions).
-        same_length = (len(base_measures) == len(head_measures) == len(user_measures))
-        if same_length:
-            base_to_head = {i: i for i in range(len(base_measures))}
-            base_to_user = {i: i for i in range(len(user_measures))}
-            head_insertions = []
-            user_insertions = []
-
-        merged_measures: list[Measure] = []
-        out_measure_num = 1
-        head_insertions_idx = 0
-        user_insertions_idx = 0
-        user_insertions_sorted = sorted(user_insertions)
-        head_insertions_sorted = sorted(head_insertions)
-
-        for base_idx in range(len(base_measures)):
-            head_idx = base_to_head.get(base_idx)
-            user_idx = base_to_user.get(base_idx)
-
-            while user_insertions_idx < len(user_insertions_sorted):
-                ui = user_insertions_sorted[user_insertions_idx]
-                if user_idx is not None and ui >= user_idx:
-                    break
-                merged_measures.append(
-                    Measure(number=out_measure_num, events=user_measures[ui].events,
-                            key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
-                            irregular=user_measures[ui].irregular,
-                            measure_len=user_measures[ui].measure_len)
-                )
-                out_measure_num += 1
-                user_insertions_idx += 1
-
-            while head_insertions_idx < len(head_insertions_sorted):
-                hi = head_insertions_sorted[head_insertions_idx]
-                if head_idx is not None and hi >= head_idx:
-                    break
-                merged_measures.append(
-                    Measure(number=out_measure_num, events=head_measures[hi].events,
-                            key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
-                            irregular=head_measures[hi].irregular)
-                )
-                out_measure_num += 1
-                head_insertions_idx += 1
-
-            base_meas = base_measures[base_idx]
-            head_meas = head_measures[head_idx] if head_idx is not None else None
-            user_meas = user_measures[user_idx] if user_idx is not None else None
-
-            base_hash = base_hashes[base_idx]
-            head_hash = _hash_measure(head_meas) if head_meas else None
-            user_hash = _hash_measure(user_meas) if user_meas else None
-
-            if head_meas and user_meas:
-                if base_hash == head_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=base_meas.events,
-                                key_sig=base_meas.key_sig, time_sig=base_meas.time_sig,
-                                irregular=base_meas.irregular,
-                                measure_len=base_meas.measure_len)
-                    )
-                elif base_hash == head_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=user_meas.events,
-                                key_sig=user_meas.key_sig, time_sig=user_meas.time_sig,
-                                irregular=user_meas.irregular,
-                                measure_len=user_meas.measure_len)
-                    )
-                elif base_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=head_meas.events,
-                                key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular,
-                                measure_len=head_meas.measure_len)
-                    )
-                elif head_hash == user_hash:
-                    merged_measures.append(
-                        Measure(number=out_measure_num, events=head_meas.events,
-                                key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
-                                irregular=head_meas.irregular,
-                                measure_len=head_meas.measure_len)
-                    )
-                else:
-                    conflicts[(part_id, out_measure_num)] = (head_meas, user_meas)
-                out_measure_num += 1
-            elif head_meas and not user_meas:
-                if base_hash == head_hash:
-                    pass  # User removed
-                else:
-                    empty_meas = Measure(number=out_measure_num, events=[])
-                    conflicts[(part_id, out_measure_num)] = (head_meas, empty_meas)
-                    out_measure_num += 1
-            elif user_meas and not head_meas:
-                if base_hash == user_hash:
-                    pass  # Head removed
-                else:
-                    empty_meas = Measure(number=out_measure_num, events=[])
-                    conflicts[(part_id, out_measure_num)] = (empty_meas, user_meas)
-                    out_measure_num += 1
-
-        for hi in head_insertions_sorted[head_insertions_idx:]:
-            merged_measures.append(
-                Measure(number=out_measure_num, events=head_measures[hi].events,
-                        key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
-                        irregular=head_measures[hi].irregular,
-                        measure_len=head_measures[hi].measure_len)
-            )
-            out_measure_num += 1
-
-        for ui in user_insertions_sorted[user_insertions_idx:]:
-            merged_measures.append(
-                Measure(number=out_measure_num, events=user_measures[ui].events,
-                        key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
-                        irregular=user_measures[ui].irregular)
-            )
-            out_measure_num += 1
-
-        if not conflicts:
-            merged_parts.append(Part(part_id=part_id, measures=merged_measures))
+        if chosen is not None:
+            merged_measures[(part_id, staff_id, number)] = chosen
 
     if conflicts:
         raise MergeConflict(conflicts)
 
-    score_id = user_score.score_id or head_score.score_id or base_score.score_id
-    return Score(parts=merged_parts, score_id=score_id)
+    part_template: dict[str, Part] = {}
+    for source in (head_score, user_score, base_score):
+        for part in source.parts:
+            part_template.setdefault(part.part_id, part)
+
+    merged_parts: list[Part] = []
+    part_ids = sorted({k[0] for k in merged_measures.keys()})
+    for part_id in part_ids:
+        template = part_template.get(part_id)
+        if template is None:
+            continue
+        staves: list[Staff] = []
+        staff_ids = sorted({k[1] for k in merged_measures.keys() if k[0] == part_id})
+        for staff_id in staff_ids:
+            base_staff = next((s for s in template.staves if s.staff_id == staff_id), None)
+            if base_staff is None:
+                continue
+            measure_nums = sorted(
+                n for (pid, sid, n) in merged_measures if pid == part_id and sid == staff_id
+            )
+            measures = tuple(merged_measures[(part_id, staff_id, n)] for n in measure_nums)
+            staves.append(
+                Staff(
+                    staff_id=staff_id,
+                    measures=measures,
+                    clef=base_staff.clef,
+                    is_drum=base_staff.is_drum,
+                )
+            )
+        merged_parts.append(
+            Part(
+                part_id=template.part_id,
+                instrument_id=template.instrument_id,
+                name=template.name,
+                staves=tuple(staves),
+            )
+        )
+
+    metadata = head_score.metadata if base_score.metadata == user_score.metadata else user_score.metadata
+    division = head_score.division if base_score.division == user_score.division else user_score.division
+    return Score(metadata=metadata, parts=tuple(merged_parts), division=division)

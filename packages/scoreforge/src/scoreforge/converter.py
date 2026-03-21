@@ -1,14 +1,36 @@
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
+from fractions import Fraction
 
-from scoreforge.models import Score, Note, Rest, Dynamic
+from scoreforge.models import (
+    Annotation,
+    BarLineType,
+    Chord,
+    Duration,
+    Dynamic,
+    InstrumentChange,
+    MeasureRepeat,
+    NoteHeadType,
+    RehearsalMark,
+    Rest,
+    Score,
+    SpannerEvent,
+    StaffText,
+)
 
-# Duration type mapping for MSCX format
-DURATION_TYPE = {
-    4: "whole",
-    2: "half",
-    1: "quarter",
-    0.5: "eighth",
-    # TODO: Fill this in more
+_DURATION_TYPE_FROM_FRACTION = {
+    Fraction(4, 1): "long",
+    Fraction(2, 1): "breve",
+    Fraction(1, 1): "whole",
+    Fraction(1, 2): "half",
+    Fraction(1, 4): "quarter",
+    Fraction(1, 8): "eighth",
+    Fraction(1, 16): "16th",
+    Fraction(1, 32): "32nd",
+    Fraction(1, 64): "64th",
+    Fraction(1, 128): "128th",
+    Fraction(1, 256): "256th",
 }
 
 
@@ -61,6 +83,38 @@ def pitch_to_midi(pitch: str) -> int:
     return (octave + 1) * 12 + names[name]
 
 
+def _duration_to_mscx(duration: Duration) -> tuple[str, int]:
+    if duration.is_measure_rest:
+        return "measure", 0
+    value = duration.value
+    if duration.tuplet_ratio:
+        actual, normal = duration.tuplet_ratio
+        value = value * Fraction(actual, normal)
+    base = value
+    for _ in range(duration.dots):
+        base = base / Fraction(2) if base else base
+    return _DURATION_TYPE_FROM_FRACTION.get(base, "quarter"), duration.dots
+
+
+def _add_annotation(parent: ET.Element, annotation: Annotation) -> None:
+    if isinstance(annotation, Dynamic):
+        el = ET.SubElement(parent, "Dynamic")
+        ET.SubElement(el, "subtype").text = annotation.subtype
+        if annotation.velocity is not None:
+            ET.SubElement(el, "velocity").text = str(annotation.velocity)
+    elif isinstance(annotation, StaffText):
+        el = ET.SubElement(parent, "StaffText")
+        ET.SubElement(el, "text").text = annotation.text
+    elif isinstance(annotation, RehearsalMark):
+        el = ET.SubElement(parent, "RehearsalMark")
+        ET.SubElement(el, "text").text = annotation.text
+    elif isinstance(annotation, InstrumentChange):
+        el = ET.SubElement(parent, "InstrumentChange")
+        if annotation.label:
+            ET.SubElement(el, "text").text = annotation.label
+        ET.SubElement(el, "Instrument", id=annotation.instrument_id)
+
+
 def score_to_mscx(score: Score) -> ET.ElementTree:
     """Convert a Score object to an MSCX XML ElementTree.
     
@@ -91,35 +145,112 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
     root = ET.Element("museScore", version="4.0")
     score_el = ET.SubElement(root, "Score")
 
+    ET.SubElement(score_el, "Division").text = str(score.division)
+    md = score.metadata
+    meta_tags = {
+        "workTitle": md.title,
+        "subtitle": md.subtitle,
+        "composer": md.composer,
+        "lyricist": md.lyricist,
+        "arranger": md.arranger,
+        "copyright": md.copyright,
+    }
+    for key, value in meta_tags.items():
+        if value:
+            el = ET.SubElement(score_el, "metaTag", name=key)
+            el.text = value
+
     for part in score.parts:
         part_el = ET.SubElement(score_el, "Part", id=part.part_id)
+        ET.SubElement(part_el, "trackName").text = part.name
+        ET.SubElement(part_el, "Instrument", id=part.instrument_id)
+        for staff in part.staves:
+            ET.SubElement(part_el, "Staff", id=str(staff.staff_id))
 
-        for measure in part.measures:
-            if measure.measure_len is not None:
-                measure_el = ET.SubElement(
-                    part_el, "Measure", attrib={"len": measure.measure_len}
-                )
-                ET.SubElement(measure_el, "irregular").text = "1"
-            else:
-                measure_el = ET.SubElement(part_el, "Measure")
+    for part in score.parts:
+        for staff in part.staves:
+            staff_el = ET.SubElement(score_el, "Staff", id=str(staff.staff_id))
+            for measure in staff.measures:
+                measure_el = ET.SubElement(staff_el, "Measure")
+                if measure.is_irregular:
+                    ET.SubElement(measure_el, "irregular").text = "1"
 
-            for event in measure.events:
-                if isinstance(event, Note):
-                    chord = ET.SubElement(measure_el, "Chord")
-                    ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
+                ordered_voices = sorted(measure.voices, key=lambda v: v.voice_index)
+                for idx, voice in enumerate(ordered_voices):
+                    voice_el = ET.SubElement(measure_el, "voice")
+                    if idx == 0 and measure.key_sig is not None:
+                        key_sig = ET.SubElement(voice_el, "KeySig")
+                        ET.SubElement(key_sig, "concertKey").text = str(measure.key_sig.fifths)
+                        if measure.key_sig.mode:
+                            ET.SubElement(key_sig, "mode").text = measure.key_sig.mode
+                    if idx == 0 and measure.time_sig is not None:
+                        time_sig = ET.SubElement(voice_el, "TimeSig")
+                        ET.SubElement(time_sig, "sigN").text = str(measure.time_sig.numerator)
+                        ET.SubElement(time_sig, "sigD").text = str(measure.time_sig.denominator)
+                    if idx == 0 and measure.tempo is not None:
+                        tempo = ET.SubElement(voice_el, "Tempo")
+                        ET.SubElement(tempo, "tempo").text = str(measure.tempo.bpm / 60.0)
+                        if measure.tempo.text:
+                            ET.SubElement(tempo, "text").text = measure.tempo.text
 
-                    note_el = ET.SubElement(chord, "Note")
-                    ET.SubElement(note_el, "pitch").text = str(
-                        pitch_to_midi(event.pitch)
-                    )
+                    for event in voice.events:
+                        if isinstance(event, Chord):
+                            chord_el = ET.SubElement(voice_el, "Chord")
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(chord_el, "dots").text = str(dots)
+                            ET.SubElement(chord_el, "durationType").text = duration_type
+                            if event.no_stem:
+                                ET.SubElement(chord_el, "noStem").text = "1"
+                            for art in event.articulations:
+                                art_el = ET.SubElement(chord_el, "Articulation")
+                                ET.SubElement(art_el, "subtype").text = art
+                            for note in event.notes:
+                                note_el = ET.SubElement(chord_el, "Note")
+                                ET.SubElement(note_el, "pitch").text = str(note.pitch)
+                                ET.SubElement(note_el, "tpc").text = str(note.tpc)
+                                if note.head != NoteHeadType.NORMAL:
+                                    ET.SubElement(note_el, "head").text = note.head.value
+                                if note.tie.has_tie_start:
+                                    tie_start = ET.SubElement(note_el, "Spanner", type="Tie")
+                                    ET.SubElement(tie_start, "next")
+                                if note.tie.has_tie_end:
+                                    tie_end = ET.SubElement(note_el, "Spanner", type="Tie")
+                                    ET.SubElement(tie_end, "prev")
+                                if note.parenthesised:
+                                    sym_l = ET.SubElement(note_el, "Symbol")
+                                    ET.SubElement(sym_l, "n").text = "noteheadParenthesisLeft"
+                                    sym_r = ET.SubElement(note_el, "Symbol")
+                                    ET.SubElement(sym_r, "n").text = "noteheadParenthesisRight"
+                        elif isinstance(event, Rest):
+                            rest_el = ET.SubElement(voice_el, "Rest")
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(rest_el, "dots").text = str(dots)
+                            ET.SubElement(rest_el, "durationType").text = duration_type
+                        elif isinstance(event, MeasureRepeat):
+                            mr_el = ET.SubElement(voice_el, "MeasureRepeat")
+                            ET.SubElement(mr_el, "subtype").text = str(event.count)
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(mr_el, "dots").text = str(dots)
+                            ET.SubElement(mr_el, "durationType").text = duration_type
+                        elif isinstance(event, SpannerEvent):
+                            sp = ET.SubElement(voice_el, "Spanner", type=event.kind.value)
+                            if event.is_start:
+                                ET.SubElement(sp, "next")
+                            else:
+                                ET.SubElement(sp, "prev")
+                            if event.subtype:
+                                inner = ET.SubElement(sp, event.kind.value)
+                                ET.SubElement(inner, "subtype").text = event.subtype
 
-                elif isinstance(event, Rest):
-                    rest = ET.SubElement(measure_el, "Rest")
-                    ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
+                    if idx == 0 and measure.bar_line and measure.bar_line != BarLineType.NORMAL:
+                        bl = ET.SubElement(voice_el, "BarLine")
+                        ET.SubElement(bl, "subtype").text = measure.bar_line.value
+                    if idx == 0:
+                        for annotation in measure.annotations:
+                            _add_annotation(voice_el, annotation)
 
     return ET.ElementTree(root)
 
@@ -139,119 +270,97 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
     """
     root = template_tree.getroot()
     score_el = root.find("Score")
-    
     if score_el is None:
         raise ValueError("Template MSCX does not contain a Score element")
-    
-    # Create a mapping of part_id to Staff elements
-    staff_map = {}
-    for staff_el in score_el.findall(".//Staff"):
-        staff_id = staff_el.get("id")
-        if staff_id:
-            staff_map[staff_id] = staff_el
-    
-    # For each part in the score, find the matching staff and add measures
+
+    staff_map = {
+        s.get("id"): s
+        for s in score_el.findall("Staff")
+        if s.get("id") is not None
+    }
+
     for part in score.parts:
-        staff_el = staff_map.get(part.part_id)
-        if staff_el is None:
-            # If staff not found, skip this part (or could create it, but that's more complex)
-            # Try to find by string conversion (sometimes IDs are stored as strings vs ints)
-            staff_el = staff_map.get(str(part.part_id))
+        for staff in part.staves:
+            staff_id = str(staff.staff_id)
+            staff_el = staff_map.get(staff_id)
             if staff_el is None:
                 continue
-        
-        # Add measures to the staff
-        for measure in part.measures:
-            # Create Measure element with len attribute when measure has non-standard length
-            if measure.measure_len is not None:
-                measure_el = ET.SubElement(
-                    staff_el, "Measure", attrib={"len": measure.measure_len}
-                )
-                ET.SubElement(measure_el, "irregular").text = "1"
-            else:
+
+            for measure in staff.measures:
                 measure_el = ET.SubElement(staff_el, "Measure")
-                if measure.irregular is not None:
-                    ET.SubElement(measure_el, "irregular").text = str(measure.irregular)
-            
-            voice_el = ET.SubElement(measure_el, "voice")
-            
-            # Add KeySig if present (inside voice, before events)
-            if measure.key_sig is not None:
-                key_sig_el = ET.SubElement(voice_el, "KeySig")
-                ET.SubElement(key_sig_el, "concertKey").text = str(measure.key_sig.concert_key)
-            
-            # Add TimeSig if present (inside voice, before events)
-            if measure.time_sig is not None:
-                time_sig_el = ET.SubElement(voice_el, "TimeSig")
-                ET.SubElement(time_sig_el, "sigN").text = str(measure.time_sig.sig_n)
-                ET.SubElement(time_sig_el, "sigD").text = str(measure.time_sig.sig_d)
-            
-            # Add events to the voice
-            for event in measure.events:
-                if isinstance(event, Note):
-                    chord = ET.SubElement(voice_el, "Chord")
-                    # Write dots before durationType to match MuseScore XML structure
-                    if event.dots > 0:
-                        ET.SubElement(chord, "dots").text = str(event.dots)
-                    ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
-                    
-                    # Write slur spanner on Chord if present
-                    if event.slur_start is not None:
-                        spanner = ET.SubElement(chord, "Spanner", type="Slur")
-                        slur_el = ET.SubElement(spanner, "Slur")
-                        next_el = ET.SubElement(spanner, "next")
-                        location_el = ET.SubElement(next_el, "location")
-                        ET.SubElement(location_el, "fractions").text = event.slur_start.next_fractions
-                    
-                    if event.slur_end is not None:
-                        # For slur end, don't include Slur element - only prev element
-                        spanner = ET.SubElement(chord, "Spanner", type="Slur")
-                        prev_el = ET.SubElement(spanner, "prev")
-                        location_el = ET.SubElement(prev_el, "location")
-                        ET.SubElement(location_el, "fractions").text = event.slur_end.prev_fractions
-                    
-                    note_el = ET.SubElement(chord, "Note")
-                    ET.SubElement(note_el, "pitch").text = str(
-                        pitch_to_midi(event.pitch)
-                    )
-                    
-                    # Write tie spanner on Note if present
-                    if event.tie_start is not None:
-                        spanner = ET.SubElement(note_el, "Spanner", type="Tie")
-                        tie_el = ET.SubElement(spanner, "Tie")
-                        next_el = ET.SubElement(spanner, "next")
-                        location_el = ET.SubElement(next_el, "location")
-                        # Check if it's a measure offset (just a number) or fractions (contains "/")
-                        if "/" in event.tie_start.next_fractions:
-                            ET.SubElement(location_el, "fractions").text = event.tie_start.next_fractions
-                        else:
-                            ET.SubElement(location_el, "measures").text = event.tie_start.next_fractions
-                    
-                    if event.tie_end is not None:
-                        # For tie end, don't include Tie element - only prev element
-                        spanner = ET.SubElement(note_el, "Spanner", type="Tie")
-                        prev_el = ET.SubElement(spanner, "prev")
-                        location_el = ET.SubElement(prev_el, "location")
-                        # Check if it's a measure offset (just a number, possibly negative) or fractions (contains "/")
-                        if "/" in event.tie_end.prev_fractions:
-                            ET.SubElement(location_el, "fractions").text = event.tie_end.prev_fractions
-                        else:
-                            ET.SubElement(location_el, "measures").text = event.tie_end.prev_fractions
-                
-                elif isinstance(event, Rest):
-                    rest = ET.SubElement(voice_el, "Rest")
-                    # Write dots before durationType to match MuseScore XML structure
-                    if event.dots > 0:
-                        ET.SubElement(rest, "dots").text = str(event.dots)
-                    ET.SubElement(rest, "durationType").text = DURATION_TYPE.get(
-                        event.duration, "quarter"
-                    )
-                
-                elif isinstance(event, Dynamic):
-                    dynamic_el = ET.SubElement(voice_el, "Dynamic")
-                    ET.SubElement(dynamic_el, "subtype").text = event.subtype
-    
+                if measure.is_irregular:
+                    ET.SubElement(measure_el, "irregular").text = "1"
+
+                ordered_voices = sorted(measure.voices, key=lambda v: v.voice_index)
+                if not ordered_voices:
+                    ET.SubElement(measure_el, "voice")
+                    continue
+
+                for idx, voice in enumerate(ordered_voices):
+                    voice_el = ET.SubElement(measure_el, "voice")
+                    if idx == 0 and measure.key_sig is not None:
+                        key = ET.SubElement(voice_el, "KeySig")
+                        ET.SubElement(key, "concertKey").text = str(measure.key_sig.fifths)
+                        if measure.key_sig.mode:
+                            ET.SubElement(key, "mode").text = measure.key_sig.mode
+                    if idx == 0 and measure.time_sig is not None:
+                        ts = ET.SubElement(voice_el, "TimeSig")
+                        ET.SubElement(ts, "sigN").text = str(measure.time_sig.numerator)
+                        ET.SubElement(ts, "sigD").text = str(measure.time_sig.denominator)
+                    if idx == 0 and measure.tempo is not None:
+                        tempo = ET.SubElement(voice_el, "Tempo")
+                        ET.SubElement(tempo, "tempo").text = str(measure.tempo.bpm / 60.0)
+                        if measure.tempo.text:
+                            ET.SubElement(tempo, "text").text = measure.tempo.text
+
+                    for event in voice.events:
+                        if isinstance(event, Chord):
+                            chord_el = ET.SubElement(voice_el, "Chord")
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(chord_el, "dots").text = str(dots)
+                            ET.SubElement(chord_el, "durationType").text = duration_type
+                            for note in event.notes:
+                                note_el = ET.SubElement(chord_el, "Note")
+                                ET.SubElement(note_el, "pitch").text = str(note.pitch)
+                                ET.SubElement(note_el, "tpc").text = str(note.tpc)
+                                if note.head != NoteHeadType.NORMAL:
+                                    ET.SubElement(note_el, "head").text = note.head.value
+                                if note.tie.has_tie_start:
+                                    sp = ET.SubElement(note_el, "Spanner", type="Tie")
+                                    ET.SubElement(sp, "next")
+                                if note.tie.has_tie_end:
+                                    sp = ET.SubElement(note_el, "Spanner", type="Tie")
+                                    ET.SubElement(sp, "prev")
+                        elif isinstance(event, Rest):
+                            rest_el = ET.SubElement(voice_el, "Rest")
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(rest_el, "dots").text = str(dots)
+                            ET.SubElement(rest_el, "durationType").text = duration_type
+                        elif isinstance(event, MeasureRepeat):
+                            mr_el = ET.SubElement(voice_el, "MeasureRepeat")
+                            ET.SubElement(mr_el, "subtype").text = str(event.count)
+                            duration_type, dots = _duration_to_mscx(event.duration)
+                            if dots > 0:
+                                ET.SubElement(mr_el, "dots").text = str(dots)
+                            ET.SubElement(mr_el, "durationType").text = duration_type
+                        elif isinstance(event, SpannerEvent):
+                            sp = ET.SubElement(voice_el, "Spanner", type=event.kind.value)
+                            if event.is_start:
+                                ET.SubElement(sp, "next")
+                            else:
+                                ET.SubElement(sp, "prev")
+                            if event.subtype:
+                                inner = ET.SubElement(sp, event.kind.value)
+                                ET.SubElement(inner, "subtype").text = event.subtype
+
+                    if idx == 0 and measure.bar_line and measure.bar_line != BarLineType.NORMAL:
+                        bl = ET.SubElement(voice_el, "BarLine")
+                        ET.SubElement(bl, "subtype").text = measure.bar_line.value
+                    if idx == 0:
+                        for annotation in measure.annotations:
+                            _add_annotation(voice_el, annotation)
+
     return ET.ElementTree(root)
 

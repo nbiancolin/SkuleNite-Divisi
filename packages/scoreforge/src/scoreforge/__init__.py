@@ -28,8 +28,34 @@ Public API:
         pitch_to_midi - Convert pitch string to MIDI note number
 """
 
-from scoreforge.models import Score, Part, Measure, Note, Rest, Event, KeySig, TimeSig, Dynamic
-from scoreforge.parser import parse_score
+from scoreforge.models import (
+    Annotation,
+    BarLineType,
+    Chord,
+    Duration,
+    Dynamic,
+    InstrumentChange,
+    KeySig,
+    Measure,
+    MeasureRepeat,
+    Note,
+    NoteHeadType,
+    Part,
+    RehearsalMark,
+    Rest,
+    Score,
+    ScoreMetadata,
+    SpannerEvent,
+    SpannerKind,
+    Staff,
+    StaffText,
+    Tempo,
+    TieInfo,
+    TimeSig,
+    Voice,
+    VoiceEvent,
+)
+from scoreforge.parser import canonical_hash, canonical_json, parse_mscx, parse_score
 from scoreforge.converter import score_to_mscx, midi_to_pitch, pitch_to_midi
 from scoreforge.io import extract_mscx, write_mscz
 from scoreforge.serialization import save_canonical, load_score_from_json
@@ -40,15 +66,34 @@ __all__ = [
     # Models
     "Score",
     "Part",
+    "Staff",
     "Measure",
+    "Voice",
+    "VoiceEvent",
+    "Chord",
     "Note",
     "Rest",
-    "Event",
+    "MeasureRepeat",
+    "SpannerEvent",
+    "SpannerKind",
+    "Annotation",
     "KeySig",
     "TimeSig",
+    "Tempo",
+    "Duration",
+    "TieInfo",
+    "NoteHeadType",
+    "BarLineType",
     "Dynamic",
+    "StaffText",
+    "RehearsalMark",
+    "InstrumentChange",
+    "ScoreMetadata",
     # Parsing & Conversion
     "parse_score",
+    "parse_mscx",
+    "canonical_json",
+    "canonical_hash",
     "score_to_mscx",
     "extract_mscx",
     "write_mscz",
