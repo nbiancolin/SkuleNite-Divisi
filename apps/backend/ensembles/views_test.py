@@ -314,7 +314,6 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
 @patch("ensembles.views.prep_and_export_mscz.delay")
 @patch("ensembles.views.default_storage.save")
 @patch("ensembles.views.json_to_mscz")
-@patch("ensembles.views.subprocess.run")
 @patch("ensembles.views.init_repo")
 def test_create_from_commit_triggers_export(
     mock_init_repo,
