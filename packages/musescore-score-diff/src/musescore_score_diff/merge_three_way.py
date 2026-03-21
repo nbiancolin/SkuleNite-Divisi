@@ -322,10 +322,18 @@ def merge_three_way_musescore(
         assert template is not None
         elem = deepcopy(template)
         if not loc:
-            for old in list(elem.findall("Measure")):
+            # Preserve siblings before the first measure (e.g. VBox) and after the
+            # last measure (e.g. <cutaway>). Appending only would place merged
+            # measures after trailing markup and MuseScore can drop or ignore them.
+            children = list(elem)
+            measure_elems = [c for c in children if c.tag == "Measure"]
+            insert_pos = (
+                children.index(measure_elems[0]) if measure_elems else len(children)
+            )
+            for old in measure_elems:
                 elem.remove(old)
-            for m in merged_measures:
-                elem.append(m)
+            for j, m in enumerate(merged_measures):
+                elem.insert(insert_pos + j, m)
         rebuilt.append(elem)
 
     children = list(score_merged)

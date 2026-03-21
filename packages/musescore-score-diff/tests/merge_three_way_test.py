@@ -16,6 +16,13 @@ _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "single-staff"
 FIXTURE = _FIXTURES / "test-score" / "test-score.mscx"
 FIXTURE2 = _FIXTURES / "test-score2" / "test-score2.mscx"
 _MERGE_SCORES = Path(__file__).resolve().parent / "fixtures" / "merge-scores" / "measure-added"
+_CUTAWAY_SCORE = (
+    Path(__file__).resolve().parent
+    / "fixtures"
+    / "single-staff"
+    / "test_score_output"
+    / "test-score.mscx"
+)
 
 # ---------------------------------------------------------------------------
 # End-to-end (manual): set all three paths, then run:
@@ -115,6 +122,23 @@ def test_merge_three_way_lcs_theirs_inserts_when_ours_is_base():
     staff_m = merged.getroot().find(".//Score/Staff")
     assert staff_m is not None
     assert len(staff_m.findall("Measure")) == expected_len
+
+
+def test_merge_three_way_cutaway_after_last_measure() -> None:
+    """MuseScore may place <cutaway> after the last measure; merged measures must stay before it."""
+    if not _CUTAWAY_SCORE.is_file():
+        pytest.skip("test_score_output fixture not present")
+
+    merged = merge_three_way_musescore(
+        str(_CUTAWAY_SCORE), str(_CUTAWAY_SCORE), str(_CUTAWAY_SCORE)
+    )
+    score = merged.getroot().find("Score")
+    assert score is not None
+    st2 = next(s for s in score.findall("Staff") if s.get("id") == "2")
+    tags = [c.tag for c in st2]
+    measure_idxs = [i for i, t in enumerate(tags) if t == "Measure"]
+    assert measure_idxs
+    assert tags[measure_idxs[-1] + 1] == "cutaway"
 
 
 def test_merge_three_way_mscz_writes_zip(tmp_path: Path) -> None:

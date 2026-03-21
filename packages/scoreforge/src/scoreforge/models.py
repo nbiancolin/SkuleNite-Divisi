@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Union, Optional, Dict
+from typing import List, Union, Optional, Dict, Any, Tuple
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,35 @@ class TieEnd:
 
 
 @dataclass(frozen=True)
+class ChordNote:
+    """One pitch inside a multi-note chord (ties only; slurs live on ChordGroup)."""
+
+    pitch: str
+    tie_start: Optional[TieStart] = None
+    tie_end: Optional[TieEnd] = None
+    tpc: Optional[int] = None
+    symbols: Tuple[str, ...] = ()
+    head: Optional[str] = None
+    play: Optional[bool] = None
+    fixed: Optional[bool] = None
+    fixed_line: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class ChordGroup:
+    """Simultaneous chord: one rhythmic unit, multiple stacked pitches (MuseScore one <Chord>)."""
+
+    notes: Tuple[ChordNote, ...]
+    duration: float
+    dots: int = 0
+    slur_start: Optional[SlurStart] = None
+    slur_end: Optional[SlurEnd] = None
+    stem_direction: Optional[str] = None
+    no_stem: bool = False
+    articulations: Tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Note:
     pitch: str
     duration: float  # Base duration (without dots)
@@ -35,26 +64,15 @@ class Note:
     slur_end: Optional[SlurEnd] = None
     tie_start: Optional[TieStart] = None
     tie_end: Optional[TieEnd] = None
-
-
-@dataclass(frozen=True)
-class ChordNote:
-    """One pitch inside a multi-note chord (ties only; slurs live on ChordGroup)."""
-
-    pitch: str
-    tie_start: Optional[TieStart] = None
-    tie_end: Optional[TieEnd] = None
-
-
-@dataclass(frozen=True)
-class ChordGroup:
-    """Simultaneous chord: one rhythmic unit, multiple stacked pitches (MuseScore one <Chord>)."""
-
-    notes: tuple[ChordNote, ...]
-    duration: float
-    dots: int = 0
-    slur_start: Optional[SlurStart] = None
-    slur_end: Optional[SlurEnd] = None
+    stem_direction: Optional[str] = None
+    no_stem: bool = False
+    articulations: Tuple[str, ...] = ()
+    tpc: Optional[int] = None
+    symbols: Tuple[str, ...] = ()
+    head: Optional[str] = None
+    play: Optional[bool] = None
+    fixed: Optional[bool] = None
+    fixed_line: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -67,6 +85,7 @@ class Rest:
 @dataclass(frozen=True)
 class Dynamic:
     subtype: str  # e.g., "p", "f", "mf", etc.
+    velocity: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -88,12 +107,50 @@ class HairpinEnd:
 
 
 @dataclass(frozen=True)
+class OttavaStart:
+    """Start of an ottava line — <Spanner type=\"Ottava\"> with <next>."""
+
+    subtype: str
+    next_measures: Optional[str] = None
+    next_fractions: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class OttavaEnd:
+    prev_measures: Optional[str] = None
+    prev_fractions: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class StaffText:
+    """Free text attached to a staff in a measure (<StaffText>)."""
+
+    text: str
+
+
+@dataclass(frozen=True)
+class InstrumentChange:
+    """MuseScore <InstrumentChange> (nested Instrument tree as JSON for round-trip)."""
+
+    text: str
+    init: Optional[str]
+    instrument_tree: Dict[str, Any]
+
+
+@dataclass(frozen=True)
 class MeasureRepeat:
     """One-measure repeat sign (percent) as in MuseScore <MeasureRepeat>."""
 
     subtype: str  # e.g. "1" for single-slash staff repeat
     duration_type: str  # typically "measure"
     duration: str  # e.g. "4/4" — span relative to time signature
+
+
+@dataclass(frozen=True)
+class LayoutBreak:
+    """Line or page break before voices in a measure (<LayoutBreak>)."""
+
+    subtype: str
 
 
 Event = Union[
@@ -103,19 +160,37 @@ Event = Union[
     Dynamic,
     HairpinStart,
     HairpinEnd,
+    OttavaStart,
+    OttavaEnd,
+    StaffText,
+    InstrumentChange,
     MeasureRepeat,
 ]
 
 
 @dataclass(frozen=True)
 class KeySig:
-    concert_key: int
+    concert_key: Optional[int] = None
+    custom: Optional[int] = None
+    mode: Optional[str] = None
 
 
 @dataclass(frozen=True)
 class TimeSig:
     sig_n: int  # numerator
     sig_d: int  # denominator
+
+
+@dataclass(frozen=True)
+class FrameText:
+    style: str
+    text: str
+
+
+@dataclass(frozen=True)
+class VBoxFrame:
+    height: Optional[str]
+    texts: Tuple[FrameText, ...]
 
 
 @dataclass
@@ -128,6 +203,7 @@ class Measure:
     measure_len: Optional[str] = None  # Actual length when different from time sig (e.g. "1/4" for pickup)
     measure_repeat_count: Optional[int] = None  # MuseScore <measureRepeatCount> on Measure (e.g. 1)
     double_bar: bool = False  # End-of-measure double barline (<BarLine><subtype>double</subtype>)
+    layout_breaks: Tuple[LayoutBreak, ...] = ()
 
     @property
     def events(self) -> List[Event]:
@@ -139,9 +215,24 @@ class Measure:
 class Part:
     part_id: str
     measures: List[Measure]
+    vbox_frames: Tuple[VBoxFrame, ...] = ()
+    # Staff children before the first <Measure>, except <VBox> (see vbox_frames)
+    staff_extras: Tuple[Dict[str, Any], ...] = ()
 
 
 @dataclass
 class Score:
     parts: List[Part]
     score_id: Optional[str] = None
+    muse_score_version: Optional[str] = None  # root <museScore version="...">
+    division: Optional[int] = None
+    program_version: Optional[str] = None
+    program_revision: Optional[str] = None
+    show_invisible: Optional[int] = None
+    show_unprintable: Optional[int] = None
+    show_frames: Optional[int] = None
+    show_margins: Optional[int] = None
+    score_open: Optional[int] = None  # MSCX <open> (avoid Python builtin `open`)
+    meta_tags: Dict[str, str] = field(default_factory=dict)
+    order_tree: Optional[Dict[str, Any]] = None
+    part_definitions: Tuple[Dict[str, Any], ...] = ()
