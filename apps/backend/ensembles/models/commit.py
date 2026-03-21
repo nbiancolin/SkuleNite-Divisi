@@ -3,7 +3,20 @@ from django.db import models
 
 from ensembles.models.git_repo import GitRepo
 
+
 class Commit(models.Model):
+    """
+    A git commit recorded in a :class:`~ensembles.models.GitRepo`, mirrored in the database.
+
+    Relationships:
+
+    * ``Commit`` → ``GitRepo`` (many commits belong to one bare repo)
+    * ``ArrangementVersion.commit`` → this row when a version was built from that snapshot
+
+    The git object id is ``sha`` (40-char hex). ``tag`` may duplicate a lightweight tag name
+    (e.g. ``v1.2.3``) for convenience.
+    """
+
     git_repo = models.ForeignKey(
         GitRepo, related_name="commits", on_delete=models.CASCADE
     )

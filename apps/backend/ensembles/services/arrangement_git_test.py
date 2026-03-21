@@ -2,7 +2,7 @@ import pytest
 from django.test import override_settings
 
 from ensembles.factories import ArrangementFactory
-from ensembles.services.arrangement_git import init_repo
+from ensembles.git import init_repo
 
 
 @pytest.mark.django_db

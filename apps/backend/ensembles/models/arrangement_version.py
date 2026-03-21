@@ -49,13 +49,14 @@ class ArrangementVersion(models.Model):
     num_measures_per_line_part = models.IntegerField()
     num_lines_per_page = models.IntegerField()
 
-    # GIT
+    # Canonical snapshot: ArrangementVersion built from a git commit (optional).
     commit = models.ForeignKey(
         null=True,
         blank=True,
         to=Commit,
         on_delete=models.CASCADE,
-        related_name="arrangement_version",
+        related_name="arrangement_versions",
+        help_text="If set, this version's score was materialized from this git snapshot.",
     )
 
     @property

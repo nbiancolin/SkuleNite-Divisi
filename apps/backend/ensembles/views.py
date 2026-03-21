@@ -26,56 +26,18 @@ from django.db.models.expressions import RawSQL
 from ensembles.tasks import export_arrangement_version, prep_and_export_mscz
 from ensembles.tasks.part_books import generate_books_for_ensemble
 
-from scoreforge.cli import mscz_to_json, json_to_mscz
+from scoreforge.cli import mscz_to_json
 import tempfile
 from pathlib import Path
 import hashlib
-import subprocess
 
-from ensembles.services.arrangement_git import ArrangementGitError, GitAuthor, commit_canonical_snapshot, init_repo
-
-#TODO: This should go wtih the git files
-def _materialize_commit_mscz_to_version(*, arrangement: Arrangement, commit_sha: str, version: ArrangementVersion) -> None:
-    """
-    Checkout a git commit payload for an arrangement, convert `canonical.json` to an `.mscz`,
-    and store it at `version.mscz_file_key`.
-    """
-    # Ensure the bare repo exists on disk.
-    repo_path = init_repo(arrangement)
-
-    with tempfile.TemporaryDirectory(prefix="arr_from_commit_") as tmp:
-        tmp_dir = Path(tmp)
-        workdir = tmp_dir / "work"
-
-        # Clone the bare repo to a temp workdir, then checkout the requested commit.
-        subprocess.run(
-            ["git", "clone", "--quiet", repo_path, str(workdir)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(
-            ["git", "checkout", "--quiet", commit_sha],
-            check=True,
-            cwd=str(workdir),
-            capture_output=True,
-            text=True,
-        )
-
-        canonical_json_path = workdir / "canonical.json"
-        template_mscz_path = workdir / "canonical.mscz"
-        mscz_out_path = tmp_dir / "commit.mscz"
-
-        # Prefer template-based rebuild (same as scoreforge round-trip): `score_to_mscx` without
-        # a template emits `<Part>`/measures; MuseScore expects measures under `<Staff>` and will
-        # show an empty score. Legacy commits without `canonical.mscz` fall back to minimal MSCZ.
-        if template_mscz_path.is_file():
-            json_to_mscz(str(canonical_json_path), str(mscz_out_path), str(template_mscz_path))
-        else:
-            json_to_mscz(str(canonical_json_path), str(mscz_out_path))
-
-        with open(mscz_out_path, "rb") as f:
-            default_storage.save(version.mscz_file_key, File(f))
+from ensembles.git import (
+    ArrangementGitError,
+    GitAuthor,
+    commit_canonical_snapshot,
+    init_repo,
+    materialize_commit_mscz_to_version,
+)
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -379,12 +341,13 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
     def commits(self, request, id=None, *args, **kwargs):
         arrangement = self.get_object()
 
-        # Versions created from commits are currently marked via file_name.
-        version_commit_shas = {
-            v.file_name[len("commit-") : -len(".mscz")]
-            for v in ArrangementVersion.objects.filter(arrangement=arrangement)
-            if v.file_name.startswith("commit-") and v.file_name.endswith(".mscz")
-        }
+        # Versions created from commits: prefer FK; legacy rows used commit-<sha>.mscz filenames.
+        version_commit_shas = set()
+        for v in ArrangementVersion.objects.filter(arrangement=arrangement).select_related("commit"):
+            if v.commit_id:
+                version_commit_shas.add(v.commit.sha)
+            elif v.file_name.startswith("commit-") and v.file_name.endswith(".mscz"):
+                version_commit_shas.add(v.file_name[len("commit-") : -len(".mscz")])
 
         commit_rows = (
             Commit.objects.filter(git_repo__arrangement=arrangement)
@@ -586,7 +549,7 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             )
 
         # try:
-        _materialize_commit_mscz_to_version(
+        materialize_commit_mscz_to_version(
             arrangement=arrangement,
             commit_sha=commit_obj.sha,
             version=version,

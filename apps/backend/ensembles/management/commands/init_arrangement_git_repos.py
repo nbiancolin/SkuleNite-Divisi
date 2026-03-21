@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from ensembles.models import Arrangement
-from ensembles.services.arrangement_git import init_repo
+from ensembles.git import init_repo
 
 
 class Command(BaseCommand):

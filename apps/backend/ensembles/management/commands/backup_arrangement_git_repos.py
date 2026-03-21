@@ -8,7 +8,7 @@ from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 
 from ensembles.models import Arrangement
-from ensembles.services.arrangement_git import ArrangementGitError, init_repo, _run_git
+from ensembles.git import ArrangementGitError, init_repo, run_git
 
 
 class Command(BaseCommand):
@@ -45,7 +45,7 @@ class Command(BaseCommand):
             try:
                 repo_path = Path(init_repo(arrangement))
                 if run_gc and not dry_run:
-                    _run_git(["--git-dir", str(repo_path), "gc"])
+                    run_git(["--git-dir", str(repo_path), "gc"])
 
                 bundle_name = f"arr_{arrangement.id}_{ts}.bundle"
                 storage_key = f"{storage_prefix.rstrip('/')}/{bundle_name}"
@@ -56,7 +56,7 @@ class Command(BaseCommand):
 
                 with tempfile.TemporaryDirectory(prefix="arr_git_bundle_") as tmp:
                     bundle_path = Path(tmp) / bundle_name
-                    _run_git(["--git-dir", str(repo_path), "bundle", "create", str(bundle_path), "--all"])
+                    run_git(["--git-dir", str(repo_path), "bundle", "create", str(bundle_path), "--all"])
                     default_storage.save(storage_key, ContentFile(bundle_path.read_bytes()))
 
             except (ArrangementGitError, Exception) as e:

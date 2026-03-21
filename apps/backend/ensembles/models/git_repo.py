@@ -4,6 +4,17 @@ from ensembles.models.arrangement import Arrangement
 
 
 class GitRepo(models.Model):
+    """
+    One **bare** git repository on disk per :class:`~ensembles.models.Arrangement`.
+
+    Relationships:
+
+    * ``Arrangement`` ←1:1→ ``GitRepo`` (this model): ``arrangement.git_repo``
+    * ``GitRepo`` ←1:N→ :class:`~ensembles.models.Commit`: ``git_repo.commits``
+
+    The filesystem path is stored in ``repo_path`` (see ``ensembles.git.paths``).
+    """
+
     arrangement = models.OneToOneField(
         Arrangement, related_name="git_repo", on_delete=models.CASCADE
     )
@@ -19,8 +30,6 @@ class GitRepo(models.Model):
         verbose_name_plural = "Git Repos"
 
     def remove_files_from_disk(self) -> None:
-        from ensembles.services.arrangement_git import remove_repo_files
+        from ensembles.git.repo import remove_repo_files
 
         remove_repo_files(self.repo_path)
-
-    # TODO[eventually]: Move some of the git functionality to this repo model

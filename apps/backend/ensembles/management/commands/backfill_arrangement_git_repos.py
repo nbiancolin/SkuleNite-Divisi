@@ -7,8 +7,8 @@ from django.core.files.storage import default_storage
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
+from ensembles.git import GitAuthor, commit_canonical_snapshot, init_repo, tag_version
 from ensembles.models import Arrangement, ArrangementVersion
-from ensembles.services.arrangement_git import GitAuthor, init_repo, commit_canonical_snapshot, tag_version
 
 from scoreforge.cli import mscz_to_json
 
@@ -25,7 +25,7 @@ def _sha256_file(path: Path) -> str:
 
 
 class Command(BaseCommand):
-    help = "Backfill per-arrangement git repos and persist ArrangementVersion git_commit_sha."
+    help = "Backfill per-arrangement git repos and link ArrangementVersion rows to Commit records."
 
     def add_arguments(self, parser):
         parser.add_argument("--dry-run", action="store_true", help="Compute and log work without writing.")
@@ -62,7 +62,7 @@ class Command(BaseCommand):
             versions = (
                 ArrangementVersion.objects.filter(arrangement=arrangement)
                 .order_by("timestamp", "id")
-                .only("id", "version_label", "timestamp", "file_name", "git_commit_sha", "git_tag", "canonical_tree_hash")
+                .only("id", "version_label", "timestamp", "file_name", "commit_id")
             )
 
             for version in versions.iterator():
@@ -70,7 +70,7 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.SUCCESS(f"Reached --limit={limit}, stopping."))
                     return
 
-                if version.git_commit_sha:
+                if version.commit_id:
                     continue
 
                 input_key = version.mscz_file_key
@@ -96,7 +96,7 @@ class Command(BaseCommand):
 
                         mscz_to_json(str(in_path), str(out_dir), "canonical")
                         canonical_json = out_dir / "canonical.json"
-                        tree_hash = _sha256_file(canonical_json)
+                        _sha256_file(canonical_json)
 
                         payload_dir = tmp_dir / "commit_payload"
                         payload_dir.mkdir(parents=True, exist_ok=True)
@@ -111,32 +111,33 @@ class Command(BaseCommand):
                             encoding="utf-8",
                         )
 
-                        sha = "DRY_RUN"
+                        display_sha = "DRY_RUN"
                         tag = f"v{version.version_label}"
                         if not dry_run:
                             author = GitAuthor(name="Divisi System", email="system@divisi.local")
                             msg = f"{arrangement.slug} v{version.version_label}"
-                            sha = commit_canonical_snapshot(
+                            commit_row = commit_canonical_snapshot(
                                 arrangement,
                                 payload_dir,
                                 author=author,
                                 timestamp=version.timestamp,
                                 message=msg,
                             )
-                            tag_version(arrangement, sha, tag)
+                            tag_version(arrangement, commit_row.sha, tag)
+                            commit_row.tag = tag
+                            commit_row.save(update_fields=["tag"])
+                            display_sha = commit_row.sha
 
                             with transaction.atomic():
                                 v = ArrangementVersion.objects.select_for_update().get(id=version.id)
-                                if v.git_commit_sha:
+                                if v.commit_id:
                                     continue
-                                v.git_commit_sha = sha
-                                v.git_tag = tag
-                                v.canonical_tree_hash = tree_hash
-                                v.save(update_fields=["git_commit_sha", "git_tag", "canonical_tree_hash"])
+                                v.commit = commit_row
+                                v.save(update_fields=["commit"])
 
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f"[BACKFILL] {arrangement.id}/{arrangement.slug} v{version.version_label} -> {sha} ({tag})"
+                                f"[BACKFILL] {arrangement.id}/{arrangement.slug} v{version.version_label} -> {display_sha} ({tag})"
                             )
                         )
                         processed += 1
@@ -147,4 +148,3 @@ class Command(BaseCommand):
                         self.stderr.write(self.style.ERROR(msg))
                         continue
                     raise
-

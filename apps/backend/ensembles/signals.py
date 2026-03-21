@@ -1,8 +1,8 @@
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
+from ensembles.git import init_repo
 from ensembles.models import Arrangement, GitRepo
-from ensembles.services.arrangement_git import init_repo
 from logging import getLogger
 
 logger = getLogger("arrangement_git")

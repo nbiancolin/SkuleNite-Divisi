@@ -30,39 +30,72 @@ Backend:
 
 ## Git-per-arrangement repos (canonical history)
 
-This codebase stores a **bare git repo per `Arrangement`** on the backend filesystem. Each `ArrangementVersion` points at the exact canonical snapshot commit via:
+The Django app stores **one bare git repository per `Arrangement`** on the server filesystem. Canonical score snapshots (from ScoreForge) are committed there; the database mirrors repo metadata and links versions to commits.
 
-- `Arrangement.git_repo_path` (bare repo path)
-- `ArrangementVersion.git_commit_sha` + `git_tag` (e.g. `v1.2.3`)
+### Python modules (`apps/backend/ensembles/git/`)
 
-### Repo root
+| Module | Role |
+|--------|------|
+| `paths.py` | Documents and resolves the on-disk root and per-arrangement directory names. |
+| `runner.py` | Runs `git` subprocesses (`run_git`). |
+| `repo.py` | Create/remove bare repos (`init_repo`, `remove_repo_files`), lightweight tags (`tag_version`). |
+| `snapshots.py` | `commit_canonical_snapshot`, `GitAuthor` — clone/worktree/commit/push workflow. |
+| `materialize.py` | Check out a commit and rebuild an `.mscz` for an `ArrangementVersion`. |
 
-Set `DIVISI_ARRANGEMENT_REPO_ROOT` (default: `/srv/divisi-arrangement-repos/`). Repos are named `arr_<arrangementId>.git`.
+`ensembles.services.arrangement_git` re-exports the same API for older imports; new code should use `ensembles.git`.
 
-### Backfill existing versions
+### On-disk layout
 
-Run in the backend container:
+All repos live under a single root directory:
 
-```bash
-python manage.py backfill_arrangement_git_repos --dry-run --limit 10
-python manage.py backfill_arrangement_git_repos --continue-on-error
+```text
+<ARRANGEMENT_GIT_ROOT>/
+  arr_<arrangement_id>.git/    # bare repo (git init --bare), default branch main
+    HEAD  config  objects/  refs/  ...
 ```
 
-### Backups (recommended)
+If `ARRANGEMENT_GIT_ROOT` is unset, Django defaults to `<BASE_DIR>/arrangement_git_repos/` (see `ensembles.git.paths.arrangement_git_root`).
 
-Use git bundles uploaded to your configured Django `default_storage` (S3/DO Spaces or local):
+### Environment / settings
+
+- **`ARRANGEMENT_GIT_ROOT`**: preferred explicit setting (string path).
+- **`DIVISI_ARRANGEMENT_REPO_ROOT`**: alternate env var (e.g. Docker Compose) — mapped in `backend.settings.base` so either name sets the same root.
+
+Production often uses a persistent path such as `/srv/divisi-arrangement-repos/`.
+
+### Database relationships
+
+```mermaid
+erDiagram
+    Arrangement ||--o| GitRepo : "git_repo (1:1)"
+    GitRepo ||--o{ Commit : "commits"
+    ArrangementVersion }o--o| Commit : "commit (optional FK)"
+```
+
+- **`GitRepo`**: one row per arrangement; `repo_path` is the absolute path to the bare repo directory.
+- **`Commit`**: one row per recorded git commit (`sha`, parents, author, optional `tag`).
+- **`ArrangementVersion.commit`**: set when the version was created from a canonical snapshot (e.g. “create from commit” or backfill). Legacy rows may use `file_name` pattern `commit-<sha>.mscz` without the FK.
+
+Creating an `Arrangement` triggers a signal that best-effort calls `init_repo` so the bare repo exists.
+
+### Management commands
+
+Run inside the backend container (from `apps/backend`):
 
 ```bash
+python manage.py init_arrangement_git_repos
+python manage.py backfill_arrangement_git_repos --dry-run --limit 10
+python manage.py backfill_arrangement_git_repos --continue-on-error
 python manage.py backup_arrangement_git_repos --dry-run
 python manage.py backup_arrangement_git_repos --gc
 ```
 
-- **Retention**: keep at least 7–30 days of bundles (or daily + weekly) so you can restore after disk loss/corruption.
+**Backups:** bundles are uploaded to Django `default_storage` (S3/DO Spaces or local).
+
+- **Retention**: keep at least 7–30 days of bundles (or daily + weekly) so you can restore after disk loss or corruption.
 - **Disk usage**: run `git gc` periodically (or pass `--gc` during backup) to reduce packfile bloat after backfills.
 - **Restore**: download a `.bundle` and run `git clone <bundle> <new-repo-dir>` (or `git init --bare` + `git fetch <bundle> 'refs/*:refs/*'`).
 
-
-# TODO: Fix this documentation
 
 ## How Files storage is structured
 
