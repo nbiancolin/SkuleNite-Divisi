@@ -212,7 +212,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                             key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
                             irregular=user_measures[ui].irregular,
                             measure_len=user_measures[ui].measure_len,
-                            measure_repeat_count=user_measures[ui].measure_repeat_count)
+                            measure_repeat_count=user_measures[ui].measure_repeat_count,
+                            double_bar=user_measures[ui].double_bar)
                 )
                 out_measure_num += 1
                 user_insertions_idx += 1
@@ -226,7 +227,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                             key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
                             irregular=head_measures[hi].irregular,
                             measure_len=head_measures[hi].measure_len,
-                            measure_repeat_count=head_measures[hi].measure_repeat_count)
+                            measure_repeat_count=head_measures[hi].measure_repeat_count,
+                            double_bar=head_measures[hi].double_bar)
                 )
                 out_measure_num += 1
                 head_insertions_idx += 1
@@ -246,7 +248,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                                 key_sig=base_meas.key_sig, time_sig=base_meas.time_sig,
                                 irregular=base_meas.irregular,
                                 measure_len=base_meas.measure_len,
-                                measure_repeat_count=base_meas.measure_repeat_count)
+                                measure_repeat_count=base_meas.measure_repeat_count,
+                                double_bar=base_meas.double_bar)
                     )
                 elif base_hash == head_hash:
                     merged_measures.append(
@@ -254,7 +257,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                                 key_sig=user_meas.key_sig, time_sig=user_meas.time_sig,
                                 irregular=user_meas.irregular,
                                 measure_len=user_meas.measure_len,
-                                measure_repeat_count=user_meas.measure_repeat_count)
+                                measure_repeat_count=user_meas.measure_repeat_count,
+                                double_bar=user_meas.double_bar)
                     )
                 elif base_hash == user_hash:
                     merged_measures.append(
@@ -262,7 +266,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                                 key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
                                 irregular=head_meas.irregular,
                                 measure_len=head_meas.measure_len,
-                                measure_repeat_count=head_meas.measure_repeat_count)
+                                measure_repeat_count=head_meas.measure_repeat_count,
+                                double_bar=head_meas.double_bar)
                     )
                 elif head_hash == user_hash:
                     merged_measures.append(
@@ -270,7 +275,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                                 key_sig=head_meas.key_sig, time_sig=head_meas.time_sig,
                                 irregular=head_meas.irregular,
                                 measure_len=head_meas.measure_len,
-                                measure_repeat_count=head_meas.measure_repeat_count)
+                                measure_repeat_count=head_meas.measure_repeat_count,
+                                double_bar=head_meas.double_bar)
                     )
                 else:
                     conflicts[(part_id, out_measure_num)] = (head_meas, user_meas)
@@ -279,14 +285,14 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                 if base_hash == head_hash:
                     pass  # User removed
                 else:
-                    empty_meas = Measure(number=out_measure_num, voices={"0": []})
+                    empty_meas = Measure(number=out_measure_num, voices={"0": []}, double_bar=False)
                     conflicts[(part_id, out_measure_num)] = (head_meas, empty_meas)
                     out_measure_num += 1
             elif user_meas and not head_meas:
                 if base_hash == user_hash:
                     pass  # Head removed
                 else:
-                    empty_meas = Measure(number=out_measure_num, voices={"0": []})
+                    empty_meas = Measure(number=out_measure_num, voices={"0": []}, double_bar=False)
                     conflicts[(part_id, out_measure_num)] = (empty_meas, user_meas)
                     out_measure_num += 1
 
@@ -296,7 +302,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                         key_sig=head_measures[hi].key_sig, time_sig=head_measures[hi].time_sig,
                         irregular=head_measures[hi].irregular,
                         measure_len=head_measures[hi].measure_len,
-                        measure_repeat_count=head_measures[hi].measure_repeat_count)
+                        measure_repeat_count=head_measures[hi].measure_repeat_count,
+                        double_bar=head_measures[hi].double_bar)
             )
             out_measure_num += 1
 
@@ -306,7 +313,8 @@ def three_way_merge_scores(user_score: Score, base_score: Score, head_score: Sco
                         key_sig=user_measures[ui].key_sig, time_sig=user_measures[ui].time_sig,
                         irregular=user_measures[ui].irregular,
                         measure_len=user_measures[ui].measure_len,
-                        measure_repeat_count=user_measures[ui].measure_repeat_count)
+                        measure_repeat_count=user_measures[ui].measure_repeat_count,
+                        double_bar=user_measures[ui].double_bar)
             )
             out_measure_num += 1
 

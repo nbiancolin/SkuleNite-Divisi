@@ -30,6 +30,14 @@ DURATION_MAP = {
 }
 
 
+def _measure_has_double_barline(measure_el: ET.Element) -> bool:
+    """True if this measure has a MuseScore double barline (MS4 often nests <BarLine> under <voice>)."""
+    for bar in measure_el.findall(".//BarLine"):
+        if (bar.findtext("subtype") or "").strip() == "double":
+            return True
+    return False
+
+
 def _parse_measure_repeat_count(measure_el: ET.Element) -> int | None:
     t = measure_el.findtext("measureRepeatCount")
     if t is None or not str(t).strip():
@@ -295,6 +303,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
 
         measure_len = measure_el.get("len")
         measure_repeat_count = _parse_measure_repeat_count(measure_el)
+        double_bar = _measure_has_double_barline(measure_el)
 
         voice_children = [c for c in measure_el if c.tag == "voice"]
         if not voice_children:
@@ -307,6 +316,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                     irregular=irregular,
                     measure_len=measure_len,
                     measure_repeat_count=measure_repeat_count,
+                    double_bar=double_bar,
                 )
             )
             continue
@@ -340,6 +350,7 @@ def parse_staff_measures(staff_el: ET.Element) -> list[Measure]:
                 irregular=irregular,
                 measure_len=measure_len,
                 measure_repeat_count=measure_repeat_count,
+                double_bar=double_bar,
             )
         )
 

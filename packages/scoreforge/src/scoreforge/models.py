@@ -127,6 +127,7 @@ class Measure:
     irregular: Optional[float] = None  # MuseScore irregular flag (0 or 1)
     measure_len: Optional[str] = None  # Actual length when different from time sig (e.g. "1/4" for pickup)
     measure_repeat_count: Optional[int] = None  # MuseScore <measureRepeatCount> on Measure (e.g. 1)
+    double_bar: bool = False  # End-of-measure double barline (<BarLine><subtype>double</subtype>)
 
     @property
     def events(self) -> List[Event]:

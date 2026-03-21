@@ -165,6 +165,9 @@ def save_canonical(score: Score, path: Path) -> None:
             if measure.measure_repeat_count is not None:
                 meas_obj["measureRepeatCount"] = measure.measure_repeat_count
 
+            if measure.double_bar:
+                meas_obj["doubleBar"] = True
+
             if not measure.voices:
                 meas_obj["events"] = []
             elif set(measure.voices.keys()) == {"0"}:
@@ -473,6 +476,8 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
     if measure_repeat_count is not None:
         measure_repeat_count = int(measure_repeat_count)
 
+    double_bar = bool(measure_data.get("doubleBar", False))
+
     if "voices" in measure_data:
         voices: dict[str, list[Event]] = {}
         for vk in sorted(measure_data["voices"].keys(), key=int):
@@ -491,5 +496,6 @@ def _parse_measure(measure_data: dict, measure_number: int) -> Measure:
         irregular=irregular,
         measure_len=measure_len,
         measure_repeat_count=measure_repeat_count,
+        double_bar=double_bar,
     )
 

@@ -94,4 +94,5 @@ def test_mirror_blue_night_mscz_roundtrip_parse_equality():
             for om, rm in zip(orig_part.measures, recon_part.measures):
                 assert om.number == rm.number
                 assert om.measure_repeat_count == rm.measure_repeat_count
+                assert om.double_bar == rm.double_bar
                 assert om.voices == rm.voices

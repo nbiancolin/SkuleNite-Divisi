@@ -208,6 +208,12 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
             ET.SubElement(mr_el, "duration").text = event.duration
 
 
+def _append_double_bar_line(voice_el: ET.Element) -> None:
+    """MuseScore places end-of-bar double barlines inside the first <voice> (MS4 MSCX)."""
+    bar = ET.SubElement(voice_el, "BarLine")
+    ET.SubElement(bar, "subtype").text = "double"
+
+
 def score_to_mscx(score: Score) -> ET.ElementTree:
     """Convert a Score object to an MSCX XML ElementTree.
     
@@ -256,9 +262,12 @@ def score_to_mscx(score: Score) -> ET.ElementTree:
                 )
 
             vk_list = sorted(measure.voices.keys(), key=int) if measure.voices else ["0"]
+            first_vk = vk_list[0]
             for vk in vk_list:
                 voice_el = ET.SubElement(measure_el, "voice")
                 _append_events_to_container(voice_el, measure.voices.get(vk, []))
+                if measure.double_bar and vk == first_vk:
+                    _append_double_bar_line(voice_el)
 
     return ET.ElementTree(root)
 
@@ -330,6 +339,8 @@ def merge_measures_into_template(template_tree: ET.ElementTree, score: Score) ->
                     ET.SubElement(time_sig_el, "sigN").text = str(measure.time_sig.sig_n)
                     ET.SubElement(time_sig_el, "sigD").text = str(measure.time_sig.sig_d)
                 _append_events_to_container(voice_el, measure.voices.get(vk, []))
+                if vi == 0 and measure.double_bar:
+                    _append_double_bar_line(voice_el)
 
     return ET.ElementTree(root)
 
