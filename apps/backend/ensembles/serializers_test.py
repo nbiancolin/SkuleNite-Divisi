@@ -56,6 +56,7 @@ def test_arrangement_serializer_includes_latest_version(
         "composer",
         "mvt_no",
         "style",
+        "latest_commit_mscz_download_url",
         "latest_version",
         "latest_version_num",
     ]
