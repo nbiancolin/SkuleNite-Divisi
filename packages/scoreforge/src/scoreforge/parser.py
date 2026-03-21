@@ -24,6 +24,7 @@ from scoreforge.models import (
     OttavaStart,
     OttavaEnd,
     StaffText,
+    RehearsalMark,
     InstrumentChange,
     LayoutBreak,
     VBoxFrame,
@@ -369,6 +370,12 @@ def _parse_single_voice_content(
             elif el.tag == "StaffText":
                 txt = el.findtext("text")
                 events.append(StaffText(text=(txt or "").strip()))
+                continue
+
+            # ---- REHEARSAL MARK ----
+            elif el.tag == "RehearsalMark":
+                txt = el.findtext("text")
+                events.append(RehearsalMark(text=(txt or "").strip()))
                 continue
 
             # ---- INSTRUMENT CHANGE ----

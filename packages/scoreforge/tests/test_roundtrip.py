@@ -13,6 +13,54 @@ def test_pitch_to_midi_accepts_flat_and_negative_octave():
     assert pitch_to_midi("Bb3") == 58
 
 
+def test_rehearsal_mark_parse_and_mscx_roundtrip():
+    """Rehearsal marks (<RehearsalMark>) are events with text; JSON and MSCX emit preserve them."""
+    import tempfile
+    import xml.etree.ElementTree as ET
+    from pathlib import Path
+
+    from scoreforge.converter import score_to_mscx
+    from scoreforge.models import RehearsalMark
+    from scoreforge.parser import parse_score
+    from scoreforge.serialization import load_score_from_json, save_canonical
+
+    mscx = """<?xml version="1.0"?>
+<museScore version="4.0">
+  <Score>
+    <Staff id="1">
+      <Measure>
+        <voice>
+          <RehearsalMark>
+            <text>A</text>
+          </RehearsalMark>
+          <Rest>
+            <durationType>whole</durationType>
+          </Rest>
+        </voice>
+      </Measure>
+    </Staff>
+  </Score>
+</museScore>"""
+    tree = ET.ElementTree(ET.fromstring(mscx))
+    score = parse_score(tree)
+    evs = score.parts[0].measures[0].voices["0"]
+    rm = next(e for e in evs if isinstance(e, RehearsalMark))
+    assert rm.text == "A"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.json"
+        save_canonical(score, path)
+        score_json = load_score_from_json(path)
+    evs_j = score_json.parts[0].measures[0].voices["0"]
+    rm_j = next(e for e in evs_j if isinstance(e, RehearsalMark))
+    assert rm_j.text == "A"
+
+    tree_mscx = score_to_mscx(score)
+    rm_el = tree_mscx.getroot().find(".//RehearsalMark")
+    assert rm_el is not None
+    assert (rm_el.findtext("text") or "").strip() == "A"
+
+
 def test_roundtrip_for_manual_inspection():
     """Test that converts mscz -> canonical -> mscz for manual inspection.
     

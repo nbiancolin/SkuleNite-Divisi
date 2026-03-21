@@ -129,6 +129,13 @@ class StaffText:
 
 
 @dataclass(frozen=True)
+class RehearsalMark:
+    """Rehearsal letter/number box (<RehearsalMark> in a voice)."""
+
+    text: str
+
+
+@dataclass(frozen=True)
 class InstrumentChange:
     """MuseScore <InstrumentChange> (nested Instrument tree as JSON for round-trip)."""
 
@@ -163,6 +170,7 @@ Event = Union[
     OttavaStart,
     OttavaEnd,
     StaffText,
+    RehearsalMark,
     InstrumentChange,
     MeasureRepeat,
 ]
