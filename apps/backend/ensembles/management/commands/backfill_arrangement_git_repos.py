@@ -101,6 +101,11 @@ class Command(BaseCommand):
                         payload_dir = tmp_dir / "commit_payload"
                         payload_dir.mkdir(parents=True, exist_ok=True)
                         (payload_dir / "canonical.json").write_bytes(canonical_json.read_bytes())
+                        canonical_template = out_dir / "canonical.mscz"
+                        if canonical_template.is_file():
+                            (payload_dir / "canonical.mscz").write_bytes(
+                                canonical_template.read_bytes()
+                            )
                         (payload_dir / ".gitattributes").write_text(
                             "canonical.json merge=scoreforge\n",
                             encoding="utf-8",

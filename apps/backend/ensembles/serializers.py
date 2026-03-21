@@ -322,9 +322,7 @@ class ArrangementVersionFromCommitSerializer(serializers.Serializer):
     default_error_messages = {
         "exists": "AN arrangement version already exists for this commit"
     }
-    commit = serializers.PrimaryKeyRelatedField(
-        required=True, queryset=Commit.objects.all()
-    )
+    commit_hash = serializers.CharField(required=True)
     version_type = serializers.ChoiceField(
         required=False,
         choices=[t[0] for t in VERSION_TYPES],
@@ -338,7 +336,7 @@ class ArrangementVersionFromCommitSerializer(serializers.Serializer):
 
         attrs = super().validate(attrs)
 
-        if ArrangementVersion.objects.filter(commit=attrs["commit"]).exists():
+        if ArrangementVersion.objects.filter(commit__sha=attrs["commit_hash"]).exists():
             self.fail("exists")
 
         return attrs

@@ -63,10 +63,16 @@ def _materialize_commit_mscz_to_version(*, arrangement: Arrangement, commit_sha:
         )
 
         canonical_json_path = workdir / "canonical.json"
+        template_mscz_path = workdir / "canonical.mscz"
         mscz_out_path = tmp_dir / "commit.mscz"
 
-        # `canonical.json` -> minimal `.mscz` (no template available in the commit payload).
-        json_to_mscz(str(canonical_json_path), str(mscz_out_path))
+        # Prefer template-based rebuild (same as scoreforge round-trip): `score_to_mscx` without
+        # a template emits `<Part>`/measures; MuseScore expects measures under `<Staff>` and will
+        # show an empty score. Legacy commits without `canonical.mscz` fall back to minimal MSCZ.
+        if template_mscz_path.is_file():
+            json_to_mscz(str(canonical_json_path), str(mscz_out_path), str(template_mscz_path))
+        else:
+            json_to_mscz(str(canonical_json_path), str(mscz_out_path))
 
         with open(mscz_out_path, "rb") as f:
             default_storage.save(version.mscz_file_key, File(f))
@@ -464,6 +470,9 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
             payload_dir = tmp_dir / "commit_payload"
             payload_dir.mkdir(parents=True, exist_ok=True)
             (payload_dir / "canonical.json").write_bytes(canonical_json.read_bytes())
+            canonical_template = out_dir / "canonical.mscz"
+            if canonical_template.is_file():
+                (payload_dir / "canonical.mscz").write_bytes(canonical_template.read_bytes())
             (payload_dir / ".gitattributes").write_text(
                 "canonical.json merge=scoreforge\n",
                 encoding="utf-8",
@@ -536,28 +545,21 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             Q(ensemble__owner=request.user) | Q(ensemble__userships__user=request.user)
         ).distinct()
 
-        commit_obj = data.get("commit")
-        if commit_obj is not None:
-            if not accessible_arrangements.filter(id=commit_obj.git_repo.arrangement_id).exists():
-                return Response(
-                    {"detail": "Commit not found or inaccessible."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-        else:
-            commit_hash = data.get("commit_hash")
-            commit_obj = (
-                Commit.objects.filter(
-                    sha=commit_hash,
-                    git_repo__arrangement__in=accessible_arrangements,
-                )
-                .select_related("git_repo__arrangement")
-                .first()
+
+        commit_hash = data.get("commit_hash")
+        commit_obj = (
+            Commit.objects.filter(
+                sha=commit_hash,
+                git_repo__arrangement__in=accessible_arrangements,
             )
-            if commit_obj is None:
-                return Response(
-                    {"detail": "Commit not found or inaccessible."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
+            .select_related("git_repo__arrangement")
+            .first()
+        )
+        if commit_obj is None:
+            return Response(
+                {"detail": "Commit not found or inaccessible."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
         arrangement = commit_obj.git_repo.arrangement
         file_name = f"commit-{commit_obj.sha}.mscz"
