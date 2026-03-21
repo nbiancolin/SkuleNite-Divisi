@@ -8,6 +8,7 @@ import CreateArrangementPage from './pages/ensembles/CreateArrangementPage'
 import ArrangementsPage from './pages/ensembles/EnsembleArrangementsPage';
 import UploadArrangementVersionFromCommitPage from './pages/ensembles/UploadArrangementVersionAsCommitPage';
 import UploadArrangementVersionDirectlyPage from './pages/ensembles/UploadArrangementVersionDirectlyPage';
+import CreateVersionFromCommitPage from './pages/ensembles/CreateVersionFromCommitPage';
 import ArrangementDisplay from './pages/ensembles/ArrangementDetailPage';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
 import PartFormatterPage from './pages/PartFormatterPage'
@@ -33,6 +34,10 @@ function App() {
         <Route path="/app/arrangements/:slug/edit" element={<div>Edit Arrangement Page (Coming Soon)</div>} />
         <Route path="/app/arrangements/:arrangementId/new-commit" element={<UploadArrangementVersionFromCommitPage />} />
         <Route path="/app/arrangements/:arrangementId/new-version" element={<UploadArrangementVersionDirectlyPage />} />
+        <Route
+          path="/app/arrangements/:arrangementId/commits/:commitSha/create-version"
+          element={<CreateVersionFromCommitPage />}
+        />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />
 
         <Route path="/part-formatter" element={<PartFormatterPage/>} />

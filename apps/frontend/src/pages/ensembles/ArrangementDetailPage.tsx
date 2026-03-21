@@ -116,7 +116,6 @@ export default function ArrangementDisplay() {
   const [commits, setCommits] = useState<ArrangementCommitListItem[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [showCommitHistory, setShowCommitHistory] = useState(false);
-  const [createVersionLoadingBySha, setCreateVersionLoadingBySha] = useState<Record<string, boolean>>({});
 
   //TODO[SC-262]: uncomment when new score diff is ready
   // Diff functionality states
@@ -227,19 +226,6 @@ export default function ArrangementDisplay() {
       console.error('Failed to fetch commit history:', err);
     } finally {
       setCommitsLoading(false);
-    }
-  };
-
-  const handleCreateVersionFromCommit = async (commitSha: string) => {
-    try {
-      setCreateVersionLoadingBySha((prev) => ({ ...prev, [commitSha]: true }));
-      await apiService.createArrangementVersionFromCommit(commitSha);
-      await fetchArrangement(+arrangementId);
-      await fetchCommits(+arrangementId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create version from commit');
-    } finally {
-      setCreateVersionLoadingBySha((prev) => ({ ...prev, [commitSha]: false }));
     }
   };
 
@@ -943,10 +929,10 @@ export default function ArrangementDisplay() {
                             <Badge color="green" variant="light">Version created</Badge>
                           ) : (
                             <Button
+                              component={Link}
+                              to={`/app/arrangements/${arrangementId}/commits/${commit.sha}/create-version`}
                               size="xs"
                               variant="light"
-                              onClick={() => handleCreateVersionFromCommit(commit.sha)}
-                              loading={!!createVersionLoadingBySha[commit.sha]}
                             >
                               Create Version
                             </Button>

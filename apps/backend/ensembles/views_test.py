@@ -318,7 +318,6 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
 @patch("ensembles.views.init_repo")
 def test_create_from_commit_triggers_export(
     mock_init_repo,
-    mock_subprocess_run,
     mock_json_to_mscz,
     mock_default_storage_save,
     mock_prep_export,
@@ -333,11 +332,6 @@ def test_create_from_commit_triggers_export(
 
     # Avoid touching the real git repo on disk.
     mock_init_repo.return_value = "test-repo-path"
-    mock_subprocess_run.return_value = type(
-        "CP",
-        (),
-        {"returncode": 0, "stdout": "", "stderr": ""},
-    )()
 
     # Ensure the helper can open the produced `.mscz`.
     def _fake_json_to_mscz(input_path: str, out_mscz: str, template_mscz_path=None) -> None:

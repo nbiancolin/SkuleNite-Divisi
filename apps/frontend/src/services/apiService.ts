@@ -605,11 +605,31 @@ export const apiService = {
     return response.json();
   },
 
-  async createArrangementVersionFromCommit(commitHash: string) {
+  async createArrangementVersionFromCommit(
+    commitHash: string,
+    options?: {
+      version_type?: string;
+      num_measures_per_line_score?: number;
+      num_measures_per_line_part?: number;
+      num_lines_per_page?: number;
+    }
+  ) {
+    const body: Record<string, string | number> = { commit_hash: commitHash };
+    if (options?.version_type != null) body.version_type = options.version_type;
+    if (options?.num_measures_per_line_score != null) {
+      body.num_measures_per_line_score = options.num_measures_per_line_score;
+    }
+    if (options?.num_measures_per_line_part != null) {
+      body.num_measures_per_line_part = options.num_measures_per_line_part;
+    }
+    if (options?.num_lines_per_page != null) {
+      body.num_lines_per_page = options.num_lines_per_page;
+    }
+
     const response = await fetch(`${API_BASE_URL}/arrangementversions/create_from_commit/`, {
       method: "POST",
       headers: getHeadersWithCsrf(),
-      body: JSON.stringify({ commit_hash: commitHash }),
+      body: JSON.stringify(body),
       credentials: "include",
     });
 
