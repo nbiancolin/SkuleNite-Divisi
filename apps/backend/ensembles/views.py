@@ -380,6 +380,9 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
     @action(detail=True, methods=["get"], url_path="download_latest_commit_mscz")
     def download_latest_commit_mscz(self, request, id=None, *args, **kwargs):
         """Build and download MSCZ from the latest git commit for this arrangement (not tied to a version)."""
+
+        # TODO[at some point]: Allow downloading from any commit
+
         arrangement = self.get_object()
 
         latest = (
@@ -409,6 +412,16 @@ class ArrangementByIdViewSet(BaseArrangementViewSet):
             )
 
         filename = f"{arrangement.title}-commit-{latest.sha[:8]}.mscz"
+
+        from ensembles.models.user_score_version import UserScoreCommit
+
+        # Create user score commit download (for use later)
+        UserScoreCommit.objects.create(
+            user=request.user,
+            arrangement=arrangement,
+            commit=latest
+        )
+
         return FileResponse(
             io.BytesIO(mscz_bytes),
             as_attachment=True,
