@@ -148,6 +148,19 @@ class RehearsalMark:
 
 
 @dataclass(frozen=True)
+class Tempo:
+    """Tempo marking (<Tempo> in a voice): playback <tempo> plus display <text>.
+
+    ``text`` is the full XML of the MuseScore ``<text>`` child (from ``ElementTree.tostring``),
+    so mixed content (e.g. ``<sym>``) round-trips. Empty if there was no ``<text>`` element.
+    """
+
+    text: str
+    tempo: str  # MuseScore stores e.g. BPM/60 for quarter; preserve string for round-trip
+    follow_text: Optional[str] = None  # <followText> when present (e.g. "1")
+
+
+@dataclass(frozen=True)
 class InstrumentChange:
     """MuseScore <InstrumentChange> (nested Instrument tree as JSON for round-trip)."""
 
@@ -183,6 +196,7 @@ Event = Union[
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    Tempo,
     InstrumentChange,
     MeasureRepeat,
 ]

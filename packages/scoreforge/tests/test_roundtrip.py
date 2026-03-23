@@ -13,6 +13,64 @@ def test_pitch_to_midi_accepts_flat_and_negative_octave():
     assert pitch_to_midi("Bb3") == 58
 
 
+def test_tempo_parse_and_mscx_roundtrip():
+    """Tempo (<Tempo>) stores text, playback <tempo>, optional followText; JSON and MSCX preserve them."""
+    import tempfile
+    import xml.etree.ElementTree as ET
+    from pathlib import Path
+
+    from scoreforge.converter import score_to_mscx
+    from scoreforge.models import Tempo
+    from scoreforge.parser import parse_score
+    from scoreforge.serialization import load_score_from_json, save_canonical
+
+    mscx = """<?xml version="1.0"?>
+<museScore version="4.0">
+  <Score>
+    <Staff id="1">
+      <Measure>
+        <voice>
+          <Tempo>
+            <tempo>1.166667</tempo>
+            <followText>1</followText>
+            <text>Directed, <sym>metNoteQuarterUp</sym><font face="Edwin"></font> = 70</text>
+          </Tempo>
+          <Rest>
+            <durationType>whole</durationType>
+          </Rest>
+        </voice>
+      </Measure>
+    </Staff>
+  </Score>
+</museScore>"""
+    tree = ET.ElementTree(ET.fromstring(mscx))
+    score = parse_score(tree)
+    evs = score.parts[0].measures[0].voices["0"]
+    tp = next(e for e in evs if isinstance(e, Tempo))
+    assert tp.tempo == "1.166667"
+    assert tp.follow_text == "1"
+    assert "70" in tp.text
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.json"
+        save_canonical(score, path)
+        score_json = load_score_from_json(path)
+    evs_j = score_json.parts[0].measures[0].voices["0"]
+    tp_j = next(e for e in evs_j if isinstance(e, Tempo))
+    assert tp_j.tempo == "1.166667"
+    assert tp_j.follow_text == "1"
+    assert tp_j.text == tp.text
+
+    tree_mscx = score_to_mscx(score)
+    t_el = tree_mscx.getroot().find(".//Tempo")
+    assert t_el is not None
+    assert (t_el.findtext("tempo") or "").strip() == "1.166667"
+    assert (t_el.findtext("followText") or "").strip() == "1"
+    text_out = t_el.find("text")
+    assert text_out is not None
+    assert "70" in ET.tostring(text_out, encoding="unicode")
+
+
 def test_rehearsal_mark_parse_and_mscx_roundtrip():
     """Rehearsal marks (<RehearsalMark>) are events with text; JSON and MSCX emit preserve them."""
     import tempfile

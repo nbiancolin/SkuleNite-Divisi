@@ -17,6 +17,7 @@ from scoreforge.models import (
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    Tempo,
     InstrumentChange,
     Event,
     SlurStart,
@@ -298,6 +299,13 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
         elif isinstance(event, RehearsalMark):
             rm = ET.SubElement(parent_el, "RehearsalMark")
             ET.SubElement(rm, "text").text = event.text
+        elif isinstance(event, Tempo):
+            t_el = ET.SubElement(parent_el, "Tempo")
+            ET.SubElement(t_el, "tempo").text = event.tempo
+            if event.follow_text is not None:
+                ET.SubElement(t_el, "followText").text = event.follow_text
+            if event.text:
+                t_el.append(ET.fromstring(event.text))
         elif isinstance(event, InstrumentChange):
             ic = ET.SubElement(parent_el, "InstrumentChange")
             if event.text:
