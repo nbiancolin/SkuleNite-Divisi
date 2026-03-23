@@ -19,12 +19,15 @@ from scoreforge.models import (
     MeasureRepeat,
     ChordGroup,
     ChordNote,
+    Lyric,
     HairpinStart,
     HairpinEnd,
     OttavaStart,
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    ChordSymbol,
+    Tempo,
     InstrumentChange,
     LayoutBreak,
     VBoxFrame,
@@ -49,6 +52,17 @@ def _opt_int(txt: str | None) -> int | None:
         return int(str(txt).strip())
     except ValueError:
         return None
+
+
+def _canonical_mscx_element_xml(xml_str: str) -> str:
+    """Parse and re-serialize one XML element so equivalent MSCX fragments compare equal."""
+    if not (xml_str or "").strip():
+        return ""
+    try:
+        root = ET.fromstring(xml_str)
+        return ET.tostring(root, encoding="unicode")
+    except ET.ParseError:
+        return xml_str
 
 
 def _opt_bool01(txt: str | None) -> bool | None:
@@ -130,6 +144,7 @@ def _parse_single_voice_content(
 
             # ---- CHORD ----
             elif el.tag == "Chord":
+                chord_small = _opt_bool01(el.findtext("small"))
                 dur_type = el.findtext("durationType", "quarter")
                 base_duration = DURATION_MAP.get(dur_type, 1)
 
@@ -147,6 +162,16 @@ def _parse_single_voice_content(
                     for a in el.findall("Articulation")
                     for st in [(_opt_text(a.findtext("subtype")) or "")]
                     if st
+                )
+
+                lyrics = tuple(
+                    Lyric(
+                        text=(ly_el.findtext("text") or "").strip(),
+                        syllabic=_opt_text(ly_el.findtext("syllabic")),
+                        ticks_f=_opt_text(ly_el.findtext("ticks_f")),
+                        verse=_opt_int(ly_el.findtext("no")),
+                    )
+                    for ly_el in el.findall("Lyrics")
                 )
 
                 slur_start = None
@@ -245,6 +270,8 @@ def _parse_single_voice_content(
                             play=cn.play,
                             fixed=cn.fixed,
                             fixed_line=cn.fixed_line,
+                            lyrics=lyrics,
+                            small=chord_small,
                         )
                     )
                 else:
@@ -258,11 +285,14 @@ def _parse_single_voice_content(
                             stem_direction=stem_direction,
                             no_stem=no_stem,
                             articulations=articulations,
+                            lyrics=lyrics,
+                            small=chord_small,
                         )
                     )
 
             # ---- REST ----
             elif el.tag == "Rest":
+                rest_small = _opt_bool01(el.findtext("small"))
                 dur_type = el.findtext("durationType", "quarter")
                 if dur_type == "measure":
                     md = el.findtext("duration")
@@ -275,6 +305,7 @@ def _parse_single_voice_content(
                             duration=0.0,
                             dots=0,
                             measure_duration=md,
+                            small=rest_small,
                         )
                     )
                     continue
@@ -294,6 +325,7 @@ def _parse_single_voice_content(
                     Rest(
                         duration=base_duration,  # Store base duration
                         dots=dots,  # Store dots separately
+                        small=rest_small,
                     )
                 )
             
@@ -376,6 +408,32 @@ def _parse_single_voice_content(
             elif el.tag == "RehearsalMark":
                 txt = el.findtext("text")
                 events.append(RehearsalMark(text=(txt or "").strip()))
+                continue
+
+            # ---- CHORD SYMBOL (harmony) ----
+            elif el.tag == "Harmony":
+                xml = _canonical_mscx_element_xml(ET.tostring(el, encoding="unicode"))
+                events.append(ChordSymbol(xml=xml))
+                continue
+
+            # ---- TEMPO ----
+            elif el.tag == "Tempo":
+                tempo_txt = _opt_text(el.findtext("tempo"))
+                follow = _opt_text(el.findtext("followText"))
+                text_el = el.find("text")
+                if text_el is not None:
+                    text_xml = _canonical_mscx_element_xml(
+                        ET.tostring(text_el, encoding="unicode")
+                    )
+                else:
+                    text_xml = ""
+                events.append(
+                    Tempo(
+                        text=text_xml,
+                        tempo=tempo_txt if tempo_txt is not None else "1",
+                        follow_text=follow,
+                    )
+                )
                 continue
 
             # ---- INSTRUMENT CHANGE ----
