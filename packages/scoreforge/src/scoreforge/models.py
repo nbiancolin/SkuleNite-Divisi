@@ -42,6 +42,16 @@ class ChordNote:
 
 
 @dataclass(frozen=True)
+class Lyric:
+    """One <Lyrics> block attached to a chord (verse, syllable, text)."""
+
+    text: str
+    syllabic: Optional[str] = None  # begin, end, middle, single
+    ticks_f: Optional[str] = None  # MuseScore timing hint, e.g. "1/1920"
+    verse: Optional[int] = None  # MSCX <no> — lyric line / verse index
+
+
+@dataclass(frozen=True)
 class ChordGroup:
     """Simultaneous chord: one rhythmic unit, multiple stacked pitches (MuseScore one <Chord>)."""
 
@@ -53,6 +63,7 @@ class ChordGroup:
     stem_direction: Optional[str] = None
     no_stem: bool = False
     articulations: Tuple[str, ...] = ()
+    lyrics: Tuple[Lyric, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -73,6 +84,7 @@ class Note:
     play: Optional[bool] = None
     fixed: Optional[bool] = None
     fixed_line: Optional[int] = None
+    lyrics: Tuple[Lyric, ...] = ()
 
 
 @dataclass(frozen=True)

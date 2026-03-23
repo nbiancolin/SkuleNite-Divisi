@@ -10,6 +10,7 @@ from scoreforge.models import (
     MeasureRepeat,
     ChordGroup,
     ChordNote,
+    Lyric,
     HairpinStart,
     HairpinEnd,
     OttavaStart,
@@ -99,6 +100,18 @@ def pitch_to_midi(pitch: str) -> int:
     return (octave + 1) * 12 + semitone
 
 
+def _append_lyric_xml(chord_el: ET.Element, lyric: Lyric) -> None:
+    """Emit <Lyrics> under <Chord> (before <Note> children, MuseScore 4 style)."""
+    ly = ET.SubElement(chord_el, "Lyrics")
+    if lyric.syllabic is not None:
+        ET.SubElement(ly, "syllabic").text = lyric.syllabic
+    if lyric.verse is not None:
+        ET.SubElement(ly, "no").text = str(lyric.verse)
+    if lyric.ticks_f is not None:
+        ET.SubElement(ly, "ticks_f").text = lyric.ticks_f
+    ET.SubElement(ly, "text").text = lyric.text
+
+
 def _append_chord_xml(
     parent_el: ET.Element,
     *,
@@ -110,12 +123,16 @@ def _append_chord_xml(
     no_stem: bool,
     articulations: tuple[str, ...],
     notes: list[ChordNote],
+    lyrics: tuple[Lyric, ...] = (),
 ) -> None:
     """Emit one MuseScore <Chord> with one or more <Note> children."""
     chord = ET.SubElement(parent_el, "Chord")
     if dots > 0:
         ET.SubElement(chord, "dots").text = str(dots)
     ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(duration, "quarter")
+
+    for lyr in lyrics:
+        _append_lyric_xml(chord, lyr)
 
     for sub in articulations:
         art = ET.SubElement(chord, "Articulation")
@@ -201,6 +218,7 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 no_stem=event.no_stem,
                 articulations=event.articulations,
                 notes=[cn],
+                lyrics=event.lyrics,
             )
         elif isinstance(event, ChordGroup):
             _append_chord_xml(
@@ -213,6 +231,7 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 no_stem=event.no_stem,
                 articulations=event.articulations,
                 notes=list(event.notes),
+                lyrics=event.lyrics,
             )
         elif isinstance(event, Rest):
             rest = ET.SubElement(parent_el, "Rest")

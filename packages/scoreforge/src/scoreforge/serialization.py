@@ -18,6 +18,7 @@ from scoreforge.models import (
     MeasureRepeat,
     ChordGroup,
     ChordNote,
+    Lyric,
     HairpinStart,
     HairpinEnd,
     OttavaStart,
@@ -29,6 +30,46 @@ from scoreforge.models import (
     VBoxFrame,
     FrameText,
 )
+
+
+def _lyrics_to_json(lyrics: tuple[Lyric, ...]) -> list[dict]:
+    out: list[dict] = []
+    for ly in lyrics:
+        d: dict = {"text": ly.text}
+        if ly.syllabic is not None:
+            d["syllabic"] = ly.syllabic
+        if ly.ticks_f is not None:
+            d["ticksF"] = ly.ticks_f
+        if ly.verse is not None:
+            d["verse"] = ly.verse
+        out.append(d)
+    return out
+
+
+def _lyrics_from_json(raw: object) -> tuple[Lyric, ...]:
+    if not isinstance(raw, list) or not raw:
+        return ()
+    out: list[Lyric] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        tf = item.get("ticksF")
+        if tf is None:
+            tf = item.get("ticks_f")
+        v = item.get("verse")
+        verse: int | None = None
+        if v is not None:
+            verse = int(v)
+        syl = item.get("syllabic")
+        out.append(
+            Lyric(
+                text=str(item.get("text", "")),
+                syllabic=str(syl) if syl is not None else None,
+                ticks_f=str(tf) if tf is not None else None,
+                verse=verse,
+            )
+        )
+    return tuple(out)
 
 
 def _serialize_events_list(events: list[Event]) -> list[dict]:
@@ -77,6 +118,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
                 event_obj["tieEnd"] = {
                     "prevFractions": e.tie_end.prev_fractions,
                 }
+            if e.lyrics:
+                event_obj["lyrics"] = _lyrics_to_json(e.lyrics)
             out.append(event_obj)
         elif isinstance(e, ChordGroup):
             event_obj = {
@@ -123,6 +166,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
                         "prevFractions": cn.tie_end.prev_fractions,
                     }
                 event_obj["notes"].append(nd)
+            if e.lyrics:
+                event_obj["lyrics"] = _lyrics_to_json(e.lyrics)
             out.append(event_obj)
         elif isinstance(e, Rest):
             event_obj = {
@@ -563,6 +608,7 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                     play=cn.play,
                     fixed=cn.fixed,
                     fixed_line=cn.fixed_line,
+                    lyrics=_lyrics_from_json(event_data.get("lyrics")),
                 )
             )
         elif event_type == "chord":
@@ -587,6 +633,7 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                     stem_direction=event_data.get("stemDirection"),
                     no_stem=bool(event_data.get("noStem")),
                     articulations=tuple(event_data.get("articulations") or ()),
+                    lyrics=_lyrics_from_json(event_data.get("lyrics")),
                 )
             )
         elif event_type == "rest":
@@ -726,6 +773,7 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                         play=cn.play,
                         fixed=cn.fixed,
                         fixed_line=cn.fixed_line,
+                        lyrics=_lyrics_from_json(event_data.get("lyrics")),
                     )
                 )
             elif "duration" in event_data:

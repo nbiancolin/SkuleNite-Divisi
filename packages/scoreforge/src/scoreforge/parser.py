@@ -19,6 +19,7 @@ from scoreforge.models import (
     MeasureRepeat,
     ChordGroup,
     ChordNote,
+    Lyric,
     HairpinStart,
     HairpinEnd,
     OttavaStart,
@@ -149,6 +150,16 @@ def _parse_single_voice_content(
                     if st
                 )
 
+                lyrics = tuple(
+                    Lyric(
+                        text=(ly_el.findtext("text") or "").strip(),
+                        syllabic=_opt_text(ly_el.findtext("syllabic")),
+                        ticks_f=_opt_text(ly_el.findtext("ticks_f")),
+                        verse=_opt_int(ly_el.findtext("no")),
+                    )
+                    for ly_el in el.findall("Lyrics")
+                )
+
                 slur_start = None
                 slur_end = None
                 for spanner_el in el.findall("Spanner"):
@@ -245,6 +256,7 @@ def _parse_single_voice_content(
                             play=cn.play,
                             fixed=cn.fixed,
                             fixed_line=cn.fixed_line,
+                            lyrics=lyrics,
                         )
                     )
                 else:
@@ -258,6 +270,7 @@ def _parse_single_voice_content(
                             stem_direction=stem_direction,
                             no_stem=no_stem,
                             articulations=articulations,
+                            lyrics=lyrics,
                         )
                     )
 
