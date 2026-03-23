@@ -78,7 +78,7 @@ RUN echo '#!/bin/bash\nexec xvfb-run -a /opt/musescore/AppRun "$@"' \
 RUN pip3 install --no-cache-dir --break-system-packages fastapi uvicorn python-multipart
 
 WORKDIR /app
-COPY musescore-headless/app.py .
+COPY apps/musescore-headless/app.py .
 
 # --------------------------------------------------
 # Non-root user
