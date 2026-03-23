@@ -42,6 +42,16 @@ class ChordNote:
 
 
 @dataclass(frozen=True)
+class Lyric:
+    """One <Lyrics> block attached to a chord (verse, syllable, text)."""
+
+    text: str
+    syllabic: Optional[str] = None  # begin, end, middle, single
+    ticks_f: Optional[str] = None  # MuseScore timing hint, e.g. "1/1920"
+    verse: Optional[int] = None  # MSCX <no> — lyric line / verse index
+
+
+@dataclass(frozen=True)
 class ChordGroup:
     """Simultaneous chord: one rhythmic unit, multiple stacked pitches (MuseScore one <Chord>)."""
 
@@ -53,6 +63,8 @@ class ChordGroup:
     stem_direction: Optional[str] = None
     no_stem: bool = False
     articulations: Tuple[str, ...] = ()
+    lyrics: Tuple[Lyric, ...] = ()
+    small: Optional[bool] = None  # MuseScore <Chord><small> cue-sized chord
 
 
 @dataclass(frozen=True)
@@ -73,6 +85,8 @@ class Note:
     play: Optional[bool] = None
     fixed: Optional[bool] = None
     fixed_line: Optional[int] = None
+    lyrics: Tuple[Lyric, ...] = ()
+    small: Optional[bool] = None  # MuseScore <Chord><small> — cue-sized note/chord
 
 
 @dataclass(frozen=True)
@@ -80,6 +94,7 @@ class Rest:
     duration: float  # Base duration (without dots); unused when measure_duration is set
     dots: int = 0  # Number of augmentation dots (0, 1, or 2)
     measure_duration: Optional[str] = None  # e.g. "4/4" for full-measure rests (durationType measure)
+    small: Optional[bool] = None  # MuseScore <Rest><small> — cue-sized rest
 
 
 @dataclass(frozen=True)
@@ -136,6 +151,26 @@ class RehearsalMark:
 
 
 @dataclass(frozen=True)
+class ChordSymbol:
+    """Harmony / chord symbol (<Harmony> in a voice). ``xml`` is canonical full `<Harmony>...</Harmony>`."""
+
+    xml: str
+
+
+@dataclass(frozen=True)
+class Tempo:
+    """Tempo marking (<Tempo> in a voice): playback <tempo> plus display <text>.
+
+    ``text`` is the full XML of the MuseScore ``<text>`` child (from ``ElementTree.tostring``),
+    so mixed content (e.g. ``<sym>``) round-trips. Empty if there was no ``<text>`` element.
+    """
+
+    text: str
+    tempo: str  # MuseScore stores e.g. BPM/60 for quarter; preserve string for round-trip
+    follow_text: Optional[str] = None  # <followText> when present (e.g. "1")
+
+
+@dataclass(frozen=True)
 class InstrumentChange:
     """MuseScore <InstrumentChange> (nested Instrument tree as JSON for round-trip)."""
 
@@ -171,6 +206,8 @@ Event = Union[
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    ChordSymbol,
+    Tempo,
     InstrumentChange,
     MeasureRepeat,
 ]
