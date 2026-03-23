@@ -137,9 +137,8 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 def prep_and_export_mscz(version_id):
     version = ArrangementVersion.objects.get(id=version_id)
     if version.commit_id is not None:
-        # Commit snapshots are already canonical from scoreforge (same bytes as
-        # download_latest_commit_mscz). Skip musescore_part_formatter, which would
-        # rewrite layout and produce a different .mscz than the git-derived file.
+        # Commit-derived versions are pre-formatted during materialization from
+        # scoreforge checkout; just mirror that file to output.
         with default_storage.open(version.mscz_file_key, "rb") as src:
             default_storage.save(version.output_file_key, ContentFile(src.read()))
     else:

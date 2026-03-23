@@ -605,8 +605,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         #         status=status.HTTP_400_BAD_REQUEST,
         #     )
 
-        # Export PDFs/parts from the materialized MSCZ only — do not run musescore_part_formatter
-        # (prep_and_export_mscz), which rewrites layout vs. the git-derived score.
+        # Export PDFs/parts from the materialized MSCZ. For commit-derived
+        # versions, formatting is applied during materialization.
         export_arrangement_version.delay(version.pk)
 
         return Response(

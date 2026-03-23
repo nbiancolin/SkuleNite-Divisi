@@ -29,6 +29,31 @@ from logging import getLogger
 LOGGER = getLogger("PartFormatter")
 
 
+def _get_style_tag_value(style_text: str, tag_name: str) -> str | None:
+    """Read a top-level style tag value from .mss text."""
+    try:
+        root = ET.fromstring(style_text)
+    except ET.ParseError:
+        return None
+    el = root.find(tag_name)
+    if el is None or el.text is None:
+        return None
+    return el.text
+
+
+def _set_style_tag_value(style_text: str, tag_name: str, value: str) -> str:
+    """Set a top-level style tag value in .mss text."""
+    try:
+        root = ET.fromstring(style_text)
+    except ET.ParseError:
+        return style_text
+    el = root.find(tag_name)
+    if el is None:
+        el = ET.SubElement(root, tag_name)
+    el.text = value
+    return ET.tostring(root, encoding="unicode")
+
+
 # UTIL FNS -- Broadway Specific Formatting
 def add_broadway_header(staff: ET.Element, show_number: str, show_title: str) -> None:
     for elem in staff:
@@ -481,12 +506,31 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str, score_info=None) 
                 source_style = score_style_path
                 style_params = predict_style_params(score_info)
             
+            existing_style_text = None
+            if os.path.exists(full_path):
+                with open(full_path, "r") as existing_f:
+                    existing_style_text = existing_f.read()
+
             with open(source_style, "r") as f:
                 style_text = f.read()
                 style_text = set_style_params(
                     style_text, 
                     **style_params
-                )  
+                )
+
+                # Preserve existing transposition display mode. Overwriting this
+                # can make rendered transposing parts look like octave/pitch drift.
+                if existing_style_text is not None:
+                    existing_concert_pitch = _get_style_tag_value(
+                        existing_style_text,
+                        "concertPitch",
+                    )
+                    if existing_concert_pitch is not None:
+                        style_text = _set_style_tag_value(
+                            style_text,
+                            "concertPitch",
+                            existing_concert_pitch,
+                        )
 
                 with open(full_path, "w") as out_f:
                     out_f.write(style_text)

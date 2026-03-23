@@ -10,6 +10,7 @@ from pathlib import Path
 from django.core.files import File
 from django.core.files.storage import default_storage
 
+from musescore_part_formatter import FormattingParams, format_scoreforge_checkout
 from scoreforge.cli import json_to_mscz
 
 from ensembles.git.repo import init_repo
@@ -61,7 +62,20 @@ def materialize_commit_mscz_to_version(*, arrangement: Arrangement, commit_sha: 
         run_git(["clone", "--quiet", repo_path, str(workdir)])
         run_git(["checkout", "--quiet", commit_sha], cwd=workdir)
 
-        _build_mscz_in_workdir(workdir=workdir, mscz_out_path=mscz_out_path)
+        formatting_params: FormattingParams = {
+            "selected_style": version.arrangement.style,
+            "show_title": version.ensemble_name,
+            "show_number": version.arrangement.mvt_no,
+            "version_num": version.version_label,
+            "num_measures_per_line_score": version.num_measures_per_line_score,
+            "num_measures_per_line_part": version.num_measures_per_line_part,
+            "num_lines_per_page": version.num_lines_per_page,
+        }
+        format_scoreforge_checkout(
+            checkout_dir=workdir,
+            output_mscz_path=mscz_out_path,
+            params=formatting_params,
+        )
 
         with open(mscz_out_path, "rb") as f:
             default_storage.save(version.mscz_file_key, File(f))
