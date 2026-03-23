@@ -25,6 +25,7 @@ from scoreforge.models import (
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    ChordSymbol,
     Tempo,
     InstrumentChange,
     LayoutBreak,
@@ -235,6 +236,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
             out.append({"type": "staffText", "text": e.text})
         elif isinstance(e, RehearsalMark):
             out.append({"type": "rehearsalMark", "text": e.text})
+        elif isinstance(e, ChordSymbol):
+            out.append({"type": "chordSymbol", "xml": e.xml})
         elif isinstance(e, Tempo):
             td: dict = {
                 "type": "tempo",
@@ -706,6 +709,8 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
             events.append(StaffText(text=str(event_data.get("text", ""))))
         elif event_type == "rehearsalMark":
             events.append(RehearsalMark(text=str(event_data.get("text", ""))))
+        elif event_type == "chordSymbol":
+            events.append(ChordSymbol(xml=str(event_data.get("xml", ""))))
         elif event_type == "tempo":
             ft = event_data.get("followText")
             if ft is not None:

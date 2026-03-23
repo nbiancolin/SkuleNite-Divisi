@@ -26,6 +26,7 @@ from scoreforge.models import (
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    ChordSymbol,
     Tempo,
     InstrumentChange,
     LayoutBreak,
@@ -401,6 +402,12 @@ def _parse_single_voice_content(
             elif el.tag == "RehearsalMark":
                 txt = el.findtext("text")
                 events.append(RehearsalMark(text=(txt or "").strip()))
+                continue
+
+            # ---- CHORD SYMBOL (harmony) ----
+            elif el.tag == "Harmony":
+                xml = _canonical_mscx_element_xml(ET.tostring(el, encoding="unicode"))
+                events.append(ChordSymbol(xml=xml))
                 continue
 
             # ---- TEMPO ----

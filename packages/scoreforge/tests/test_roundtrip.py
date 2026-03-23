@@ -119,6 +119,61 @@ def test_rehearsal_mark_parse_and_mscx_roundtrip():
     assert (rm_el.findtext("text") or "").strip() == "A"
 
 
+def test_chord_symbol_harmony_parse_and_mscx_roundtrip():
+    """MuseScore chord symbols (<Harmony> with harmonyInfo); JSON and MSCX preserve canonical XML."""
+    import tempfile
+    import xml.etree.ElementTree as ET
+    from pathlib import Path
+
+    from scoreforge.converter import score_to_mscx
+    from scoreforge.models import ChordSymbol
+    from scoreforge.parser import parse_score
+    from scoreforge.serialization import load_score_from_json, save_canonical
+
+    mscx = """<?xml version="1.0"?>
+<museScore version="4.0">
+  <Score>
+    <Staff id="1">
+      <Measure>
+        <voice>
+          <Harmony>
+            <harmonyInfo>
+              <name>-</name>
+              <root>14</root>
+            </harmonyInfo>
+          </Harmony>
+          <Rest>
+            <durationType>whole</durationType>
+          </Rest>
+        </voice>
+      </Measure>
+    </Staff>
+  </Score>
+</museScore>"""
+    tree = ET.ElementTree(ET.fromstring(mscx))
+    score = parse_score(tree)
+    evs = score.parts[0].measures[0].voices["0"]
+    cs = next(e for e in evs if isinstance(e, ChordSymbol))
+    assert "<Harmony>" in cs.xml
+    assert "harmonyInfo" in cs.xml
+    assert "14" in cs.xml
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.json"
+        save_canonical(score, path)
+        score_json = load_score_from_json(path)
+    evs_j = score_json.parts[0].measures[0].voices["0"]
+    cs_j = next(e for e in evs_j if isinstance(e, ChordSymbol))
+    assert cs_j.xml == cs.xml
+
+    tree_mscx = score_to_mscx(score)
+    h_el = tree_mscx.getroot().find(".//Harmony")
+    assert h_el is not None
+    hi = h_el.find("harmonyInfo")
+    assert hi is not None
+    assert (hi.findtext("root") or "").strip() == "14"
+
+
 def test_roundtrip_for_manual_inspection():
     """Test that converts mscz -> canonical -> mscz for manual inspection.
     

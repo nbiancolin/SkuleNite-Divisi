@@ -148,6 +148,13 @@ class RehearsalMark:
 
 
 @dataclass(frozen=True)
+class ChordSymbol:
+    """Harmony / chord symbol (<Harmony> in a voice). ``xml`` is canonical full `<Harmony>...</Harmony>`."""
+
+    xml: str
+
+
+@dataclass(frozen=True)
 class Tempo:
     """Tempo marking (<Tempo> in a voice): playback <tempo> plus display <text>.
 
@@ -196,6 +203,7 @@ Event = Union[
     OttavaEnd,
     StaffText,
     RehearsalMark,
+    ChordSymbol,
     Tempo,
     InstrumentChange,
     MeasureRepeat,
