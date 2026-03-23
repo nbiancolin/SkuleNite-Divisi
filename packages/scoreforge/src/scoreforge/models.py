@@ -64,6 +64,7 @@ class ChordGroup:
     no_stem: bool = False
     articulations: Tuple[str, ...] = ()
     lyrics: Tuple[Lyric, ...] = ()
+    small: Optional[bool] = None  # MuseScore <Chord><small> cue-sized chord
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,7 @@ class Note:
     fixed: Optional[bool] = None
     fixed_line: Optional[int] = None
     lyrics: Tuple[Lyric, ...] = ()
+    small: Optional[bool] = None  # MuseScore <Chord><small> — cue-sized note/chord
 
 
 @dataclass(frozen=True)
@@ -92,6 +94,7 @@ class Rest:
     duration: float  # Base duration (without dots); unused when measure_duration is set
     dots: int = 0  # Number of augmentation dots (0, 1, or 2)
     measure_duration: Optional[str] = None  # e.g. "4/4" for full-measure rests (durationType measure)
+    small: Optional[bool] = None  # MuseScore <Rest><small> — cue-sized rest
 
 
 @dataclass(frozen=True)

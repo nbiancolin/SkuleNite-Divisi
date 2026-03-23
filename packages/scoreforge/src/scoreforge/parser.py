@@ -144,6 +144,7 @@ def _parse_single_voice_content(
 
             # ---- CHORD ----
             elif el.tag == "Chord":
+                chord_small = _opt_bool01(el.findtext("small"))
                 dur_type = el.findtext("durationType", "quarter")
                 base_duration = DURATION_MAP.get(dur_type, 1)
 
@@ -270,6 +271,7 @@ def _parse_single_voice_content(
                             fixed=cn.fixed,
                             fixed_line=cn.fixed_line,
                             lyrics=lyrics,
+                            small=chord_small,
                         )
                     )
                 else:
@@ -284,11 +286,13 @@ def _parse_single_voice_content(
                             no_stem=no_stem,
                             articulations=articulations,
                             lyrics=lyrics,
+                            small=chord_small,
                         )
                     )
 
             # ---- REST ----
             elif el.tag == "Rest":
+                rest_small = _opt_bool01(el.findtext("small"))
                 dur_type = el.findtext("durationType", "quarter")
                 if dur_type == "measure":
                     md = el.findtext("duration")
@@ -301,6 +305,7 @@ def _parse_single_voice_content(
                             duration=0.0,
                             dots=0,
                             measure_duration=md,
+                            small=rest_small,
                         )
                     )
                     continue
@@ -320,6 +325,7 @@ def _parse_single_voice_content(
                     Rest(
                         duration=base_duration,  # Store base duration
                         dots=dots,  # Store dots separately
+                        small=rest_small,
                     )
                 )
             

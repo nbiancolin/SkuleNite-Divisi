@@ -119,6 +119,73 @@ def test_rehearsal_mark_parse_and_mscx_roundtrip():
     assert (rm_el.findtext("text") or "").strip() == "A"
 
 
+def test_cue_small_chord_and_rest_parse_json_mscx_roundtrip():
+    """MuseScore cue size is <small> on <Chord> and <Rest>; JSON and MSCX preserve it."""
+    import tempfile
+    import xml.etree.ElementTree as ET
+    from pathlib import Path
+
+    from scoreforge.converter import score_to_mscx
+    from scoreforge.models import Note, Rest
+    from scoreforge.parser import parse_score
+    from scoreforge.serialization import load_score_from_json, save_canonical
+
+    mscx = """<?xml version="1.0"?>
+<museScore version="4.0">
+  <Score>
+    <Staff id="1">
+      <Measure>
+        <voice>
+          <Chord>
+            <small>1</small>
+            <durationType>quarter</durationType>
+            <StemDirection>up</StemDirection>
+            <Note>
+              <pitch>60</pitch>
+              <tpc>14</tpc>
+            </Note>
+          </Chord>
+          <Rest>
+            <small>1</small>
+            <durationType>quarter</durationType>
+          </Rest>
+        </voice>
+      </Measure>
+    </Staff>
+  </Score>
+</museScore>"""
+    tree = ET.ElementTree(ET.fromstring(mscx))
+    score = parse_score(tree)
+    evs = score.parts[0].measures[0].voices["0"]
+    n0 = evs[0]
+    r0 = evs[1]
+    assert isinstance(n0, Note)
+    assert n0.small is True
+    assert isinstance(r0, Rest)
+    assert r0.small is True
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "t.json"
+        save_canonical(score, path)
+        score_json = load_score_from_json(path)
+    evs_j = score_json.parts[0].measures[0].voices["0"]
+    n0j = evs_j[0]
+    r0j = evs_j[1]
+    assert isinstance(n0j, Note)
+    assert n0j.small is True
+    assert isinstance(r0j, Rest)
+    assert r0j.small is True
+
+    tree_mscx = score_to_mscx(score)
+    root = tree_mscx.getroot()
+    chord_el = root.find(".//Chord")
+    assert chord_el is not None
+    assert (chord_el.findtext("small") or "").strip() == "1"
+    rest_el = root.find(".//Rest")
+    assert rest_el is not None
+    assert (rest_el.findtext("small") or "").strip() == "1"
+
+
 def test_chord_symbol_harmony_parse_and_mscx_roundtrip():
     """MuseScore chord symbols (<Harmony> with harmonyInfo); JSON and MSCX preserve canonical XML."""
     import tempfile

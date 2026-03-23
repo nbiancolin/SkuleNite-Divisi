@@ -104,6 +104,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
                 event_obj["fixed"] = e.fixed
             if e.fixed_line is not None:
                 event_obj["fixedLine"] = e.fixed_line
+            if e.small is not None:
+                event_obj["small"] = e.small
             if e.slur_start is not None:
                 event_obj["slurStart"] = {
                     "nextFractions": e.slur_start.next_fractions,
@@ -145,6 +147,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
                 event_obj["slurEnd"] = {
                     "prevFractions": e.slur_end.prev_fractions,
                 }
+            if e.small is not None:
+                event_obj["small"] = e.small
             for cn in e.notes:
                 nd: dict = {"pitch": cn.pitch}
                 if cn.tpc is not None:
@@ -180,6 +184,8 @@ def _serialize_events_list(events: list[Event]) -> list[dict]:
                 event_obj["dots"] = e.dots
             if e.measure_duration is not None:
                 event_obj["measureDuration"] = e.measure_duration
+            if e.small is not None:
+                event_obj["small"] = e.small
             out.append(event_obj)
         elif isinstance(e, Dynamic):
             d_obj: dict = {
@@ -603,6 +609,9 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                 }
             )
             arts = tuple(event_data.get("articulations") or ())
+            note_small = (
+                bool(event_data["small"]) if "small" in event_data else None
+            )
             events.append(
                 Note(
                     pitch=event_data["pitch"],
@@ -622,6 +631,7 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                     fixed=cn.fixed,
                     fixed_line=cn.fixed_line,
                     lyrics=_lyrics_from_json(event_data.get("lyrics")),
+                    small=note_small,
                 )
             )
         elif event_type == "chord":
@@ -636,6 +646,9 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
             chord_notes: list[ChordNote] = [
                 _chord_note_from_json(nd) for nd in event_data["notes"]
             ]
+            chord_small = (
+                bool(event_data["small"]) if "small" in event_data else None
+            )
             events.append(
                 ChordGroup(
                     notes=tuple(chord_notes),
@@ -647,15 +660,20 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                     no_stem=bool(event_data.get("noStem")),
                     articulations=tuple(event_data.get("articulations") or ()),
                     lyrics=_lyrics_from_json(event_data.get("lyrics")),
+                    small=chord_small,
                 )
             )
         elif event_type == "rest":
             md = event_data.get("measureDuration")
+            rest_small = (
+                bool(event_data["small"]) if "small" in event_data else None
+            )
             events.append(
                 Rest(
                     duration=float(event_data["duration"]),
                     dots=dots,
                     measure_duration=md,
+                    small=rest_small,
                 )
             )
         elif event_type == "dynamic":
@@ -781,6 +799,9 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                         },
                     }
                 )
+                note_small_else = (
+                    bool(event_data["small"]) if "small" in event_data else None
+                )
                 events.append(
                     Note(
                         pitch=event_data["pitch"],
@@ -800,15 +821,20 @@ def _parse_events_from_json_list(event_data_list: list) -> list[Event]:
                         fixed=cn.fixed,
                         fixed_line=cn.fixed_line,
                         lyrics=_lyrics_from_json(event_data.get("lyrics")),
+                        small=note_small_else,
                     )
                 )
             elif "duration" in event_data:
                 md = event_data.get("measureDuration")
+                rest_small_else = (
+                    bool(event_data["small"]) if "small" in event_data else None
+                )
                 events.append(
                     Rest(
                         duration=float(event_data["duration"]),
                         dots=dots,
                         measure_duration=md,
+                        small=rest_small_else,
                     )
                 )
     return events

@@ -126,9 +126,12 @@ def _append_chord_xml(
     articulations: tuple[str, ...],
     notes: list[ChordNote],
     lyrics: tuple[Lyric, ...] = (),
+    small: Optional[bool] = None,
 ) -> None:
     """Emit one MuseScore <Chord> with one or more <Note> children."""
     chord = ET.SubElement(parent_el, "Chord")
+    if small is not None:
+        ET.SubElement(chord, "small").text = "1" if small else "0"
     if dots > 0:
         ET.SubElement(chord, "dots").text = str(dots)
     ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(duration, "quarter")
@@ -221,6 +224,7 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 articulations=event.articulations,
                 notes=[cn],
                 lyrics=event.lyrics,
+                small=event.small,
             )
         elif isinstance(event, ChordGroup):
             _append_chord_xml(
@@ -234,9 +238,12 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 articulations=event.articulations,
                 notes=list(event.notes),
                 lyrics=event.lyrics,
+                small=event.small,
             )
         elif isinstance(event, Rest):
             rest = ET.SubElement(parent_el, "Rest")
+            if event.small is not None:
+                ET.SubElement(rest, "small").text = "1" if event.small else "0"
             if event.dots > 0:
                 ET.SubElement(rest, "dots").text = str(event.dots)
             if event.measure_duration is not None:
