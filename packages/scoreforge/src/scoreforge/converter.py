@@ -10,15 +10,12 @@ from scoreforge.models import (
     MeasureRepeat,
     ChordGroup,
     ChordNote,
-    Lyric,
     HairpinStart,
     HairpinEnd,
     OttavaStart,
     OttavaEnd,
     StaffText,
     RehearsalMark,
-    ChordSymbol,
-    Tempo,
     InstrumentChange,
     Event,
     SlurStart,
@@ -102,18 +99,6 @@ def pitch_to_midi(pitch: str) -> int:
     return (octave + 1) * 12 + semitone
 
 
-def _append_lyric_xml(chord_el: ET.Element, lyric: Lyric) -> None:
-    """Emit <Lyrics> under <Chord> (before <Note> children, MuseScore 4 style)."""
-    ly = ET.SubElement(chord_el, "Lyrics")
-    if lyric.syllabic is not None:
-        ET.SubElement(ly, "syllabic").text = lyric.syllabic
-    if lyric.verse is not None:
-        ET.SubElement(ly, "no").text = str(lyric.verse)
-    if lyric.ticks_f is not None:
-        ET.SubElement(ly, "ticks_f").text = lyric.ticks_f
-    ET.SubElement(ly, "text").text = lyric.text
-
-
 def _append_chord_xml(
     parent_el: ET.Element,
     *,
@@ -125,19 +110,12 @@ def _append_chord_xml(
     no_stem: bool,
     articulations: tuple[str, ...],
     notes: list[ChordNote],
-    lyrics: tuple[Lyric, ...] = (),
-    small: Optional[bool] = None,
 ) -> None:
     """Emit one MuseScore <Chord> with one or more <Note> children."""
     chord = ET.SubElement(parent_el, "Chord")
-    if small is not None:
-        ET.SubElement(chord, "small").text = "1" if small else "0"
     if dots > 0:
         ET.SubElement(chord, "dots").text = str(dots)
     ET.SubElement(chord, "durationType").text = DURATION_TYPE.get(duration, "quarter")
-
-    for lyr in lyrics:
-        _append_lyric_xml(chord, lyr)
 
     for sub in articulations:
         art = ET.SubElement(chord, "Articulation")
@@ -223,8 +201,6 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 no_stem=event.no_stem,
                 articulations=event.articulations,
                 notes=[cn],
-                lyrics=event.lyrics,
-                small=event.small,
             )
         elif isinstance(event, ChordGroup):
             _append_chord_xml(
@@ -237,13 +213,9 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
                 no_stem=event.no_stem,
                 articulations=event.articulations,
                 notes=list(event.notes),
-                lyrics=event.lyrics,
-                small=event.small,
             )
         elif isinstance(event, Rest):
             rest = ET.SubElement(parent_el, "Rest")
-            if event.small is not None:
-                ET.SubElement(rest, "small").text = "1" if event.small else "0"
             if event.dots > 0:
                 ET.SubElement(rest, "dots").text = str(event.dots)
             if event.measure_duration is not None:
@@ -307,16 +279,6 @@ def _append_events_to_container(parent_el: ET.Element, events: list[Event]) -> N
         elif isinstance(event, RehearsalMark):
             rm = ET.SubElement(parent_el, "RehearsalMark")
             ET.SubElement(rm, "text").text = event.text
-        elif isinstance(event, ChordSymbol):
-            if event.xml:
-                parent_el.append(ET.fromstring(event.xml))
-        elif isinstance(event, Tempo):
-            t_el = ET.SubElement(parent_el, "Tempo")
-            ET.SubElement(t_el, "tempo").text = event.tempo
-            if event.follow_text is not None:
-                ET.SubElement(t_el, "followText").text = event.follow_text
-            if event.text:
-                t_el.append(ET.fromstring(event.text))
         elif isinstance(event, InstrumentChange):
             ic = ET.SubElement(parent_el, "InstrumentChange")
             if event.text:
