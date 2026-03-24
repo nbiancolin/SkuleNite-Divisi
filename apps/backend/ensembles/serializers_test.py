@@ -56,7 +56,6 @@ def test_arrangement_serializer_includes_latest_version(
         "composer",
         "mvt_no",
         "style",
-        "latest_commit_mscz_download_url",
         "latest_version",
         "latest_version_num",
     ]
@@ -70,7 +69,6 @@ def test_arrangement_serializer_includes_latest_version(
     EXPECTED_FIELDS.remove("ensemble")
     assert data["latest_version"] == ArrangementVersionSerializer(latest).data
     EXPECTED_FIELDS.remove("latest_version")
-    EXPECTED_FIELDS.remove("latest_commit_mscz_download_url")
 
     for field in EXPECTED_FIELDS:
         assert field in data

@@ -1,19 +1,13 @@
 import io
 from rest_framework import serializers
+from rest_framework import status
 
 from django.db import transaction
+from django.db.models import F
 from django.core.files.storage import default_storage
 from django.conf import settings
 
-from ensembles.models import (
-    Ensemble,
-    EnsembleUsership,
-    Arrangement,
-    ArrangementVersion,
-    PartBook,
-    PartName,
-    Commit,
-)
+from ensembles.models import Ensemble, EnsembleUsership, Arrangement, ArrangementVersion, PartBook, PartName
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
 from django.contrib.auth import get_user_model
@@ -39,7 +33,6 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
-    latest_commit_mscz_download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Arrangement
@@ -56,22 +49,12 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "style",
             "latest_version",
             "latest_version_num",
-            "latest_commit_mscz_download_url",
         ]
         read_only_fields = [
             "slug",
             "ensemble_name",
             "ensemble_slug",
         ]
-
-    def get_latest_commit_mscz_download_url(self, obj: Arrangement) -> str | None:
-        request = self.context.get("request")
-        if not request:
-            return None
-        if not Commit.objects.filter(git_repo__arrangement=obj).exists():
-            return None
-        path = f"/api/arrangements-by-id/{obj.id}/download_latest_commit_mscz/"
-        return request.build_absolute_uri(path)
 
 
 class EnsembleSerializer(serializers.ModelSerializer):
@@ -113,19 +96,15 @@ class EnsembleSerializer(serializers.ModelSerializer):
             # Check if user is owner
             if obj.owner == request.user:
                 token = obj.get_or_create_invite_token()
-                frontend_url = getattr(
-                    settings, "FRONTEND_URL", "http://localhost:5173"
-                )
+                frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
                 return f"{frontend_url.rstrip('/')}/join/{token}"
-
+            
             # Check if user has admin role
             try:
                 ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
                 if ship.role == EnsembleUsership.Role.ADMIN:
                     token = obj.get_or_create_invite_token()
-                    frontend_url = getattr(
-                        settings, "FRONTEND_URL", "http://localhost:5173"
-                    )
+                    frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:5173')
                     return f"{frontend_url.rstrip('/')}/join/{token}"
             except EnsembleUsership.DoesNotExist:
                 pass
@@ -138,7 +117,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
             return [
-                # TODO[SC-278]: Usership serializer
+                #TODO[SC-278]: Usership serializer
                 {
                     "id": usership.id,
                     "user": UserSerializer(usership.user).data,
@@ -149,6 +128,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             ]
         return None
 
+
     def get_part_names(self, obj):
         """get part names details"""
         request = self.context.get("request")
@@ -156,19 +136,14 @@ class EnsembleSerializer(serializers.ModelSerializer):
             # Order by order field (nulls last), then by id for stable ordering
             from django.db.models import F, Value, IntegerField
             from django.db.models.functions import Coalesce
-
             # Use Coalesce to put nulls at the end (treat null as a very large number)
             parts = obj.part_names.all().order_by(
-                Coalesce("order", Value(999999, output_field=IntegerField())), "id"
+                Coalesce("order", Value(999999, output_field=IntegerField())),
+                "id"
             )
             # Keep a stable, typed shape for the frontend
             return [
-                {
-                    "id": part.id,
-                    "display_name": part.display_name,
-                    "arrangements": part.get_arrangements(),
-                    "order": part.order,
-                }
+                {"id": part.id, "display_name": part.display_name, "arrangements": part.get_arrangements(), "order": part.order}
                 for part in parts
             ]
 
@@ -190,9 +165,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 "part_display_name": book.part_name.display_name,
                 "revision": book.revision,
                 "created_at": book.created_at.isoformat() if book.created_at else None,
-                "finalized_at": book.finalized_at.isoformat()
-                if book.finalized_at
-                else None,
+                "finalized_at": book.finalized_at.isoformat() if book.finalized_at else None,
                 "is_rendered": book.is_rendered,
                 "download_url": None,
             }
@@ -201,6 +174,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 item["download_url"] = request.build_absolute_uri(file_url)
             result.append(item)
         return result
+    
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):
@@ -231,13 +205,20 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
 
         # prevent merging the same row into itself
         if first_part.id == second_part.id:
-            raise serializers.ValidationError("Cannot merge a PartName with itself.")
+            raise serializers.ValidationError(
+                "Cannot merge a PartName with itself."
+            )
 
         # Stash for use in the view to avoid re-querying
         attrs["first_part"] = first_part
         attrs["second_part"] = second_part
 
         return attrs
+
+        
+
+
+
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -322,32 +303,3 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
         # export_arrangement_version(version.pk, action="mxl")
 
         return {"success": True, "version_id": version.id}
-
-
-class CreateArrangementCommitSerializer(serializers.Serializer):
-    file = serializers.FileField(allow_empty_file=False)
-    message = serializers.CharField(required=False, allow_blank=True)
-
-
-class ArrangementVersionFromCommitSerializer(serializers.Serializer):
-    default_error_messages = {
-        "exists": "AN arrangement version already exists for this commit"
-    }
-    commit_hash = serializers.CharField(required=True)
-    version_type = serializers.ChoiceField(
-        required=False,
-        choices=[t[0] for t in VERSION_TYPES],
-        default="patch",
-    )
-    num_measures_per_line_score = serializers.IntegerField(required=False, default=8)
-    num_measures_per_line_part = serializers.IntegerField(required=False, default=6)
-    num_lines_per_page = serializers.IntegerField(required=False, default=8)
-
-    def validate(self, attrs):
-
-        attrs = super().validate(attrs)
-
-        if ArrangementVersion.objects.filter(commit__sha=attrs["commit_hash"]).exists():
-            self.fail("exists")
-
-        return attrs

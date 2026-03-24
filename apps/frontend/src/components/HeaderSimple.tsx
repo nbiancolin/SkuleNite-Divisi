@@ -59,6 +59,11 @@ export function HeaderSimple() {
 
     fetchWarnings();
     fetchUser();
+    
+    // Optional: Set up polling to check for new warnings every X seconds
+    const interval = setInterval(fetchWarnings, 30000); // checks every 30 seconds
+    
+    return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
   const handleLogout = async () => {

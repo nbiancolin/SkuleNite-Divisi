@@ -3,43 +3,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-def _primary_mscx_path(z: zipfile.ZipFile) -> str:
-    """Return the main score MSCX path inside an MSCZ archive.
-
-    MSCZ files may contain multiple ``.mscx`` files (full score plus ``Excerpts/``).
-    Prefer ``META-INF/container.xml`` rootfiles, then any top-level ``.mscx``,
-    then fall back to the first ``.mscx`` in the archive.
-    """
-    raw: bytes | None
-    try:
-        raw = z.read("META-INF/container.xml")
-    except KeyError:
-        raw = None
-    if raw:
-        root = ET.fromstring(raw)
-        rootfiles: list[str] = []
-        for el in root.iter():
-            tag = el.tag
-            if tag == "rootfile" or (isinstance(tag, str) and tag.endswith("rootfile")):
-                fp = el.get("full-path")
-                if fp:
-                    rootfiles.append(fp)
-        for fp in rootfiles:
-            if fp.endswith(".mscx") and not fp.startswith("Excerpts/"):
-                return fp
-        for fp in rootfiles:
-            if fp.endswith(".mscx"):
-                return fp
-    names = z.namelist()
-    for name in names:
-        if name.endswith(".mscx") and not name.startswith("Excerpts/"):
-            return name
-    for name in names:
-        if name.endswith(".mscx"):
-            return name
-    raise ValueError("No .mscx found")
-
-
 def extract_mscx(mscz_path: Path) -> ET.ElementTree:
     """Extract and parse the MSCX file from a MSCZ archive or MSCX file.
     
@@ -66,9 +29,11 @@ def extract_mscx(mscz_path: Path) -> ET.ElementTree:
     if mscz_path.suffix.lower() == ".mscx":
         return ET.parse(mscz_path)
     with zipfile.ZipFile(mscz_path, "r") as z:
-        name = _primary_mscx_path(z)
-        with z.open(name) as f:
-            return ET.parse(f)  # noqa
+        for name in z.namelist():
+            if name.endswith(".mscx"):
+                with z.open(name) as f:
+                    return ET.parse(f)  # noqa
+    raise ValueError("No .mscx found")
 
 
 def write_mscz(tree: ET.ElementTree, out_path: Path) -> None:
@@ -153,8 +118,16 @@ def save_template_mscz(tree: ET.ElementTree, out_path: Path, source_mscz_path: P
         xml_declaration=True,
     )
     
+    # Find the original MSCX filename in the source archive
+    mscx_filename = None
     with zipfile.ZipFile(source_mscz_path, "r") as source_z:
-        mscx_filename = _primary_mscx_path(source_z)
+        for name in source_z.namelist():
+            if name.endswith(".mscx"):
+                mscx_filename = name
+                break
+    
+    if mscx_filename is None:
+        mscx_filename = "score.mscx"
     
     # Create new MSCZ with template MSCX and copy other files (except Thumbnails)
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as out_z:
@@ -200,8 +173,16 @@ def write_mscz_from_template(
         xml_declaration=True,
     )
     
+    # Find the original MSCX filename in the template archive
+    mscx_filename = None
     with zipfile.ZipFile(template_mscz_path, "r") as template_z:
-        mscx_filename = _primary_mscx_path(template_z)
+        for name in template_z.namelist():
+            if name.endswith(".mscx"):
+                mscx_filename = name
+                break
+    
+    if mscx_filename is None:
+        mscx_filename = "score.mscx"
     
     # Create new MSCZ with the new MSCX and copy other files from template
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as out_z:

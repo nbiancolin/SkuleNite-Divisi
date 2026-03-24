@@ -7,7 +7,6 @@ from divisi.tasks.export import (
 )
 from ensembles.models import ArrangementVersion, ExportFailureLog
 from logging import getLogger
-from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 import os
 
@@ -135,15 +134,7 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 
 @shared_task
 def prep_and_export_mscz(version_id):
-    version = ArrangementVersion.objects.get(id=version_id)
-    if version.commit_id is not None:
-        # Commit snapshots are already canonical from scoreforge (same bytes as
-        # download_latest_commit_mscz). Skip musescore_part_formatter, which would
-        # rewrite layout and produce a different .mscz than the git-derived file.
-        with default_storage.open(version.mscz_file_key, "rb") as src:
-            default_storage.save(version.output_file_key, ContentFile(src.read()))
-    else:
-        format_arrangement_version(version_id)
+    format_arrangement_version(version_id)
     res = export_arrangement_version(version_id)
     v = ArrangementVersion.objects.get(id=version_id)
     if not res["status"] == "success":

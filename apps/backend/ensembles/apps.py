@@ -8,4 +8,3 @@ class EnsemblesConfig(AppConfig):
     def ready(self):
         from ensembles.lib.fonts import register_fonts
         register_fonts()
-        from ensembles import signals  # noqa: F401

@@ -36,9 +36,8 @@ export interface Arrangement {
   slug: string;
   composer: string | null;
   mvt_no: string;
-  latest_version: ArrangementVersion | null;
+  latest_version: ArrangementVersion;
   latest_version_num: string;
-  latest_commit_mscz_download_url?: string | null;
   style: string;
 }
 
@@ -104,23 +103,6 @@ export interface VersionHistoryItem {
   version_label: string;
   timestamp: string;
   is_latest: boolean;
-}
-
-export interface ArrangementCommit {
-  id: number;
-  sha: string;
-  message: string;
-  author_name: string;
-  author_email: string;
-  authored_at: string;
-  committed_at: string;
-  parent_sha: string | null;
-  tag: string | null;
-  created_by: number;
-}
-
-export interface ArrangementCommitListItem extends ArrangementCommit {
-  has_version: boolean;
 }
 
 // export interface DiffData {
@@ -569,105 +551,6 @@ export const apiService = {
         `Failed to fetch version details (status: ${response.status}) - ${errorDetails}`
       );
     }
-    return response.json();
-  },
-
-  async createArrangementCommit(arrangementId: number, file: File, message?: string): Promise<{ commit: ArrangementCommit; canonical_tree_hash: string }> {
-    const formData = new FormData();
-    const csrfToken = getCsrfToken();
-    formData.append("file", file);
-    if (message && message.trim()) {
-      formData.append("message", message.trim());
-    }
-
-    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/new-commit/`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
-      },
-      body: formData,
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      let errorDetails = "";
-      try {
-        const errorData = await response.json();
-        errorDetails = errorData.detail || JSON.stringify(errorData);
-      } catch {
-        errorDetails = await response.text();
-      }
-      throw new Error(
-        `Failed to create commit (status: ${response.status}) - ${errorDetails}`
-      );
-    }
-
-    return response.json();
-  },
-
-  async createArrangementVersionFromCommit(
-    commitHash: string,
-    options?: {
-      version_type?: string;
-      num_measures_per_line_score?: number;
-      num_measures_per_line_part?: number;
-      num_lines_per_page?: number;
-    }
-  ) {
-    const body: Record<string, string | number> = { commit_hash: commitHash };
-    if (options?.version_type != null) body.version_type = options.version_type;
-    if (options?.num_measures_per_line_score != null) {
-      body.num_measures_per_line_score = options.num_measures_per_line_score;
-    }
-    if (options?.num_measures_per_line_part != null) {
-      body.num_measures_per_line_part = options.num_measures_per_line_part;
-    }
-    if (options?.num_lines_per_page != null) {
-      body.num_lines_per_page = options.num_lines_per_page;
-    }
-
-    const response = await fetch(`${API_BASE_URL}/arrangementversions/create_from_commit/`, {
-      method: "POST",
-      headers: getHeadersWithCsrf(),
-      body: JSON.stringify(body),
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      let errorDetails = "";
-      try {
-        const errorData = await response.json();
-        errorDetails = errorData.detail || JSON.stringify(errorData);
-      } catch {
-        errorDetails = await response.text();
-      }
-      throw new Error(
-        `Failed to create arrangement version from commit (status: ${response.status}) - ${errorDetails}`
-      );
-    }
-
-    return response.json();
-  },
-
-  async getArrangementCommits(arrangementId: number): Promise<ArrangementCommitListItem[]> {
-    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/commits/`, {
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      let errorDetails = "";
-      try {
-        const errorData = await response.json();
-        errorDetails = errorData.detail || JSON.stringify(errorData);
-      } catch {
-        errorDetails = await response.text();
-      }
-      throw new Error(
-        `Failed to fetch arrangement commits (status: ${response.status}) - ${errorDetails}`
-      );
-    }
-
     return response.json();
   },
 

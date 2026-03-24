@@ -17,9 +17,6 @@ import logging.config
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Per-arrangement bare git repos (see README). Docker may set DIVISI_ARRANGEMENT_REPO_ROOT.
-_ARRANGEMENT_GIT_ROOT = os.environ.get("ARRANGEMENT_GIT_ROOT") or os.environ.get("DIVISI_ARRANGEMENT_REPO_ROOT")
-ARRANGEMENT_GIT_ROOT = _ARRANGEMENT_GIT_ROOT
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

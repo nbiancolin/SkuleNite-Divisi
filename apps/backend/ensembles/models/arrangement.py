@@ -8,24 +8,16 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from django.db.models.manager import RelatedManager
-
     from ensembles.models.arrangement_version import ArrangementVersion
-    from ensembles.models.git_repo import GitRepo
 
 logger = getLogger("app")
 
 
 
 class Arrangement(models.Model):
-    """
-    A piece in a show. Optional 1:1 :class:`~ensembles.models.GitRepo` holds canonical score history
-    on disk (see ``ensembles.git``).
-    """
-
     if TYPE_CHECKING:
+        from django.db.models.manager import RelatedManager
         versions: RelatedManager["ArrangementVersion"]
-        git_repo: GitRepo
 
     ensemble = models.ForeignKey(
         Ensemble, related_name="arrangements", on_delete=models.CASCADE

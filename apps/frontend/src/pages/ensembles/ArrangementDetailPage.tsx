@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   Container,
   Button,
-  Menu,
   Paper,
   Title,
   Text,
@@ -39,7 +38,6 @@ import {
   IconHistory,
   IconChevronDown,
   IconChevronUp,
-  IconGitCommit,
   //TODO[SC-262]: Uncomment these for the diff viewer
   // IconGitCompare,
   // IconEye,
@@ -48,7 +46,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData, VersionHistoryItem, ArrangementCommitListItem } from '../../services/apiService';
+import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
@@ -113,9 +111,6 @@ export default function ArrangementDisplay() {
     download_url: string;
   }>>([]);
   const [latestVersionPartsLoading, setLatestVersionPartsLoading] = useState(false);
-  const [commits, setCommits] = useState<ArrangementCommitListItem[]>([]);
-  const [commitsLoading, setCommitsLoading] = useState(false);
-  const [showCommitHistory, setShowCommitHistory] = useState(false);
 
   //TODO[SC-262]: uncomment when new score diff is ready
   // Diff functionality states
@@ -214,18 +209,6 @@ export default function ArrangementDisplay() {
       setLatestVersionParts([]);
     } finally {
       setLatestVersionPartsLoading(false);
-    }
-  };
-
-  const fetchCommits = async (arrangementId: number) => {
-    try {
-      setCommitsLoading(true);
-      const commitData = await apiService.getArrangementCommits(arrangementId);
-      setCommits(commitData);
-    } catch (err) {
-      console.error('Failed to fetch commit history:', err);
-    } finally {
-      setCommitsLoading(false);
     }
   };
 
@@ -342,18 +325,10 @@ export default function ArrangementDisplay() {
         await getDownloadLinks(data.latest_version.id);
         // Fetch parts for latest version
         await fetchLatestVersionParts(data.latest_version.id);
-      } else {
-        setExportLoading(false);
-        setExportError(false);
-        setRawMsczUrl(data.latest_commit_mscz_download_url ?? "");
-        setMsczUrl("");
-        setScoreUrl("");
-        setAudioUrl("");
       }
 
       // Fetch version history
       await fetchVersionHistory(id);
-      await fetchCommits(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch arrangement');
     } finally {
@@ -658,37 +633,16 @@ export default function ArrangementDisplay() {
                       v{arrangement.latest_version_num || 'N/A'}
                     </Badge>
                     {/* Fix spacing of these buttons */}
-                    <Group wrap="nowrap" gap={0}>
-                      <Button
-                        component={Link}
-                        to={`/app/arrangements/${arrangement.id}/new-commit`}
-                        variant={arrangement.latest_version ? "subtle" : "filled"}
-                        size="sm"
-                        rightSection={<IconUpload size={16} />}
-                      >
-                        Upload new file
-                      </Button>
-                      <Menu transitionProps={{ transition: 'pop' }} position="bottom-end" withinPortal>
-                        <Menu.Target>
-                          <ActionIcon
-                            variant={arrangement.latest_version ? "subtle" : "filled"}
-                            size={36}
-                            aria-label="More options"
-                          >
-                            <IconChevronDown size={16} stroke={1.5} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item
-                            component={Link}
-                            to={`/app/arrangements/${arrangement.id}/new-version`}
-                            leftSection={<IconCalendar size={16} stroke={1.5}/>}
-                          >
-                            Directly Create Version
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Group>
+                    <Button
+                      component={Link}
+                      to={`/app/arrangements/${arrangement.id}/new-version`}
+                      variant={arrangement.latest_version ? "subtle" : "filled"}
+                      size="sm"
+                      rightSection={<IconUpload size={16} />}
+                    >
+                      Upload new Version
+                    </Button>
+
                     {arrangement.latest_version && !exportLoading && !exportError && (
                     <>
                       <Button
@@ -722,7 +676,7 @@ export default function ArrangementDisplay() {
                         size="sm"
                         rightSection={<IconDownload size={16} />} 
                       >
-                        Download latest version MSCZ
+                        Download Formatted MSCZ file
                       </Button>
                       <Button
                         component={Link}
@@ -732,7 +686,7 @@ export default function ArrangementDisplay() {
                         size="sm"
                         rightSection={<IconDownload size={16} />}
                       >
-                        Download MSCZ from latest commit
+                        Download Raw MSCZ file
                       </Button>
                     </>
                     )}
@@ -747,7 +701,7 @@ export default function ArrangementDisplay() {
                           size="sm"
                           rightSection={<IconDownload size={16} />}
                         >
-                          Download MSCZ from latest commit
+                          Download Raw MSCZ file
                         </Button>
                         <Container>
                           <Group justify="center" py="xl">
@@ -768,7 +722,7 @@ export default function ArrangementDisplay() {
                           size="sm"
                           rightSection={<IconDownload size={16} />}
                         >
-                          Download MSCZ from latest commit
+                          Download Raw MSCZ file
                         </Button>
                         <Container>
                           <Group justify="center" py="xl">
@@ -776,19 +730,6 @@ export default function ArrangementDisplay() {
                           </Group>
                         </Container>
                       </>
-                    )}
-
-                    {!arrangement.latest_version && rawMsczUrl && (
-                      <Button
-                        component={Link}
-                        target="_blank"
-                        to={rawMsczUrl}
-                        variant="subtle"
-                        size="sm"
-                        rightSection={<IconDownload size={16} />}
-                      >
-                        Download MSCZ from latest commit
-                      </Button>
                     )}
                   </Group>
 
@@ -901,76 +842,6 @@ export default function ArrangementDisplay() {
           </Collapse>
         </Card>
 
-        <Card shadow="xs" padding="lg" radius="md" withBorder mt="lg">
-          <Group justify="space-between" mb="md">
-            <Group>
-              <IconGitCommit size={20} />
-              <Title order={3}>Latest Commits</Title>
-              <Badge variant="light" color="grape">
-                {commits.length} commits
-              </Badge>
-            </Group>
-            <Button
-              variant="subtle"
-              rightSection={showCommitHistory ? <IconChevronUp size={16} /> : <IconChevronDown size={16} />}
-              onClick={() => setShowCommitHistory(!showCommitHistory)}
-              loading={commitsLoading}
-            >
-              {showCommitHistory ? 'Hide' : 'Show'} Commits
-            </Button>
-          </Group>
-
-          <Collapse in={showCommitHistory}>
-            {commits.length > 0 ? (
-              <ScrollArea>
-                <Table striped highlightOnHover>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>SHA</Table.Th>
-                      <Table.Th>Message</Table.Th>
-                      <Table.Th>Date</Table.Th>
-                      <Table.Th>Action</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
-                    {commits.map((commit) => (
-                      <Table.Tr key={commit.id}>
-                        <Table.Td>
-                          <Text ff="monospace">{commit.sha.slice(0, 8)}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">{commit.message || "(no message)"}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Text size="sm">{formatTimestamp(commit.committed_at)}</Text>
-                        </Table.Td>
-                        <Table.Td>
-                          {commit.has_version ? (
-                            <Badge color="green" variant="light">Version created</Badge>
-                          ) : (
-                            <Button
-                              component={Link}
-                              to={`/app/arrangements/${arrangementId}/commits/${commit.sha}/create-version`}
-                              size="xs"
-                              variant="light"
-                            >
-                              Create Version
-                            </Button>
-                          )}
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </ScrollArea>
-            ) : (
-              <Text c="dimmed" ta="center" py="xl">
-                No commit history available
-              </Text>
-            )}
-          </Collapse>
-        </Card>
-
         {/* Version Download Modal */}
         <Modal
           opened={versionDownloadModal}
@@ -1018,7 +889,7 @@ export default function ArrangementDisplay() {
                   rightSection={<IconDownload size={16} />}
                   disabled={!versionDownloadLinks.msczUrl}
                 >
-                  Latest version MSCZ
+                  Formatted MSCZ
                 </Button>
                 
                 <Button
@@ -1029,7 +900,7 @@ export default function ArrangementDisplay() {
                   rightSection={<IconDownload size={16} />}
                   disabled={!versionDownloadLinks.rawMsczUrl}
                 >
-                  MSCZ from latest commit
+                  Raw MSCZ
                 </Button>
               </Group>
 

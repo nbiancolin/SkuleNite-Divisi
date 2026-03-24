@@ -6,9 +6,7 @@ import EnsemblesPage from './pages/ensembles/EnsemblesPage';
 import CreateEnsemblePage from './pages/ensembles/CreateEnsemblePage'
 import CreateArrangementPage from './pages/ensembles/CreateArrangementPage'
 import ArrangementsPage from './pages/ensembles/EnsembleArrangementsPage';
-import UploadArrangementVersionFromCommitPage from './pages/ensembles/UploadArrangementVersionAsCommitPage';
-import UploadArrangementVersionDirectlyPage from './pages/ensembles/UploadArrangementVersionDirectlyPage';
-import CreateVersionFromCommitPage from './pages/ensembles/CreateVersionFromCommitPage';
+import UploadArrangementVersionPage from './pages/ensembles/UploadArrangementVersionPage';
 import ArrangementDisplay from './pages/ensembles/ArrangementDetailPage';
 import {UploadPartsForm} from './pages/testing/UploadPartsForm'
 import PartFormatterPage from './pages/PartFormatterPage'
@@ -32,12 +30,7 @@ function App() {
         <Route path="/app/arrangements/:arrangementId" element={<ArrangementDisplay />} />
         {/* route: /arangements/:slug/v/(latest || versionNum) should get a specific version */}
         <Route path="/app/arrangements/:slug/edit" element={<div>Edit Arrangement Page (Coming Soon)</div>} />
-        <Route path="/app/arrangements/:arrangementId/new-commit" element={<UploadArrangementVersionFromCommitPage />} />
-        <Route path="/app/arrangements/:arrangementId/new-version" element={<UploadArrangementVersionDirectlyPage />} />
-        <Route
-          path="/app/arrangements/:arrangementId/commits/:commitSha/create-version"
-          element={<CreateVersionFromCommitPage />}
-        />
+        <Route path="/app/arrangements/:arrangementId/new-version" element={<UploadArrangementVersionPage />} />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />
 
         <Route path="/part-formatter" element={<PartFormatterPage/>} />
