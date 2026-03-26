@@ -15,6 +15,8 @@ class Commit(models.Model):
     )
     file_name = models.CharField(max_length=128)
 
+    commit_message = models.CharField(max_length=128)
+
     # To create Directed Acyclic Graph DAG
     parent_commit = models.ForeignKey("self", on_delete=models.CASCADE, blank=True, null=True)
     next_commit = models.ForeignKey("self", on_delete=models.CASCADE, blank=True, null=True)

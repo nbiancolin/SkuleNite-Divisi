@@ -590,7 +590,7 @@ export const apiService = {
     return response.json(); // { download_url }
   },
 
-  async createArrangementCommit(arrangementId: number, file: File, message?: string): Promise<{ commit: ArrangementCommit; canonical_tree_hash: string }> {
+  async createArrangementCommit(arrangementId: number, file: File, message?: string): Promise<{ arrangement: Arrangement}> {
     const formData = new FormData();
     const csrfToken = getCsrfToken();
     formData.append("file", file);
@@ -625,7 +625,7 @@ export const apiService = {
   },
 
   async createArrangementVersionFromCommit(
-    commitHash: string,
+    commitId: number,
     options?: {
       version_type?: string;
       num_measures_per_line_score?: number;
@@ -633,7 +633,7 @@ export const apiService = {
       num_lines_per_page?: number;
     }
   ) {
-    const body: Record<string, string | number> = { commit_hash: commitHash };
+    const body: Record<string, string | number> = { commit_id: commitId };
     if (options?.version_type != null) body.version_type = options.version_type;
     if (options?.num_measures_per_line_score != null) {
       body.num_measures_per_line_score = options.num_measures_per_line_score;
