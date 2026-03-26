@@ -313,6 +313,11 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         versions = arr.versions.all()
         serializer = ArrangementVersionSerializer(versions, many=True)
         return Response(serializer.data)
+    
+
+    @action(detail=True, methods=["post"])
+    def upload_new_commit(self, request, *args, **kwargs):
+        serializer = CreateArrangementCommitSerializer
 
 
 class ArrangementViewSet(BaseArrangementViewSet):

@@ -23,5 +23,5 @@ pypdf
 reportlab
 sentry-sdk[django]
 -e file:../../packages/musescore-part-formatter
-# -e ../../packages/musescore-score-diff
+-e file:../../packages/musescore-score-diff
 # -e ../../packages/scoreforge

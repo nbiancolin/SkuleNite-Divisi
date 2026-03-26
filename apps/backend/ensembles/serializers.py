@@ -227,6 +227,13 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ["id", "username", "email"]
 
 
+class CreateArrangementCommitSerializer(serializers.Serializer):
+
+    file = serializers.FileField(allow_empty_file=False)
+    arrangement_id = serializers.IntegerField(required=True)
+
+
+
 class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     default_error_messages = {
         "invalid_version_type": "Version type not one of 'major', 'minor', 'patch'",
