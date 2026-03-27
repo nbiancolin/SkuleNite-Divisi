@@ -35,7 +35,7 @@ function App() {
         <Route path="/app/arrangements/:arrangementId/new-commit" element={<UploadArrangementVersionFromCommitPage />} />
         <Route path="/app/arrangements/:arrangementId/new-version" element={<UploadArrangementVersionDirectlyPage />} />
         <Route
-          path="/app/arrangements/:arrangementId/commits/:commitSha/create-version"
+          path="/app/arrangements/:arrangementId/commits/:commitId/create-version"
           element={<CreateVersionFromCommitPage />}
         />
         <Route path="/testing/upload-arrangement" element={<UploadPartsForm />} />

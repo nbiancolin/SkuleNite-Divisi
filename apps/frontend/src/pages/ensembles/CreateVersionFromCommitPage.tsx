@@ -20,7 +20,7 @@ import { apiService } from "../../services/apiService";
 import type { Arrangement, ArrangementCommitListItem } from "../../services/apiService";
 
 export default function CreateVersionFromCommitPage() {
-  const { arrangementId = "0", commitSha = "" } = useParams();
+  const { arrangementId = "0", commitId = "" } = useParams();
   const navigate = useNavigate();
 
   const [arrangement, setArrangement] = useState<Arrangement | undefined>(undefined);
@@ -37,23 +37,21 @@ export default function CreateVersionFromCommitPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const commit = useMemo(() => {
-    const sha = commitSha.toLowerCase();
-    return commits.find(
-      (c) => c.sha.toLowerCase() === sha || c.sha.toLowerCase().startsWith(sha)
-    );
-  }, [commits, commitSha]);
+  const effectiveCommitId = useMemo(() => {
+    const t = (commitId ?? "").trim();
+    if (!t) return null;
+    const n = Number(t);
+    return Number.isInteger(n) ? n : null;
+  }, [commitId]);
 
-  const effectiveCommitSha = useMemo(() => {
-    if (commit?.sha) return commit.sha;
-    const t = commitSha.trim();
-    if (/^[0-9a-f]{40}$/i.test(t)) return t;
-    return null;
-  }, [commit, commitSha]);
+  const commit = useMemo(() => {
+    if (effectiveCommitId == null) return undefined;
+    return commits.find((c) => c.id === effectiveCommitId);
+  }, [commits, effectiveCommitId]);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!arrangementId || !commitSha) {
+      if (!arrangementId || !commitId) {
         setLoadError("Missing arrangement or commit in the URL.");
         setPageLoading(false);
         return;
@@ -74,7 +72,7 @@ export default function CreateVersionFromCommitPage() {
       }
     };
     fetchData();
-  }, [arrangementId, commitSha]);
+  }, [arrangementId, commitId]);
 
   const getNewVersionNumber = (type?: string): string => {
     if (!arrangement?.latest_version_num) return "1.0.0";
@@ -115,9 +113,9 @@ export default function CreateVersionFromCommitPage() {
   };
 
   const handleCreate = async () => {
-    if (!effectiveCommitSha) {
+    if (effectiveCommitId == null) {
       setSubmitError(
-        "Could not resolve this commit. Open this screen from the arrangement's commit list, or use the full 40-character hash in the URL."
+        "Could not resolve this commit. Open this screen from the arrangement's commit list, or use the commit id in the URL."
       );
       return;
     }
@@ -133,7 +131,7 @@ export default function CreateVersionFromCommitPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      await apiService.createArrangementVersionFromCommit(effectiveCommitSha, {
+      await apiService.createArrangementVersionFromCommit(effectiveCommitId, {
         version_type: versionType,
         num_measures_per_line_score: nScore,
         num_measures_per_line_part: nPart,
@@ -172,7 +170,7 @@ export default function CreateVersionFromCommitPage() {
     );
   }
 
-  const missingCommitDetails = !commit && commits.length > 0 && !effectiveCommitSha;
+  const missingCommitDetails = !commit && commits.length > 0 && effectiveCommitId != null;
 
   return (
     <Container size="sm" py="xl">
@@ -192,7 +190,7 @@ export default function CreateVersionFromCommitPage() {
             Commit
           </Text>
           <Text ff="monospace" size="sm">
-            {commitSha || "(missing)"}
+            {commitId || "(missing)"}
           </Text>
           {commit && (
             <>
@@ -200,14 +198,14 @@ export default function CreateVersionFromCommitPage() {
                 {commit.message || "(no message)"}
               </Text>
               <Text c="dimmed" size="xs" mt={4}>
-                {new Date(commit.committed_at).toLocaleString()}
+                {new Date(commit.timestamp).toLocaleString()}
               </Text>
             </>
           )}
           {missingCommitDetails && (
             <Text c="orange" size="sm" mt="sm">
-              This short hash does not match the loaded history. Use the button on the arrangement
-              page so the full commit is selected, or put the full 40-character hash in the URL.
+              This commit id does not match the loaded history. Use the button on the arrangement page
+              so the correct commit is selected, or put the correct commit id in the URL.
             </Text>
           )}
         </Paper>
@@ -270,7 +268,7 @@ export default function CreateVersionFromCommitPage() {
         </Collapse>
 
         <Group>
-          <Button onClick={handleCreate} loading={isSubmitting} disabled={!effectiveCommitSha}>
+          <Button onClick={handleCreate} loading={isSubmitting} disabled={effectiveCommitId == null}>
             Create version {getNewVersionNumber()}
           </Button>
           <Button component={Link} to={arrangementPath} variant="default">
