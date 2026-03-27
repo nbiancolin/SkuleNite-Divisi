@@ -20,6 +20,7 @@ from ensembles.serializers import (
     EnsemblePartNameMergeSerializer,
     CreateArrangementCommitSerializer,
     CommitSerializer,
+    CreateArrangementVersionFromCommitSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
@@ -360,6 +361,17 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         return ArrangementVersion.objects.filter(
             Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
         ).distinct()
+
+
+    @action(detail=False, methods=["post"])
+    def create_from_commit(self, request):
+        serializer = CreateArrangementVersionFromCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        res = serializer.save()
+
+        return Response(res, status=status.HTTP_202_ACCEPTED,)
+
+
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_arrangement_version(self, request):

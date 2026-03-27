@@ -151,7 +151,7 @@ class CommitAdmin(admin.ModelAdmin):
         "id",
         "arrangement",
         "file_name",
-        "commit_message",
+        "message",
         "parent_commit",
         "is_initial_commit",
         "is_latest_commit",
@@ -159,7 +159,7 @@ class CommitAdmin(admin.ModelAdmin):
     list_filter = ("arrangement__ensemble", "arrangement")
     search_fields = (
         "file_name",
-        "commit_message",
+        "message",
         "arrangement__title",
         "arrangement__ensemble__name",
     )

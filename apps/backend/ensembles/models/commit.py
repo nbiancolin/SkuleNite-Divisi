@@ -16,7 +16,7 @@ class Commit(models.Model):
     )
 
     file_name = models.CharField(max_length=128)
-    commit_message = models.CharField(max_length=128)
+    message = models.CharField(max_length=128)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     parent_commit = models.ForeignKey(

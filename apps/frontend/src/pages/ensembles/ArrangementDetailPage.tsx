@@ -926,7 +926,7 @@ export default function ArrangementDisplay() {
                 <Table striped highlightOnHover>
                   <Table.Thead>
                     <Table.Tr>
-                      <Table.Th>SHA</Table.Th>
+                      <Table.Th>id</Table.Th>
                       <Table.Th>Message</Table.Th>
                       <Table.Th>Date</Table.Th>
                       <Table.Th>Action</Table.Th>
