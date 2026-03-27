@@ -14,6 +14,7 @@ from ensembles.models import (
     ArrangementVersion,
     PartBook,
     PartName,
+    Commit,
 )
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
@@ -36,6 +37,12 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
         model = ArrangementVersion
         fields = ["id", "version_label", "timestamp", "is_latest", "audio_state"]
 
+
+class CommitSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Commit
+        fields = ["id", "arrangement_id", "timestamp", "message"]
 
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
@@ -238,19 +245,19 @@ class UserSerializer(serializers.ModelSerializer):
 
 class CreateArrangementCommitSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
-    commit_message = serializers.CharField(required=False)
+    message = serializers.CharField(required=False)
 
     def save(self, **kwargs):
         assert self.validated_data, "must call is_valid first"
 
         from ensembles.models.commit import Commit
 
-        arr = self.instance
+        arr = self.context["arrangement"]
         new_commit = Commit.create_new_commit(
             arrangement=arr,
             create_kwargs={
                 "file_name": self.validated_data["file"].name,
-                "commit_message": self.validated_data["commit_message"],
+                "commit_message": self.validated_data.get("message", f"New commit for {arr.title}"),
             },
         )
 

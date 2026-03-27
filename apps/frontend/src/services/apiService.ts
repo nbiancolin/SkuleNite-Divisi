@@ -21,9 +21,8 @@ export interface AuthResponse {
 export interface Commit {
   id: number;
   arrangementId: number;
-  versionNum: string;
+  message: string;
   timestamp: string;
-  audio_state: 'none' | 'processing' | 'complete' | 'error';
 }
 
 export interface ArrangementVersion {

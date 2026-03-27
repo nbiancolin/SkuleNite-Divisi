@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName, PartBook
+from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName, PartBook, Commit
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
@@ -146,6 +146,26 @@ class PartBookAdmin(admin.ModelAdmin, PdfObjMixin):
     pass
 
 
+class CommitAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "arrangement",
+        "file_name",
+        "commit_message",
+        "parent_commit",
+        "is_initial_commit",
+        "is_latest_commit",
+    )
+    list_filter = ("arrangement__ensemble", "arrangement")
+    search_fields = (
+        "file_name",
+        "commit_message",
+        "arrangement__title",
+        "arrangement__ensemble__name",
+    )
+    readonly_fields = ("mscz_file_key", "mscz_file_url", "is_initial_commit", "is_latest_commit")
+
+
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
@@ -155,3 +175,4 @@ admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
 admin.site.register(PartAsset, PartAssetAdmin)
 admin.site.register(PartName, PartNameAdmin)
 admin.site.register(PartBook, PartBookAdmin)
+admin.site.register(Commit, CommitAdmin)

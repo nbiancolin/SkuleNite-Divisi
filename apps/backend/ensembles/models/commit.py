@@ -3,6 +3,7 @@ from django.core.files.storage import default_storage
 
 from ensembles.models.arrangement import Arrangement
 
+
 class Commit(models.Model):
     """
     A commit is a working copy of an arrangement
@@ -13,51 +14,51 @@ class Commit(models.Model):
     arrangement = models.ForeignKey(
         Arrangement, related_name="commits", on_delete=models.CASCADE
     )
+
     file_name = models.CharField(max_length=128)
-
     commit_message = models.CharField(max_length=128)
+    timestamp = models.DateTimeField(auto_now_add=True)
 
-    # To create Directed Acyclic Graph DAG
-    parent_commit = models.ForeignKey("self", on_delete=models.CASCADE, blank=True, null=True)
-    next_commit = models.ForeignKey("self", on_delete=models.CASCADE, blank=True, null=True)
-
+    parent_commit = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="children",
+    )
 
     @property
     def is_latest_commit(self) -> bool:
-        return self.next_commit is None
-    
+        return not self.children.exists()
+
     @property
     def is_initial_commit(self) -> bool:
         return self.parent_commit is None
 
-
     @property
     def mscz_file_key(self) -> str:
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/commits/{self.pk}/{self.file_name}"
-    
+
     @property
     def mscz_file_url(self) -> str:
-        """Public URL for serving to clients"""
         return default_storage.url(self.mscz_file_key)
-    
 
     @classmethod
-    def create_new_commit(cls, arrangement: Arrangement, create_kwargs: dict[str, str] = {}) -> "Commit":
-        qs = cls.objects.filter(arrangement_id=arrangement.pk, next_commit__isnull=True)
+    def create_new_commit(
+        cls, arrangement: Arrangement, create_kwargs: dict[str, str] | None = None
+    ) -> "Commit":
+        if create_kwargs is None:
+            create_kwargs = {}
 
-        count = qs.count()
+        latest_commit = (
+            cls.objects.filter(arrangement=arrangement)
+            .filter(children__isnull=True)
+            .first()
+        )
 
-        if count == 0:
-            # Creating initial commit
-            new = cls.objects.create(arrangement=arrangement, **create_kwargs)
+        if latest_commit is None:
+            return cls.objects.create(arrangement=arrangement, **create_kwargs)
 
-            return new
-
-        latest_commit = qs.get() #should raise if too many
-        new = cls.objects.create(arrangement=arrangement, parent=latest_commit, **create_kwargs)
-        latest_commit.next_commit = new
-        latest_commit.save(update_fields=["next_commit"])
-
-        return new
-
-
+        return cls.objects.create(
+            arrangement=arrangement, parent_commit=latest_commit, **create_kwargs
+        )

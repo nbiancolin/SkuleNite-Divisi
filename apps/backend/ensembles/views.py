@@ -19,6 +19,7 @@ from ensembles.serializers import (
     CreateArrangementVersionMsczSerializer,
     EnsemblePartNameMergeSerializer,
     CreateArrangementCommitSerializer,
+    CommitSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
@@ -315,17 +316,25 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         serializer = ArrangementVersionSerializer(versions, many=True)
         return Response(serializer.data)
     
+    @action(detail=True, methods=["get"], url_path="commits")
+    def commits(self, request, *args, **kwargs):
+        """Return all commits for an arrangement"""
+        arr = self.get_object()
+        commits = arr.commits.all()
+        serializer = CommitSerializer(commits, many=True)
+        return Response(serializer.data)    
 
     @action(detail=True, methods=["post"], url_path="new-commit")
     def upload_new_commit(self, request, *args, **kwargs):
-        serializer = CreateArrangementCommitSerializer(data=request.data)
+        arr = self.get_object()
+        serializer = CreateArrangementCommitSerializer(data=request.data, context={"arrangement": arr})
         serializer.is_valid(raise_exception=True)
 
         serializer.save()
 
         # return
         s = ArrangementSerializer(self.get_object())
-        return Response(serializer.data)
+        return Response(s.data)
 
 
 

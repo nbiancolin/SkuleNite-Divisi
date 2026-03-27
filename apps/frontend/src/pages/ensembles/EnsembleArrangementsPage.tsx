@@ -326,12 +326,12 @@ const ArrangementsPage = () => {
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs">
-                          <Tooltip label="Upload New Version">
+                          <Tooltip label="Upload New File">
                             <ActionIcon
                               variant="subtle"
                               color="blue"
                               component={Link}
-                              to={`/app/arrangements/${arrangement.id}/new-version`}
+                              to={`/app/arrangements/${arrangement.id}/new-commit`}
                             >
                               <IconUpload size={16} />
                             </ActionIcon>

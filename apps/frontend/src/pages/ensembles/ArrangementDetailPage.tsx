@@ -936,13 +936,13 @@ export default function ArrangementDisplay() {
                     {commits.map((commit) => (
                       <Table.Tr key={commit.id}>
                         <Table.Td>
-                          <Text ff="monospace">{commit.sha.slice(0, 8)}</Text>
+                          <Text ff="monospace">{commit.id}</Text>
                         </Table.Td>
                         <Table.Td>
                           <Text size="sm">{commit.message || "(no message)"}</Text>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm">{formatTimestamp(commit.committed_at)}</Text>
+                          <Text size="sm">{formatTimestamp(commit.timestamp)}</Text>
                         </Table.Td>
                         <Table.Td>
                           {commit.has_version ? (
@@ -950,7 +950,7 @@ export default function ArrangementDisplay() {
                           ) : (
                             <Button
                               component={Link}
-                              to={`/app/arrangements/${arrangementId}/commits/${commit.sha}/create-version`}
+                              to={`/app/arrangements/${arrangementId}/commits/${commit.id}/create-version`}
                               size="xs"
                               variant="light"
                             >
