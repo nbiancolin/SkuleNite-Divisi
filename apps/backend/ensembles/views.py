@@ -321,7 +321,7 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
     def commits(self, request, *args, **kwargs):
         """Return all commits for an arrangement"""
         arr = self.get_object()
-        commits = arr.commits.all()
+        commits = arr.commits.all().order_by("-id")
         serializer = CommitSerializer(commits, many=True)
         return Response(serializer.data)    
 

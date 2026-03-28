@@ -73,6 +73,7 @@ const emptyEnsemble = (): Ensemble => ({
             apiService.getEnsemble(slug),
           ]);
           setEnsemble(ensembleData);
+          setSelectedStyle(ensembleData.default_style)
         } catch (err) {
           if (err instanceof Error) {
             setError(err.message);
