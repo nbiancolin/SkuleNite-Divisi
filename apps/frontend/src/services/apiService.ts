@@ -630,9 +630,10 @@ export const apiService = {
       num_measures_per_line_score?: number;
       num_measures_per_line_part?: number;
       num_lines_per_page?: number;
+      format_parts?: boolean;
     }
   ) {
-    const body: Record<string, string | number> = { commit_id: commitId };
+    const body: Record<string, string | number | boolean> = { commit_id: commitId };
     if (options?.version_type != null) body.version_type = options.version_type;
     if (options?.num_measures_per_line_score != null) {
       body.num_measures_per_line_score = options.num_measures_per_line_score;
@@ -642,6 +643,9 @@ export const apiService = {
     }
     if (options?.num_lines_per_page != null) {
       body.num_lines_per_page = options.num_lines_per_page;
+    }
+    if (options?.format_parts != null) {
+      body.format_parts = options.format_parts;
     }
 
     const response = await fetch(`${API_BASE_URL}/arrangementversions/create_from_commit/`, {

@@ -14,17 +14,18 @@ import {
   Paper,
   Center,
   Loader,
+  Checkbox,
 } from "@mantine/core";
 import { X } from "lucide-react";
 import { apiService } from "../../services/apiService";
-import type { Arrangement, ArrangementCommitListItem } from "../../services/apiService";
+import type { Arrangement, Commit } from "../../services/apiService";
 
 export default function CreateVersionFromCommitPage() {
   const { arrangementId = "0", commitId = "" } = useParams();
   const navigate = useNavigate();
 
   const [arrangement, setArrangement] = useState<Arrangement | undefined>(undefined);
-  const [commits, setCommits] = useState<ArrangementCommitListItem[]>([]);
+  const [commits, setCommits] = useState<Commit[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -32,6 +33,7 @@ export default function CreateVersionFromCommitPage() {
   const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
   const [linesPerPage, setLinesPerPage] = useState<string>("8");
+  const [formatParts, setFormatParts] = useState<Boolean>(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,6 +138,7 @@ export default function CreateVersionFromCommitPage() {
         num_measures_per_line_score: nScore,
         num_measures_per_line_part: nPart,
         num_lines_per_page: nLines,
+        format_parts: formatParts
       });
       navigate(`/app/arrangements/${arrangementId}`);
     } catch (err) {
@@ -181,7 +184,7 @@ export default function CreateVersionFromCommitPage() {
           </Button>
           <Title order={2}>{arrangement?.title ?? "…"}</Title>
           <Text c="dimmed" size="sm" mt="xs">
-            Create a scored version from an existing commit
+            Create an exported version from an existing commit
           </Text>
         </div>
 
@@ -226,6 +229,15 @@ export default function CreateVersionFromCommitPage() {
             ]}
           />
         </div>
+
+        <Center>
+        <Checkbox
+          checked={formatParts}
+          onChange={() => setFormatParts((o) => !o)} 
+          label="Use Divisi Part Formatter when exporting parts (Coming Soon!)"
+          mt="md"
+        />
+      </Center>
 
         <Center>
           <Text

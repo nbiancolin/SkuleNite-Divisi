@@ -714,26 +714,36 @@ export default function ArrangementDisplay() {
                       >
                         Download Score & Parts
                       </Button>
+                      <Group wrap="nowrap" gap={0}>
                       <Button
                         component={Link}
-                        target="_blank"
-                        to={msczUrl}
-                        variant="filled"
-                        size="sm"
-                        rightSection={<IconDownload size={16} />} 
-                      >
-                        Download latest version MSCZ
-                      </Button>
-                      <Button
-                        component={Link}
-                        target="_blank"
                         to={rawMsczUrl}
-                        variant="subtle"
+                        variant={arrangement.latest_version ? "subtle" : "filled"}
                         size="sm"
                         rightSection={<IconDownload size={16} />}
                       >
-                        Download MSCZ from latest commit
+                        Download Latest commit mscz
                       </Button>
+                      <Menu transitionProps={{ transition: 'pop' }} position="bottom-end" withinPortal>
+                        <Menu.Target>
+                          <ActionIcon
+                            variant={arrangement.latest_version ? "subtle" : "filled"}
+                            size={36}
+                            aria-label="More options"
+                          >
+                            <IconChevronDown size={16} stroke={1.5} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            component={Link}
+                            to={msczUrl}
+                          >
+                            Download Latest Formatted mscz
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
                     </>
                     )}
 
