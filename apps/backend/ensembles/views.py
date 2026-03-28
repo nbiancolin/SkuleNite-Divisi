@@ -18,6 +18,9 @@ from ensembles.serializers import (
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
     EnsemblePartNameMergeSerializer,
+    CreateArrangementCommitSerializer,
+    CommitSerializer,
+    CreateArrangementVersionFromCommitSerializer,
 )
 from logging import getLogger
 from django.db.models.expressions import RawSQL
@@ -313,6 +316,27 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         versions = arr.versions.all()
         serializer = ArrangementVersionSerializer(versions, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=["get"], url_path="commits")
+    def commits(self, request, *args, **kwargs):
+        """Return all commits for an arrangement"""
+        arr = self.get_object()
+        commits = arr.commits.all().order_by("-id")
+        serializer = CommitSerializer(commits, many=True)
+        return Response(serializer.data)    
+
+    @action(detail=True, methods=["post"], url_path="new-commit")
+    def upload_new_commit(self, request, *args, **kwargs):
+        arr = self.get_object()
+        serializer = CreateArrangementCommitSerializer(data=request.data, context={"arrangement": arr})
+        serializer.is_valid(raise_exception=True)
+
+        serializer.save()
+
+        # return
+        s = ArrangementSerializer(self.get_object())
+        return Response(s.data)
+
 
 
 class ArrangementViewSet(BaseArrangementViewSet):
@@ -337,6 +361,17 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
         return ArrangementVersion.objects.filter(
             Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
         ).distinct()
+
+
+    @action(detail=False, methods=["post"])
+    def create_from_commit(self, request):
+        serializer = CreateArrangementVersionFromCommitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        res = serializer.save()
+
+        return Response(res, status=status.HTTP_202_ACCEPTED,)
+
+
 
     @action(detail=False, methods=["post"], url_path="upload")
     def upload_arrangement_version(self, request):
