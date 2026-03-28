@@ -48,7 +48,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData, VersionHistoryItem, ArrangementCommitListItem } from '../../services/apiService';
+import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 

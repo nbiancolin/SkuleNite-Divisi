@@ -1,7 +1,7 @@
 import pytest
 
 
-from apps.backend.ensembles.models.commit import Commit
+from ensembles.models.commit import Commit
 
 @pytest.mark.django_db
 def test_create_new_commit_new_arrangement(arrangement):

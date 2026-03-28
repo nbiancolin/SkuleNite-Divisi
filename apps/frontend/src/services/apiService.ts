@@ -671,7 +671,7 @@ export const apiService = {
     return response.json();
   },
 
-  async getArrangementCommits(arrangementId: number): Promise<ArrangementCommitListItem[]> {
+  async getArrangementCommits(arrangementId: number): Promise<Commit[]> {
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/commits/`, {
       credentials: "include",
     });

@@ -33,7 +33,7 @@ export default function CreateVersionFromCommitPage() {
   const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
   const [linesPerPage, setLinesPerPage] = useState<string>("8");
-  const [formatParts, setFormatParts] = useState<Boolean>(true);
+  const [formatParts, setFormatParts] = useState<boolean>(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
