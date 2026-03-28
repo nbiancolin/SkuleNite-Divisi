@@ -73,7 +73,6 @@ export default function ArrangementDisplay() {
   });
   const [saveLoading, setSaveLoading] = useState(false);
 
-  const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
   const [audioUrl, setAudioUrl] = useState<string>("");
@@ -89,7 +88,6 @@ export default function ArrangementDisplay() {
   const [versionDownloadModal, setVersionDownloadModal] = useState(false);
   const [versionDownloadLoading, setVersionDownloadLoading] = useState(false);
   const [versionDownloadLinks, setVersionDownloadLinks] = useState({
-    rawMsczUrl: '',
     msczUrl: '',
     scoreUrl: '',
     exportLoading: false,
@@ -179,7 +177,6 @@ export default function ArrangementDisplay() {
       setLoading(true);
       setError(null);
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
-      setRawMsczUrl(data.raw_mscz_url);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
       setAudioUrl(data.mp3_link)
@@ -238,7 +235,6 @@ export default function ArrangementDisplay() {
     try {
       const data = await apiService.getDownloadLinksForVersion(versionId);
       setVersionDownloadLinks({
-        rawMsczUrl: data.raw_mscz_url,
         msczUrl: data.processed_mscz_url,
         scoreUrl: data.score_parts_pdf_link || data.score_pdf_url,
         exportLoading: data.is_processing,
@@ -345,7 +341,6 @@ export default function ArrangementDisplay() {
       } else {
         setExportLoading(false);
         setExportError(false);
-        setRawMsczUrl(data.latest_commit_mscz_download_url ?? "");
         setMsczUrl("");
         setScoreUrl("");
         setAudioUrl("");
@@ -454,6 +449,9 @@ export default function ArrangementDisplay() {
       </Container>
     );
   }
+
+  const latestCommitMsczDownloadUrl = apiService.getLatestCommitMsczDownloadUrl(arrangement.id);
+  const canDownloadLatestCommitMscz = commits.length > 0;
 
   return (
     <Container size="lg" py="xl">
@@ -716,11 +714,14 @@ export default function ArrangementDisplay() {
                       </Button>
                       <Group wrap="nowrap" gap={0}>
                       <Button
-                        component={Link}
-                        to={rawMsczUrl}
+                        component="a"
+                        href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         variant={arrangement.latest_version ? "subtle" : "filled"}
                         size="sm"
                         rightSection={<IconDownload size={16} />}
+                        disabled={!canDownloadLatestCommitMscz}
                       >
                         Download Latest commit mscz
                       </Button>
@@ -750,12 +751,14 @@ export default function ArrangementDisplay() {
                     {exportLoading && (
                       <>
                         <Button
-                          component={Link}
+                          component="a"
+                          href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
                           target="_blank"
-                          to={rawMsczUrl}
+                          rel="noopener noreferrer"
                           variant="subtle"
                           size="sm"
                           rightSection={<IconDownload size={16} />}
+                          disabled={!canDownloadLatestCommitMscz}
                         >
                           Download MSCZ from latest commit
                         </Button>
@@ -771,12 +774,14 @@ export default function ArrangementDisplay() {
                     {exportError && (
                       <>
                         <Button
-                          component={Link}
+                          component="a"
+                          href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
                           target="_blank"
-                          to={rawMsczUrl}
+                          rel="noopener noreferrer"
                           variant="subtle"
                           size="sm"
                           rightSection={<IconDownload size={16} />}
+                          disabled={!canDownloadLatestCommitMscz}
                         >
                           Download MSCZ from latest commit
                         </Button>
@@ -788,11 +793,12 @@ export default function ArrangementDisplay() {
                       </>
                     )}
 
-                    {!arrangement.latest_version && rawMsczUrl && (
+                    {!arrangement.latest_version && canDownloadLatestCommitMscz && (
                       <Button
-                        component={Link}
+                        component="a"
+                        href={latestCommitMsczDownloadUrl}
                         target="_blank"
-                        to={rawMsczUrl}
+                        rel="noopener noreferrer"
                         variant="subtle"
                         size="sm"
                         rightSection={<IconDownload size={16} />}
@@ -1033,11 +1039,12 @@ export default function ArrangementDisplay() {
                 
                 <Button
                   component="a"
-                  href={versionDownloadLinks.rawMsczUrl}
+                  href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
                   target="_blank"
+                  rel="noopener noreferrer"
                   variant="subtle"
                   rightSection={<IconDownload size={16} />}
-                  disabled={!versionDownloadLinks.rawMsczUrl}
+                  disabled={!canDownloadLatestCommitMscz}
                 >
                   MSCZ from latest commit
                 </Button>

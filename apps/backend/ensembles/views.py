@@ -10,8 +10,18 @@ from django.core.files.storage import default_storage
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.conf import settings
+from django.http import FileResponse
 
-from ensembles.models import Arrangement, Ensemble, ArrangementVersion, EnsembleUsership, PartAsset, PartName
+from ensembles.models import (
+    Arrangement,
+    Ensemble,
+    ArrangementVersion,
+    EnsembleUsership,
+    PartAsset,
+    PartName,
+    Commit,
+    UserScoreVersion,
+)
 from ensembles.serializers import (
     EnsembleSerializer,
     ArrangementSerializer,
@@ -337,6 +347,34 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         s = ArrangementSerializer(self.get_object())
         return Response(s.data)
 
+    @action(detail=True, methods=["get"], url_path="download-latest-commit-mscz")
+    def download_latest_commit_mscz(self, request, *args, **kwargs):
+        """Serve the tip commit MSCZ and record the user's last downloaded commit."""
+        arr = self.get_object()
+        latest = Commit.latest_for_arrangement(arr)
+        if latest is None:
+            return Response(
+                {"detail": "No commits for this arrangement."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        key = latest.mscz_file_key
+        if not default_storage.exists(key):
+            return Response(
+                {"detail": "MSCZ file not found in storage."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        UserScoreVersion.objects.update_or_create(
+            user=request.user,
+            arrangement=arr,
+            defaults={"commit": latest},
+        )
+        file_handle = default_storage.open(key, "rb")
+        return FileResponse(
+            file_handle,
+            as_attachment=True,
+            filename=latest.file_name,
+            content_type="application/zip",
+        )
 
 
 class ArrangementViewSet(BaseArrangementViewSet):

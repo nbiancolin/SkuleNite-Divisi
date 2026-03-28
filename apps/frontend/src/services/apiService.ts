@@ -46,7 +46,6 @@ export interface Arrangement {
   mvt_no: string;
   latest_version: ArrangementVersion | null;
   latest_version_num: string;
-  latest_commit_mscz_download_url?: string | null;
   style: string;
 }
 
@@ -159,6 +158,13 @@ function getHeadersWithCsrf(contentType: string = 'application/json'): HeadersIn
 }
 
 export const apiService = {
+  /**
+   * Authenticated GET URL for the latest commit MSCZ (records UserScoreVersion on the server).
+   */
+  getLatestCommitMsczDownloadUrl(arrangementId: number): string {
+    return `${API_BASE_URL}/arrangements-by-id/${arrangementId}/download-latest-commit-mscz/`;
+  },
+
   /**
    * Fetch CSRF token from backend - ensures cookie is set
    * Call this on app initialization
