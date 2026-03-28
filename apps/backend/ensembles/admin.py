@@ -1,7 +1,19 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 
-from .models import ExportFailureLog, Ensemble, Arrangement, ArrangementVersion, Diff, EnsembleUsership, PartAsset, PartName, PartBook, Commit
+from .models import (
+    ExportFailureLog,
+    Ensemble,
+    Arrangement,
+    ArrangementVersion,
+    Diff,
+    EnsembleUsership,
+    PartAsset,
+    PartName,
+    PartBook,
+    Commit,
+    UserScoreVersion,
+)
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
 from django.http import HttpRequest
@@ -166,6 +178,20 @@ class CommitAdmin(admin.ModelAdmin):
     readonly_fields = ("mscz_file_key", "mscz_file_url", "is_initial_commit", "is_latest_commit")
 
 
+class UserScoreVersionAdmin(admin.ModelAdmin):
+    list_display = ("id", "user", "arrangement", "commit", "updated_at")
+    list_filter = ("arrangement__ensemble", "updated_at")
+    search_fields = (
+        "user__username",
+        "user__email",
+        "arrangement__title",
+        "arrangement__ensemble__name",
+        "commit__message",
+    )
+    readonly_fields = ("updated_at",)
+    raw_id_fields = ("user", "arrangement", "commit")
+
+
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
 admin.site.register(Ensemble, EnsembleAdmin)
 admin.site.register(Arrangement, ArrangementAdmin)
@@ -176,3 +202,4 @@ admin.site.register(PartAsset, PartAssetAdmin)
 admin.site.register(PartName, PartNameAdmin)
 admin.site.register(PartBook, PartBookAdmin)
 admin.site.register(Commit, CommitAdmin)
+admin.site.register(UserScoreVersion, UserScoreVersionAdmin)

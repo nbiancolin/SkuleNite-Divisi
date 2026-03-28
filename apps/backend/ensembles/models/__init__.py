@@ -6,6 +6,7 @@ from ensembles.models.part import PartAsset, PartBook, PartBookEntry, PartName
 from ensembles.models.part_name_alias import PartNameAlias
 from ensembles.models.export_failure_log import ExportFailureLog
 from ensembles.models.commit import Commit
+from ensembles.models.user_score_version import UserScoreVersion
 
 from ensembles.models.diff import Diff
 

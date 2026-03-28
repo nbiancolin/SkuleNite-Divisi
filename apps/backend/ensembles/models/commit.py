@@ -68,3 +68,12 @@ class Commit(models.Model):
         return cls.objects.create(
             arrangement=arrangement, parent_commit=latest_commit, **create_kwargs
         )
+
+    @classmethod
+    def latest_for_arrangement(cls, arrangement: Arrangement) -> "Commit | None":
+        """Tip commit for this arrangement (no child commits), or None if empty."""
+        return (
+            cls.objects.filter(arrangement=arrangement, children__isnull=True)
+            .order_by("-id")
+            .first()
+        )
