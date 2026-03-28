@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.files.storage import default_storage
 
-from ensembles.models.arrangement import Arrangement, ArrangementVersion
+from ensembles.models import Arrangement, ArrangementVersion
 
 
 class Commit(models.Model):

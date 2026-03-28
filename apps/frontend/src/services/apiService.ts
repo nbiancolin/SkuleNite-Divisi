@@ -23,6 +23,7 @@ export interface Commit {
   arrangementId: number;
   message: string;
   timestamp: string;
+  has_version: boolean;
 }
 
 export interface ArrangementVersion {
