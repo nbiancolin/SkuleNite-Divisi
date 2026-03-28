@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.files.storage import default_storage
 
-from ensembles.models.arrangement import Arrangement
+from ensembles.models.arrangement import Arrangement, ArrangementVersion
 
 
 class Commit(models.Model):
@@ -18,6 +18,12 @@ class Commit(models.Model):
     file_name = models.CharField(max_length=128)
     message = models.CharField(max_length=128)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")
+
+    @property
+    def has_version(self) -> bool:
+        return self.version is not None
 
     parent_commit = models.ForeignKey(
         "self",

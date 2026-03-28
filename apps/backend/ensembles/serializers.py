@@ -42,7 +42,7 @@ class CommitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Commit
-        fields = ["id", "arrangement_id", "timestamp", "message"]
+        fields = ["id", "arrangement_id", "timestamp", "message", "has_version"]
 
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
@@ -330,6 +330,9 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
             version.save(
                 version_type=self.validated_data["version_type"],
             )
+
+            commit.version_id = version.id
+            commit.save(update_fields=["version_id"])
 
 
         #copy file from commit to version
