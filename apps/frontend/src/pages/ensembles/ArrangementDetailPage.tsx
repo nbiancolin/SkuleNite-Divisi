@@ -48,7 +48,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
-import type { Arrangement, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
+import type { Arrangement, Commit, EditableArrangementData, VersionHistoryItem } from '../../services/apiService';
 
 import type { PreviewStyleName } from '../../components/ScoreTitlePreview';
 
@@ -113,7 +113,7 @@ export default function ArrangementDisplay() {
     download_url: string;
   }>>([]);
   const [latestVersionPartsLoading, setLatestVersionPartsLoading] = useState(false);
-  const [commits, setCommits] = useState<ArrangementCommitListItem[]>([]);
+  const [commits, setCommits] = useState<Commit[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [showCommitHistory, setShowCommitHistory] = useState(false);
 
