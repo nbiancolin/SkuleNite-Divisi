@@ -6,7 +6,8 @@ services:
       context: .
       dockerfile: ./apps/backend.Dockerfile
     volumes:
-      - ./apps/backend:/app
+    - ./apps:/app/apps
+    - ./packages:/app/packages
     ports:
       - "8000:8000"
     command: python manage.py runserver 0.0.0.0:8000
@@ -56,7 +57,8 @@ services:
       context: .
       dockerfile: ./apps/backend.Dockerfile
     volumes:
-      - ./apps/backend:/app
+    - ./apps:/app/apps
+    - ./packages:/app/packages
     command: celery -A backend worker --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development

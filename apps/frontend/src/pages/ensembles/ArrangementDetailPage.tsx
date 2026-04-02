@@ -75,6 +75,7 @@ export default function ArrangementDisplay() {
 
   const [msczUrl, setMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [allPartsUrl, setAllPartsUrl] = useState<string>("");
   const [audioUrl, setAudioUrl] = useState<string>("");
   const [audioActionLoading, setAudioActionLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState<boolean>(true);
@@ -179,6 +180,7 @@ export default function ArrangementDisplay() {
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
+      setAllPartsUrl(data.combined_parts_pdf_url || data.download_all_parts_url || "");
       setAudioUrl(data.mp3_link)
       setExportLoading(data.is_processing)
       setExportError(data.error);
@@ -711,6 +713,18 @@ export default function ArrangementDisplay() {
                         rightSection={<IconDownload size={16} />} 
                       >
                         Download Score & Parts
+                      </Button>
+                      <Button
+                        component="a"
+                        href={allPartsUrl || undefined}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="light"
+                        size="sm"
+                        rightSection={<IconDownload size={16} />}
+                        disabled={!allPartsUrl}
+                      >
+                        Download all parts
                       </Button>
                       <Group wrap="nowrap" gap={0}>
                       <Button
