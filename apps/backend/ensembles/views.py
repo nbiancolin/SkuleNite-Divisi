@@ -441,6 +441,10 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "score_parts_pdf_link": None,  # Will be set from Part model or old file
             "score_pdf_url": None,  # Individual score PDF
             "mp3_link": request.build_absolute_uri(version.audio_file_url),
+            "combined_parts_pdf_url": None,
+            "download_all_parts_url": request.build_absolute_uri(
+                version.combined_parts_pdf_url
+            ),
             "parts": []  # List of individual part URLs
         }
 
@@ -483,7 +487,38 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 response_data["score_pdf_url"] = request.build_absolute_uri(version.score_pdf_url)
                 response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_pdf_url)
 
+        # Combined parts PDF (new field, persisted)
+        if version.combined_parts_pdf_key and default_storage.exists(version.combined_parts_pdf_key):
+            response_data["combined_parts_pdf_url"] = request.build_absolute_uri(
+                version.combined_parts_pdf_url or default_storage.url(version.combined_parts_pdf_key)
+            )
+
         return Response(response_data)
+
+    @action(detail=True, methods=["get"], url_path="download_all_parts")
+    def download_all_parts(self, request, pk=None):
+        """Download the combined 'all parts' PDF for this arrangement version."""
+        version = self.get_object()
+
+        if not version.combined_parts_pdf_key:
+            return Response(
+                {"detail": "Combined parts PDF is not available for this version."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not default_storage.exists(version.combined_parts_pdf_key):
+            return Response(
+                {"detail": "Combined parts PDF file not found in storage."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        file_url = version.combined_parts_pdf_url or default_storage.url(version.combined_parts_pdf_key)
+        return Response(
+            {
+                "file_url": request.build_absolute_uri(file_url),
+                "redirect": file_url,
+            }
+        )
     
     @action(detail=True, methods=["post"])
     def trigger_audio_export(self, request, pk=None):

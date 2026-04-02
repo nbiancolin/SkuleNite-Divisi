@@ -74,6 +74,11 @@ class ArrangementVersion(models.Model):
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext} - Score+Parts.pdf"
 
     @property
+    def combined_parts_pdf_key(self) -> str:
+        filename_without_ext = os.path.splitext(self.file_name)[0]
+        return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext} - Parts.pdf"
+
+    @property
     def mscz_file_url(self) -> str:
         """Public URL for serving to clients"""
         return default_storage.url(self.mscz_file_key)
@@ -93,6 +98,10 @@ class ArrangementVersion(models.Model):
     @property
     def audio_file_url(self) -> str:
         return default_storage.url(self.audio_file_key)
+    
+    @property
+    def combined_parts_pdf_url(self) -> str:
+        return default_storage.url(self.combined_parts_pdf_key)
 
     def _bump_version_label(self, version_type, old_version_label):
         major, minor, patch = map(int, old_version_label.split("."))
@@ -136,6 +145,9 @@ class ArrangementVersion(models.Model):
             self.score_pdf_key,
             self.score_parts_pdf_key,
         ]
+
+        if self.combined_parts_pdf_key:
+            keys_to_delete.append(self.combined_parts_pdf_key)
         
         # Also delete all part PDFs
         for part in self.parts.all():
