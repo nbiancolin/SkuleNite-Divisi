@@ -205,7 +205,7 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                 default_storage.save(version.combined_parts_pdf_key, ContentFile(buf.read()))
 
                 written.append(version.combined_parts_pdf_key)
-                LOGGER.info("Saved combined parts PDF: %s", combined_key)
+                LOGGER.info("Saved combined parts PDF: %s", version.combined_parts_pdf_key)
             except Exception:
                 LOGGER.exception("Failed to generate combined parts PDF")
         
