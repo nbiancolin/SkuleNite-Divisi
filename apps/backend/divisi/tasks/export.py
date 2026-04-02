@@ -14,6 +14,10 @@ from ensembles.models import ArrangementVersion, PartAsset, PartName
 import zipfile
 import io
 
+from pypdf import PdfWriter, PdfReader
+from io import BytesIO
+from django.db import transaction
+
 
 from logging import getLogger
 
@@ -98,6 +102,9 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
         written = []
         parts_created = 0
         stem = os.path.splitext(os.path.basename(input_key))[0]
+
+        # Track non-score parts in a stable order for combined PDF generation
+        combined_candidates: list[tuple[int | None, str, str]] = []
         
         try:
             with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zip_file:
@@ -148,6 +155,12 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                                     part_name_obj,
                                     arrangement_version_id,
                                 )
+
+                                # Track non-score parts for combined PDF
+                                if not is_score:
+                                    combined_candidates.append(
+                                        (part_name_obj.order, part_name_obj.display_name, key)
+                                    )
                             except ArrangementVersion.DoesNotExist:
                                 LOGGER.warning("ArrangementVersion %d does not exist, skipping Part record", arrangement_version_id)
                             except Exception as e:
@@ -164,6 +177,37 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                 "status": "error",
                 "details": "MuseScore ran but no PDFs were extracted from zip.",
             }
+
+
+        # Generate a combined PDF of all parts for easier printing.
+        # (We exclude the score; score is already available separately.)
+        if arrangement_version_id and combined_candidates:
+            try:
+                combined_candidates.sort(
+                    key=lambda x: (
+                        x[0] is None,  # None orders last
+                        x[0] if x[0] is not None else 999999,
+                        x[1].lower(),
+                    )
+                )
+
+                writer = PdfWriter()
+                for _, _, part_key in combined_candidates:
+                    with default_storage.open(part_key, "rb") as f:
+                        reader = PdfReader(BytesIO(f.read()))
+                    writer.append(reader)
+
+                buf = BytesIO()
+                writer.write(buf)
+                buf.seek(0)
+
+                version = ArrangementVersion.objects.get(id=arrangement_version_id)
+                default_storage.save(version.combined_parts_pdf_key, ContentFile(buf.read()))
+
+                written.append(version.combined_parts_pdf_key)
+                LOGGER.info("Saved combined parts PDF: %s", combined_key)
+            except Exception:
+                LOGGER.exception("Failed to generate combined parts PDF")
         
         return {
             "status": "success",
