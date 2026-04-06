@@ -74,6 +74,7 @@ export default function ArrangementDisplay() {
   const [saveLoading, setSaveLoading] = useState(false);
 
   const [msczUrl, setMsczUrl] = useState<string>("");
+  const [rawMsczUrl, setRawMsczUrl] = useState<string>("");
   const [scoreUrl, setScoreUrl] = useState<string>("");
   const [allPartsUrl, setAllPartsUrl] = useState<string>("");
   const [audioUrl, setAudioUrl] = useState<string>("");
@@ -89,6 +90,7 @@ export default function ArrangementDisplay() {
   const [versionDownloadModal, setVersionDownloadModal] = useState(false);
   const [versionDownloadLoading, setVersionDownloadLoading] = useState(false);
   const [versionDownloadLinks, setVersionDownloadLinks] = useState({
+    rawMsczUrl: '',
     msczUrl: '',
     scoreUrl: '',
     exportLoading: false,
@@ -178,6 +180,7 @@ export default function ArrangementDisplay() {
       setLoading(true);
       setError(null);
       const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
+      setRawMsczUrl(data.raw_mscz_url)
       setMsczUrl(data.processed_mscz_url);
       setScoreUrl(data.score_parts_pdf_link);
       setAllPartsUrl(data.combined_parts_pdf_url || data.download_all_parts_url || "");
@@ -237,6 +240,7 @@ export default function ArrangementDisplay() {
     try {
       const data = await apiService.getDownloadLinksForVersion(versionId);
       setVersionDownloadLinks({
+        rawMsczUrl: data.raw_mscz_url,
         msczUrl: data.processed_mscz_url,
         scoreUrl: data.score_parts_pdf_link || data.score_pdf_url,
         exportLoading: data.is_processing,
@@ -343,6 +347,7 @@ export default function ArrangementDisplay() {
       } else {
         setExportLoading(false);
         setExportError(false);
+        setRawMsczUrl("");
         setMsczUrl("");
         setScoreUrl("");
         setAudioUrl("");
@@ -753,8 +758,16 @@ export default function ArrangementDisplay() {
                           <Menu.Item
                             component={Link}
                             to={msczUrl}
+                            disabled={msczUrl !== ''}
                           >
-                            Download Latest Formatted mscz
+                            Download Latest Formatted Version mscz
+                          </Menu.Item>
+                          <Menu.Item
+                            component={Link}
+                            to={rawMsczUrl}
+                            disabled={rawMsczUrl !== ''}
+                          >
+                            Download Latest Raw Version mscz
                           </Menu.Item>
                         </Menu.Dropdown>
                       </Menu>
