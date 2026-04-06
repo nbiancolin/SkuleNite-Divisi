@@ -758,12 +758,14 @@ export default function ArrangementDisplay() {
                           <Menu.Item
                             component={Link}
                             to={msczUrl}
+                            disabled={msczUrl !== ''}
                           >
                             Download Latest Formatted Version mscz
                           </Menu.Item>
                           <Menu.Item
                             component={Link}
                             to={rawMsczUrl}
+                            disabled={rawMsczUrl !== ''}
                           >
                             Download Latest Raw Version mscz
                           </Menu.Item>
