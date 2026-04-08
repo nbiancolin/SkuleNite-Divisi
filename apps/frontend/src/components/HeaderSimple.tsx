@@ -60,10 +60,11 @@ export function HeaderSimple() {
     fetchWarnings();
     fetchUser();
     
+    // Nick on Apr 7, 2026. I dont think this needs to be polling. People can refresh the page to get this info
     // Optional: Set up polling to check for new warnings every X seconds
-    const interval = setInterval(fetchWarnings, 30000); // checks every 30 seconds
+    // const interval = setInterval(fetchWarnings, 30000); // checks every 30 seconds
     
-    return () => clearInterval(interval); // cleanup on unmount
+    // return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
   const handleLogout = async () => {

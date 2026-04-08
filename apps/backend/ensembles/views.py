@@ -335,13 +335,39 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         serializer = CommitSerializer(commits, many=True)
         return Response(serializer.data)    
 
+
+    @action(detail=True, methods=["get"])
+    def check_score_version(self, request, *args, **kwargs):
+        """Check that the user's score version is latest"""
+        user = request.user
+        arr = self.get_object()
+
+        head_commit = Commit.latest_for_arrangement(arr)
+        user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
+
+        if head_commit.id != user_download_commit.id:
+            return Response({"status": "error", "head_commit": head_commit.id, "user_download_commit": user_download_commit.id})
+        return Response({"status": "ok"})
+
+
     @action(detail=True, methods=["post"], url_path="new-commit")
     def upload_new_commit(self, request, *args, **kwargs):
         arr = self.get_object()
-        serializer = CreateArrangementCommitSerializer(data=request.data, context={"arrangement": arr})
+        serializer = CreateArrangementCommitSerializer(data=request.data, context={"arrangement": arr, "user": request.user})
         serializer.is_valid(raise_exception=True)
 
-        serializer.save()
+        r = serializer.save()
+        if error := r.get("error"):
+            return Response(error, status=500)
+
+        # create new UserScoreVersion to replace the existing one
+        try:
+            usv = UserScoreVersion.objects.get(user=request.user, arrangement=arr)
+            usv.commit = r["commit"]
+            usv.save()
+        
+        except UserScoreVersion.DoesNotExist:
+            UserScoreVersion.objects.create(user=request.user, arrangement=arr, commit=r["commit"])
 
         # return
         s = ArrangementSerializer(self.get_object())

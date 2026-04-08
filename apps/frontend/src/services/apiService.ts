@@ -699,6 +699,28 @@ export const apiService = {
     return response.json();
   },
 
+  async checkScoreVersion(arrangementId: number): Promise<boolean> {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/check_score_version/`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch arrangement score version (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+
+    const res = await response.json();
+    return res.status === "ok"
+  },
+
 
   //TODO[SC-262]: When new diff functionality is set up (with new git-based arrangementversions), uncomment this and have it use new endpoints
 

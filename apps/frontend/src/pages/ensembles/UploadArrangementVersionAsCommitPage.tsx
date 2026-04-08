@@ -20,6 +20,7 @@ export default function UploadArrangementVersionFromCommitPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [commitMessage, setCommitMessage] = useState<string>("");
+  const [noConflicts, setNoConflicts] = useState<boolean>(true);
 
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null);
@@ -27,10 +28,12 @@ export default function UploadArrangementVersionFromCommitPage() {
   useEffect(() => {
       const fetchData = async () => {
         try {
-          const [arrangementData] = await Promise.all([
+          const [arrangementData, noConflictsData] = await Promise.all([
             apiService.getArrangementById(+arrangementId),
+            apiService.checkScoreVersion(+arrangementId),
           ]);
-          setArrangement(arrangementData)
+          setArrangement(arrangementData);
+          setNoConflicts(noConflictsData);
         } catch (err) {
           if (err instanceof Error) {
             setError(err.message);
@@ -70,6 +73,19 @@ export default function UploadArrangementVersionFromCommitPage() {
       <Center>
         <Text> Upload score as a new commit, then create a version from that commit.</Text>
       </Center>
+      { !noConflicts && (
+        <Container size="md" mb="lg" mt="xs">
+          <Alert
+            color="yellow"
+            title="Warning"
+            mb='sm'
+          >
+           This arrangement has been updated since you last downloaded. 
+           It is possible you may overwrite other people's progress.
+           Please download and check this is the case!
+          </Alert>
+        </Container>
+      )}
       <FileInput
         placeholder="Choose a file"
         label="Select file"
