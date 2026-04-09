@@ -27,6 +27,11 @@ logger = getLogger("EnsembleViews")
 
 VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "username", "email"]
+
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
     audio_state = serializers.CharField(
@@ -237,11 +242,6 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
 
         return attrs
 
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = get_user_model()
-        fields = ["id", "username", "email"]
 
 
 class CreateArrangementCommitSerializer(serializers.Serializer):
