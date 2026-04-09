@@ -39,10 +39,11 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
 
 
 class CommitSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(read_only=True)
 
     class Meta:
         model = Commit
-        fields = ["id", "arrangement_id", "timestamp", "message", "has_version"]
+        fields = ["id", "arrangement_id", "timestamp", "message", "has_version", "created_by"]
 
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)

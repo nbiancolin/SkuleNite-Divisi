@@ -24,6 +24,7 @@ export interface Commit {
   message: string;
   timestamp: string;
   has_version: boolean;
+  created_by?: UserObj | null;
 }
 
 export interface ArrangementVersion {
