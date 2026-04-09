@@ -175,7 +175,7 @@ const ArrangementsPage = () => {
   const breadcrumbItems = [
     { title: 'Home', to: '/app' },
     { title: 'Ensembles', to: '/app/ensembles' },
-    { title: ensemble.name, to: null }
+    { title: ensemble.name, to: `/app/ensembles/${ensemble.slug}` }
   ].map((item, index) =>
     item.to ? (
       <Anchor
@@ -189,6 +189,8 @@ const ArrangementsPage = () => {
     ) : (
       <Anchor
         key={index}
+        component={Link}
+        to={item.to}
         c="dimmed"
       >
         {item.title}
