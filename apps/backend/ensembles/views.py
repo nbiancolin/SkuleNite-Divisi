@@ -38,6 +38,7 @@ from django.db.models.expressions import RawSQL
 from ensembles.tasks import export_arrangement_version
 from ensembles.tasks.part_books import generate_books_for_ensemble
 
+LOGGER = getLogger("ensembles_views")
 
 class EnsembleViewSet(viewsets.ModelViewSet):
     serializer_class = EnsembleSerializer
@@ -342,12 +343,17 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         user = request.user
         arr = self.get_object()
 
-        head_commit = Commit.latest_for_arrangement(arr)
-        user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
+        try:
+            head_commit = Commit.latest_for_arrangement(arr)
+            user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
 
-        if head_commit.id != user_download_commit.id:
-            return Response({"status": "error", "head_commit": head_commit.id, "user_download_commit": user_download_commit.id})
-        return Response({"status": "ok"})
+            if head_commit.id != user_download_commit.id:
+                return Response({"status": "error", "head_commit": head_commit.id, "user_download_commit": user_download_commit.id})
+
+        except Exception as e:
+            LOGGER.warning(f"Error in Check Score Version:\n {e}")
+        finally:
+            return Response({"status": "ok"})
 
 
     @action(detail=True, methods=["post"], url_path="new-commit")
