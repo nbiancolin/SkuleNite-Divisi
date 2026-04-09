@@ -4,10 +4,11 @@ import pytest
 from ensembles.models.commit import Commit
 
 @pytest.mark.django_db
-def test_create_new_commit_new_arrangement(arrangement):
+def test_create_new_commit_new_arrangement(arrangement, user):
 
     new = Commit.create_new_commit(
         arrangement,
+        created_by_user=user,
         create_kwargs={"file_name": "abc123.mscz", "message": "init"},
     )
 
@@ -16,15 +17,17 @@ def test_create_new_commit_new_arrangement(arrangement):
 
 
 @pytest.mark.django_db
-def test_create_new_commit_works_with_existing_commit(arrangement):
+def test_create_new_commit_works_with_existing_commit(arrangement, user):
 
     first_commit = Commit.create_new_commit(
         arrangement,
+        created_by_user=user,
         create_kwargs={"file_name": "abc123.mscz", "message": "first"},
     )
 
     new = Commit.create_new_commit(
         arrangement,
+        user,
         create_kwargs={"file_name": "abc123.mscz", "message": "second"},
     )
 
@@ -37,12 +40,12 @@ def test_create_new_commit_works_with_existing_commit(arrangement):
 
 
 @pytest.mark.django_db
-def test_latest_for_arrangement_returns_tip(arrangement):
+def test_latest_for_arrangement_returns_tip(arrangement, user):
     first_commit = Commit.create_new_commit(
-        arrangement, create_kwargs={"file_name": "a.mscz", "message": "m1"}
+        arrangement, created_by_user=user, create_kwargs={"file_name": "a.mscz", "message": "m1"}
     )
     second = Commit.create_new_commit(
-        arrangement, create_kwargs={"file_name": "b.mscz", "message": "m2"}
+        arrangement, created_by_user=user, create_kwargs={"file_name": "b.mscz", "message": "m2"}
     )
     assert Commit.latest_for_arrangement(arrangement) == second
     assert Commit.latest_for_arrangement(arrangement) != first_commit

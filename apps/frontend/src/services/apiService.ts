@@ -24,6 +24,7 @@ export interface Commit {
   message: string;
   timestamp: string;
   has_version: boolean;
+  created_by?: UserObj | null;
 }
 
 export interface ArrangementVersion {
@@ -697,6 +698,28 @@ export const apiService = {
     }
 
     return response.json();
+  },
+
+  async checkScoreVersion(arrangementId: number): Promise<boolean> {
+    const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/check_score_version/`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch arrangement score version (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+
+    const res = await response.json();
+    return res.status === "ok"
   },
 
 

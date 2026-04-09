@@ -971,6 +971,7 @@ export default function ArrangementDisplay() {
                     <Table.Tr>
                       <Table.Th>id</Table.Th>
                       <Table.Th>Message</Table.Th>
+                      <Table.Th>Created By</Table.Th>
                       <Table.Th>Date</Table.Th>
                       <Table.Th>Action</Table.Th>
                     </Table.Tr>
@@ -983,6 +984,11 @@ export default function ArrangementDisplay() {
                         </Table.Td>
                         <Table.Td>
                           <Text size="sm">{commit.message || "(no message)"}</Text>
+                        </Table.Td>
+                        <Table.Td>
+                          <Text size="sm">
+                            {commit.created_by?.username || "-"}
+                          </Text>
                         </Table.Td>
                         <Table.Td>
                           <Text size="sm">{formatTimestamp(commit.timestamp)}</Text>

@@ -2,6 +2,7 @@ from django.db import models
 from django.core.files.storage import default_storage
 
 from ensembles.models import Arrangement, ArrangementVersion
+from django.conf import settings
 
 
 class Commit(models.Model):
@@ -13,6 +14,11 @@ class Commit(models.Model):
 
     arrangement = models.ForeignKey(
         Arrangement, related_name="commits", on_delete=models.CASCADE
+    )
+
+    #TODO: eventually cleanup blank/null on this
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, related_name="commits", on_delete=models.PROTECT, blank=True, null=True
     )
 
     file_name = models.CharField(max_length=128)
@@ -51,7 +57,7 @@ class Commit(models.Model):
 
     @classmethod
     def create_new_commit(
-        cls, arrangement: Arrangement, create_kwargs: dict[str, str] | None = None
+        cls, arrangement: Arrangement, created_by_user, create_kwargs: dict[str, str] | None = None
     ) -> "Commit":
         if create_kwargs is None:
             create_kwargs = {}
@@ -63,7 +69,7 @@ class Commit(models.Model):
         )
 
         if latest_commit is None:
-            return cls.objects.create(arrangement=arrangement, **create_kwargs)
+            return cls.objects.create(arrangement=arrangement, created_by=created_by_user, **create_kwargs)
 
         return cls.objects.create(
             arrangement=arrangement, parent_commit=latest_commit, **create_kwargs

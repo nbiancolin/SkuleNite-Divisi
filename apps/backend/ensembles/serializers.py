@@ -27,6 +27,11 @@ logger = getLogger("EnsembleViews")
 
 VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ["id", "username", "email"]
+
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
     audio_state = serializers.CharField(
@@ -39,10 +44,11 @@ class ArrangementVersionSerializer(serializers.ModelSerializer):
 
 
 class CommitSerializer(serializers.ModelSerializer):
+    created_by = UserSerializer(read_only=True)
 
     class Meta:
         model = Commit
-        fields = ["id", "arrangement_id", "timestamp", "message", "has_version"]
+        fields = ["id", "arrangement_id", "timestamp", "message", "has_version", "created_by"]
 
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
@@ -237,15 +243,12 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
         return attrs
 
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = get_user_model()
-        fields = ["id", "username", "email"]
-
 
 class CreateArrangementCommitSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
     message = serializers.CharField(required=False)
+    #TODO: Hook up this "force" functionality
+    force = serializers.BooleanField(required=False)
 
     def save(self, **kwargs):
         assert self.validated_data, "must call is_valid first"
@@ -255,6 +258,7 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
         arr = self.context["arrangement"]
         new_commit = Commit.create_new_commit(
             arrangement=arr,
+            created_by_user=self.context["user"],
             create_kwargs={
                 "file_name": self.validated_data["file"].name,
                 "message": self.validated_data.get("message", f"New commit for {arr.title}"),
@@ -273,6 +277,8 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
             # Save to storage using the key
             default_storage.save(new_commit.mscz_file_key, io.BytesIO(file_content))
             logger.info(f"Saved file to storage: {new_commit.mscz_file_key}")
+
+            return {"status": "ok", "commit": new_commit}
 
         except Exception as e:
             logger.error(f"Failed to save file to storage: {e}")
