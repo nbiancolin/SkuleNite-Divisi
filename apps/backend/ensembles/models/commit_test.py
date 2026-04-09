@@ -8,7 +8,7 @@ def test_create_new_commit_new_arrangement(arrangement, user):
 
     new = Commit.create_new_commit(
         arrangement,
-        created_by_user=user
+        created_by_user=user,
         create_kwargs={"file_name": "abc123.mscz", "message": "init"},
     )
 
