@@ -51,6 +51,17 @@ class Arrangement(models.Model):
 
     @property
     def latest_version(self):
+        prefetched_latest_versions = getattr(self, "prefetched_latest_versions", None)
+        if prefetched_latest_versions is not None:
+            return prefetched_latest_versions[0] if prefetched_latest_versions else None
+
+        prefetched_versions = getattr(self, "_prefetched_objects_cache", {}).get("versions")
+        if prefetched_versions is not None:
+            for version in prefetched_versions:
+                if version.is_latest:
+                    return version
+            return None
+
         return self.versions.filter(is_latest=True).first()
 
     @property

@@ -8,7 +8,7 @@ from rest_framework.decorators import permission_classes
 
 from django.core.files.storage import default_storage
 from django.core.exceptions import ValidationError
-from django.db.models import Q
+from django.db.models import Q, Prefetch, Count
 from django.conf import settings
 from django.http import FileResponse
 
@@ -19,11 +19,13 @@ from ensembles.models import (
     EnsembleUsership,
     PartAsset,
     PartName,
+    PartBook,
     Commit,
     UserScoreVersion,
 )
 from ensembles.serializers import (
     EnsembleSerializer,
+    EnsembleListSerializer,
     ArrangementSerializer,
     ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
@@ -44,15 +46,54 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     lookup_field = "slug"  # use slug instead of pk
     permission_classes = [IsAuthenticated]
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return EnsembleListSerializer
+        return EnsembleSerializer
+
     def get_queryset(self):
         """Filter ensembles to only those the user has access to"""
         user = self.request.user
         if not user.is_authenticated:
             return Ensemble.objects.none()
-        
-        # Get ensembles where user is owner or has usership
-        return Ensemble.objects.filter(
+
+        base_qs = Ensemble.objects.filter(
             Q(owner=user) | Q(userships__user=user)
+        ).select_related("owner")
+
+        if self.action == "list":
+            # Lightweight list payload: do not fetch nested arrangements or part-book details.
+            return base_qs.annotate(
+                arrangements_count=Count("arrangements", distinct=True)
+            ).prefetch_related(
+                Prefetch(
+                    "userships",
+                    queryset=EnsembleUsership.objects.filter(user=user).only("id", "user_id", "ensemble_id", "role"),
+                )
+            ).distinct()
+
+        # Full detail payload for retrieve/update and custom actions.
+        arrangements_queryset = Arrangement.objects.select_related("ensemble").prefetch_related(
+            Prefetch(
+                "versions",
+                queryset=ArrangementVersion.objects.filter(is_latest=True),
+                to_attr="prefetched_latest_versions",
+            )
+        )
+
+        return base_qs.prefetch_related(
+            Prefetch("arrangements", queryset=arrangements_queryset),
+            Prefetch(
+                "userships",
+                queryset=EnsembleUsership.objects.select_related("user"),
+            ),
+            "part_names",
+            Prefetch(
+                "part_books",
+                queryset=PartBook.objects.select_related("part_name").order_by(
+                    "part_name__display_name", "-revision"
+                ),
+            ),
         ).distinct()
 
     def perform_create(self, serializer):

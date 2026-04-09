@@ -16,9 +16,10 @@ import {
 } from '@mantine/core';
 import { IconMusic, IconEye } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
+import type { Ensemble } from '../../services/apiService';
 
 const EnsemblesPage = () => {
-  const [ensembles, setEnsembles] = useState<any[]>([]);
+  const [ensembles, setEnsembles] = useState<Ensemble[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
 
@@ -92,7 +93,7 @@ const EnsemblesPage = () => {
                 </Group>
 
                 <Text c="dimmed" size="sm" flex={1}>
-                  {ensemble.arrangements?.length || 0} arrangement{ensemble.arrangements?.length !== 1 ? 's' : ''}
+                  {(ensemble.arrangements_count ?? ensemble.arrangements?.length ?? 0)} arrangement{(ensemble.arrangements_count ?? ensemble.arrangements?.length ?? 0) !== 1 ? 's' : ''}
                 </Text>
 
                 <Group justify="space-between" mt="auto">
