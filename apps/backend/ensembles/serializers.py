@@ -1,4 +1,5 @@
 import io
+from collections import defaultdict
 from rest_framework import serializers
 from rest_framework import status
 
@@ -13,6 +14,7 @@ from ensembles.models import (
     Arrangement,
     ArrangementVersion,
     PartBook,
+    PartAsset,
     PartName,
     Commit,
 )
@@ -104,10 +106,28 @@ class EnsembleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
+    def _get_request_user_usership(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+
+        prefetched_userships = getattr(obj, "_prefetched_objects_cache", {}).get("userships")
+        if prefetched_userships is None:
+            return EnsembleUsership.objects.filter(ensemble=obj, user=request.user).first()
+
+        for usership in prefetched_userships:
+            if usership.user_id == request.user.id:
+                return usership
+        return None
+
     def get_is_admin(self, obj):
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            return request.user.is_ensemble_admin(obj)
+            if obj.owner_id == request.user.id:
+                return True
+            ship = self._get_request_user_usership(obj)
+            return ship is not None and ship.role == EnsembleUsership.Role.ADMIN
+        return False
 
     def get_join_link(self, obj):
         """Generate join link if user is owner or admin"""
@@ -122,16 +142,13 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 return f"{frontend_url.rstrip('/')}/join/{token}"
 
             # Check if user has admin role
-            try:
-                ship = EnsembleUsership.objects.get(ensemble=obj, user=request.user)
-                if ship.role == EnsembleUsership.Role.ADMIN:
-                    token = obj.get_or_create_invite_token()
-                    frontend_url = getattr(
-                        settings, "FRONTEND_URL", "http://localhost:5173"
-                    )
-                    return f"{frontend_url.rstrip('/')}/join/{token}"
-            except EnsembleUsership.DoesNotExist:
-                pass
+            ship = self._get_request_user_usership(obj)
+            if ship is not None and ship.role == EnsembleUsership.Role.ADMIN:
+                token = obj.get_or_create_invite_token()
+                frontend_url = getattr(
+                    settings, "FRONTEND_URL", "http://localhost:5173"
+                )
+                return f"{frontend_url.rstrip('/')}/join/{token}"
 
             return None
         return None
@@ -140,6 +157,9 @@ class EnsembleSerializer(serializers.ModelSerializer):
         """Get userships details"""
         request = self.context.get("request")
         if request and request.user.is_authenticated:
+            userships = getattr(obj, "_prefetched_objects_cache", {}).get("userships")
+            if userships is None:
+                userships = EnsembleUsership.objects.filter(ensemble=obj).select_related("user")
             return [
                 # TODO[SC-278]: Usership serializer
                 {
@@ -148,7 +168,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                     "role": usership.role,
                     "date_joined": usership.date_joined,
                 }
-                for usership in EnsembleUsership.objects.filter(ensemble=obj)
+                for usership in userships
             ]
         return None
 
@@ -164,12 +184,33 @@ class EnsembleSerializer(serializers.ModelSerializer):
             parts = obj.part_names.all().order_by(
                 Coalesce("order", Value(999999, output_field=IntegerField())), "id"
             )
+            part_name_ids = [part.id for part in parts]
+
+            arrangement_titles_by_part_name_id = defaultdict(list)
+            if part_name_ids:
+                part_assets = (
+                    PartAsset.objects.filter(
+                        part_name_id__in=part_name_ids,
+                        arrangement_version__arrangement__ensemble=obj,
+                        arrangement_version__is_latest=True,
+                    )
+                    .select_related("arrangement_version__arrangement")
+                    .order_by(
+                        "arrangement_version__arrangement__mvt_no",
+                        "arrangement_version__arrangement__id",
+                    )
+                )
+                for asset in part_assets:
+                    arrangement_titles_by_part_name_id[asset.part_name_id].append(
+                        asset.arrangement_version.arrangement.title
+                    )
+
             # Keep a stable, typed shape for the frontend
             return [
                 {
                     "id": part.id,
                     "display_name": part.display_name,
-                    "arrangements": part.get_arrangements(),
+                    "arrangements": arrangement_titles_by_part_name_id.get(part.id, []),
                     "order": part.order,
                 }
                 for part in parts
@@ -180,11 +221,13 @@ class EnsembleSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return []
-        books = (
-            PartBook.objects.filter(ensemble=obj)
-            .select_related("part_name")
-            .order_by("part_name__display_name", "-revision")
-        )
+        books = getattr(obj, "_prefetched_objects_cache", {}).get("part_books")
+        if books is None:
+            books = (
+                PartBook.objects.filter(ensemble=obj)
+                .select_related("part_name")
+                .order_by("part_name__display_name", "-revision")
+            )
         result = []
         for book in books:
             item = {
@@ -199,11 +242,52 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 "is_rendered": book.is_rendered,
                 "download_url": None,
             }
-            if book.is_rendered and default_storage.exists(book.pdf_file_key):
+            # Avoid a storage existence check on list endpoints; this can be slow on remote storage.
+            if book.is_rendered:
                 file_url = default_storage.url(book.pdf_file_key)
                 item["download_url"] = request.build_absolute_uri(file_url)
             result.append(item)
         return result
+
+
+class EnsembleListSerializer(serializers.ModelSerializer):
+    is_admin = serializers.SerializerMethodField(read_only=True)
+    arrangements_count = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Ensemble
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "is_admin",
+            "arrangements_count",
+            "part_books_generating",
+            "latest_part_book_revision",
+        ]
+        read_only_fields = fields
+
+    def get_is_admin(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        if obj.owner_id == request.user.id:
+            return True
+        prefetched_userships = getattr(obj, "_prefetched_objects_cache", {}).get("userships")
+        if prefetched_userships is not None:
+            for usership in prefetched_userships:
+                if usership.user_id == request.user.id and usership.role == EnsembleUsership.Role.ADMIN:
+                    return True
+            return False
+        return EnsembleUsership.objects.filter(
+            ensemble=obj, user=request.user, role=EnsembleUsership.Role.ADMIN
+        ).exists()
+
+    def get_arrangements_count(self, obj):
+        annotated_count = getattr(obj, "arrangements_count", None)
+        if annotated_count is not None:
+            return annotated_count
+        return obj.arrangements.count()
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):

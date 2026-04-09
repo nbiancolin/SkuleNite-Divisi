@@ -86,8 +86,8 @@ export interface Ensemble {
   id: number,
   name: string,
   slug: string,
-  // TODO: Remove Arrangements from ensemble, makes the request too slow
-  arrangements: Arrangement[],
+  arrangements?: Arrangement[],
+  arrangements_count?: number,
   join_link?: string | null,
   is_admin: boolean, //if the requesting user is an admin in the ensemble
   // Backend returns `part_names`. Keep `part_name` for backward compatibility.
