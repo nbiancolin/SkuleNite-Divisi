@@ -5,6 +5,7 @@ import shutil
 import zipfile
 import xml.etree.ElementTree as ET
 import os
+import hashlib
 
 from musescore_part_formatter import format_mscz, format_mscx, FormattingParams
 from musescore_part_formatter.utils import _measure_has_line_break
@@ -53,6 +54,66 @@ def test_mscz_formatter_works(style):
 
 def test_params_incorrect():
     pass
+
+
+def _score_style_mss_sha256(mscz_path: str) -> str:
+    with zipfile.ZipFile(mscz_path, "r") as zf:
+        names = [n for n in zf.namelist() if n.endswith("score_style.mss")]
+        assert names, f"No score_style.mss in {mscz_path}"
+        return hashlib.sha256(zf.read(names[0])).hexdigest()
+
+
+def test_apply_mss_style_false_leaves_score_style_mss_unchanged():
+    input_path = "tests/test-data/New-Test-Score.mscz"
+    with tempfile.NamedTemporaryFile(suffix=".mscz", delete=False) as tmp:
+        output_path = tmp.name
+    try:
+        input_hash = _score_style_mss_sha256(input_path)
+        params: FormattingParams = {
+            "selected_style": "jazz",
+            "show_number": "1",
+            "show_title": "TEST Show",
+            "version_num": "1.0.0",
+            "num_measures_per_line_part": 6,
+            "num_measures_per_line_score": 4,
+            "num_lines_per_page": 7,
+            "apply_mss_style": False,
+        }
+        assert format_mscz(input_path, output_path, params)
+        assert _score_style_mss_sha256(output_path) == input_hash
+    finally:
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+
+def test_apply_measure_count_line_breaks_false_skips_regular_breaks():
+    filename = "Test_Regular_Line_Breaks.mscx"
+    params: FormattingParams = {
+        "num_measures_per_line_part": 4,
+        "num_measures_per_line_score": 4,
+        "num_lines_per_page": 7,
+        "selected_style": "broadway",
+        "show_title": "TEST Show",
+        "show_number": "1",
+        "version_num": "1.0.0",
+        "apply_rehearsal_line_breaks": False,
+        "apply_double_bar_line_breaks": False,
+        "apply_measure_count_line_breaks": False,
+        "apply_line_break_balancing": False,
+        "apply_broadway_vbox_header": False,
+        "apply_part_name_in_header": False,
+    }
+    with tempfile.TemporaryDirectory() as workdir:
+        shutil.copy(f"tests/test-data/sample-mscx/{filename}", workdir)
+        temp_mscx = os.path.join(workdir, filename)
+        format_mscx(temp_mscx, params)
+        tree = ET.parse(temp_mscx)
+        score = tree.getroot().find("Score")
+        assert score is not None
+        staff = score.find("Staff")
+        assert staff is not None
+        measures = staff.findall("Measure")
+        assert not any(_measure_has_line_break(m) for m in measures)
 
 
 # TODO: Quickly test what jappens if you pass in bogus params and ensure that its caught

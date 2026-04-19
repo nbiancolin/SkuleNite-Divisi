@@ -5,7 +5,12 @@ import shutil
 from django.core.files import File
 from django.core.files.storage import default_storage
 
-from musescore_part_formatter import format_mscz, FormattingParams
+from musescore_part_formatter.main import format_mscz
+
+from ensembles.formatting_steps_constants import (
+    FORMATTING_STEP_KEYS,
+    merge_formatting_step_defaults,
+)
 
 from divisi.models import UploadSession
 from ensembles.models import ArrangementVersion
@@ -16,7 +21,7 @@ from celery import shared_task
 
 LOGGER = getLogger("divisi_processing")
 
-def _format_mscz_file(input_key: str, output_key: str, formatting_params: FormattingParams) -> dict[str, str]:
+def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) -> dict[str, str]:
     """Internal fn to format a mscz file. Reads in the file from the key, and writes it back"""
 
     tmp_in_path = tmp_out_path = None
@@ -65,7 +70,7 @@ def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
     input_key = session.mscz_file_key
     output_key = session.output_file_key
 
-    params : FormattingParams = {
+    params: dict = {
         "selected_style": kwargs.get("selected_style"),
         "show_title": kwargs.get("show_title"),
         "show_number": kwargs.get("show_number"),
@@ -86,14 +91,22 @@ def format_arrangement_version(version_id: int) -> dict[str, str]:
     input_key = version.mscz_file_key
     output_key = version.output_file_key
 
-    params: FormattingParams = {
+    params: dict = {
         "selected_style": version.arrangement.style,
         "show_title": version.ensemble_name,
         "show_number": version.arrangement.mvt_no,
-        "version_num": version.version_label, 
+        "version_num": version.version_label,
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
         "num_lines_per_page": version.num_lines_per_page,
     }
+
+    stored = version.formatting_steps or {}
+    if isinstance(stored, dict):
+        for key in FORMATTING_STEP_KEYS:
+            if key in stored:
+                params[key] = stored[key]
+
+    merge_formatting_step_defaults(params)
 
     return _format_mscz_file(input_key, output_key, params)

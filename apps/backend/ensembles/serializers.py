@@ -24,10 +24,63 @@ from django.contrib.auth import get_user_model
 
 from logging import getLogger
 
+from ensembles.formatting_steps_constants import FORMATTING_STEP_KEYS, default_formatting_steps
+
 logger = getLogger("EnsembleViews")
 
 
 VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
+
+
+def coerce_formatting_steps(raw) -> dict[str, bool]:
+    """Merge client partial dict with defaults; reject unknown keys and non-bool values."""
+    base = default_formatting_steps()
+    if raw is None:
+        return base
+    if not isinstance(raw, dict):
+        raise serializers.ValidationError("formatting_steps must be a JSON object.")
+    unknown = set(raw) - set(FORMATTING_STEP_KEYS)
+    if unknown:
+        raise serializers.ValidationError(
+            f"Unknown formatting_steps keys: {sorted(unknown)}"
+        )
+    for k in FORMATTING_STEP_KEYS:
+        if k in raw:
+            v = raw[k]
+            if not isinstance(v, bool):
+                raise serializers.ValidationError(
+                    {k: "Each formatting_steps value must be a boolean."}
+                )
+            base[k] = v
+    return base
+
+
+class FormattingStepsField(serializers.Field):
+    """Accepts a dict (JSON body) or JSON string (multipart form)."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("allow_null", True)
+        kwargs.setdefault("required", False)
+        super().__init__(**kwargs)
+
+    def to_internal_value(self, data):
+        import json
+
+        if data in (None, "", serializers.empty):
+            return None
+        if isinstance(data, dict):
+            return coerce_formatting_steps(data)
+        if isinstance(data, (bytes, bytearray)):
+            data = data.decode()
+        if isinstance(data, str):
+            try:
+                parsed = json.loads(data)
+            except json.JSONDecodeError as e:
+                raise serializers.ValidationError(
+                    "formatting_steps must be valid JSON."
+                ) from e
+            return coerce_formatting_steps(parsed)
+        raise serializers.ValidationError("formatting_steps must be an object or JSON string.")
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -385,6 +438,7 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
     num_lines_per_page = serializers.IntegerField(default=8)
 
     format_parts = serializers.BooleanField(default=True)
+    formatting_steps = FormattingStepsField(required=False, allow_null=True)
 
     def validate_version_type(self, value):
         if value not in [t[0] for t in VERSION_TYPES]:
@@ -403,6 +457,7 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
         commit = Commit.objects.get(id=self.validated_data["commit_id"])
 
         with transaction.atomic():
+            fs = self.validated_data.get("formatting_steps")
             version = ArrangementVersion.objects.create(
                 arrangement=Arrangement.objects.get(
                     id=commit.arrangement_id
@@ -415,6 +470,9 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
                     "num_measures_per_line_part"
                 ],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
+                formatting_steps=(
+                    fs if fs is not None else default_formatting_steps()
+                ),
             )
 
             version.save(
@@ -461,6 +519,7 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     num_lines_per_page = serializers.IntegerField(default=8)
 
     format_parts = serializers.BooleanField(default=True)
+    formatting_steps = FormattingStepsField(required=False, allow_null=True)
 
     def validate_version_type(self, value):
         if value not in [t[0] for t in VERSION_TYPES]:
@@ -475,6 +534,7 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     def save(self, **kwargs):
         assert self.validated_data, "Must call is_valid first!"
         with transaction.atomic():
+            fs = self.validated_data.get("formatting_steps")
             version = ArrangementVersion.objects.create(
                 arrangement=Arrangement.objects.get(
                     id=self.validated_data["arrangement_id"]
@@ -487,6 +547,9 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
                     "num_measures_per_line_part"
                 ],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
+                formatting_steps=(
+                    fs if fs is not None else default_formatting_steps()
+                ),
             )
 
             version.save(

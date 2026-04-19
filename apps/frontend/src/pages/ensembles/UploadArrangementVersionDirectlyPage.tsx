@@ -12,11 +12,14 @@ import {
   SegmentedControl,
   Collapse,
   TextInput,
+  Stack,
 } from "@mantine/core";
 import { X, UploadCloud } from "lucide-react";
 import axios from "axios";
 import { apiService } from "../../services/apiService";
 import type { Arrangement } from "../../services/apiService";
+import FormattingStepsFormSection from "./FormattingStepsFormSection";
+import { defaultFormattingSteps, type FormattingStepsState } from "./formattingSteps";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -35,6 +38,9 @@ export default function UploadArrangementVersionPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false)
   const [enableDivisiFormatting, setEnableDivisiFormatting] = useState<boolean>(true)
+  const [formattingSteps, setFormattingSteps] = useState<FormattingStepsState>(() =>
+    defaultFormattingSteps()
+  )
 
   // Function to calculate the new version number based on current version and type
   const getNewVersionNumber = (type?: string): string => {
@@ -121,7 +127,10 @@ export default function UploadArrangementVersionPage() {
     formData.append("num_measures_per_line_score", measuresPerLineScore);
     formData.append("num_measures_per_line_part", measuresPerLinePart);
     formData.append("num_lines_per_page", linesPerPage);
-    formData.append("format_parts", enableDivisiFormatting.toString())
+    formData.append("format_parts", enableDivisiFormatting.toString());
+    if (enableDivisiFormatting) {
+      formData.append("formatting_steps", JSON.stringify(formattingSteps));
+    }
     const csrf = getCsrfToken();
     try {
       const response = await axios.post(`${API_BASE_URL}/arrangementversions/upload/`, formData, {
@@ -191,34 +200,36 @@ export default function UploadArrangementVersionPage() {
         </Center>
                     
         <Collapse in={showAdvanced}>
-          <Text> Divisi Part Formatter Configuration:</Text>
-          <Text> For most 4/4 songs, the defaults will work.
-            If your song is in 3/4 for example, you might want to increase the number.
-            If your song is in 12/8 for example, you might want to decrease the number
-          </Text>
-          <TextInput
-            label="Measures per Line (Score)"
-            value={measuresPerLineScore}
-            onChange={(e) => setMeasuresPerLineScore(e.currentTarget.value)}
-            type="number"
-            mt="md"
-          />
-          <TextInput
-            label="Measures per Line (Part)"
-            value={measuresPerLinePart}
-            onChange={(e) => setMeasuresPerLinePart(e.currentTarget.value)}
-            mt="md"
-          />
-          <TextInput
-            label="Lines per Page (Part)"
-            value={linesPerPage}
-            onChange={(e) => setLinesPerPage(e.currentTarget.value)}
-            mt="md"
-          />
-          
-          {/* TODO: Add functionality for setting page size and stuff */}
-          {/* TODO: Make the above a property of the Ensemble (that can be overrided by the arrangement) */}
-            {/* Idea for that: Make a new model called "style properties", and ensembles can select the same as previous (and make their own copy) or custom make their own */}
+          <Stack gap="xs">
+            <Text> Divisi Part Formatter Configuration:</Text>
+            <Text size="sm">
+              For most 4/4 songs, the defaults will work. If your song is in 3/4 for example, you might
+              want to increase the number. If your song is in 12/8 for example, you might want to
+              decrease the number.
+            </Text>
+            <TextInput
+              label="Measures per Line (Score)"
+              value={measuresPerLineScore}
+              onChange={(e) => setMeasuresPerLineScore(e.currentTarget.value)}
+              type="number"
+              mt="md"
+            />
+            <TextInput
+              label="Measures per Line (Part)"
+              value={measuresPerLinePart}
+              onChange={(e) => setMeasuresPerLinePart(e.currentTarget.value)}
+              mt="md"
+            />
+            <TextInput
+              label="Lines per Page (Part)"
+              value={linesPerPage}
+              onChange={(e) => setLinesPerPage(e.currentTarget.value)}
+              mt="md"
+            />
+            {enableDivisiFormatting && (
+              <FormattingStepsFormSection value={formattingSteps} onChange={setFormattingSteps} />
+            )}
+          </Stack>
         </Collapse>
 
       <Button

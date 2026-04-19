@@ -5,6 +5,7 @@ import os
 from logging import getLogger
 
 from ensembles.models.arrangement import Arrangement
+from ensembles.formatting_steps_constants import default_formatting_steps
 
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,7 @@ if TYPE_CHECKING:
     from ensembles.models.part import PartAsset
 
 logger = getLogger("app")
+
 
 class ArrangementVersion(models.Model):
     arrangement = models.ForeignKey(
@@ -44,6 +46,9 @@ class ArrangementVersion(models.Model):
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
     num_lines_per_page = models.IntegerField()
+
+    # Part-formatter pipeline toggles used when format_parts runs; all True = legacy behavior.
+    formatting_steps = models.JSONField(default=default_formatting_steps)
 
     @property
     def version_label_full(self) -> str:

@@ -4,7 +4,7 @@ import sys
 
 import xml.etree.ElementTree as ET
 
-from .utils import Style, FormattingParams
+from .utils import Style, FormattingParams, FORMATTING_STEP_KEYS
 from .utils import set_score_properties
 from .formatting import add_styles_to_score_and_parts
 from .formatting import (
@@ -31,6 +31,13 @@ from logging import getLogger
 LOGGER = getLogger("PartFormatter")
 
 
+def merge_formatting_step_defaults(params: dict) -> None:
+    """Ensure every apply_* key exists (mutates). Omitted keys default to True."""
+    for key in FORMATTING_STEP_KEYS:
+        if key not in params:
+            params[key] = True
+
+
 def format_mscx(
     mscx_path: str, params: FormattingParams, is_part: bool = False
 ) -> bool:
@@ -51,33 +58,55 @@ def format_mscx(
         if score is None:
             raise ValueError("No <Score> tag found in the XML.")
 
-        score_properties = {
-            "albumTitle": params["show_title"],
-            "trackNum": params["show_number"],
-            "versionNum": params["version_num"],
-        }
+        merge_formatting_step_defaults(params)
 
-        set_score_properties(score, score_properties)
+        # prep_mm_rests marks measures for multimeasure-aware line breaks; cleanup_mm_rests
+        # removes those marks. Prep only runs when at least one line-break insertion step is on
+        # (otherwise prep would only add temporary attrs). If prep ran, always cleanup so _mm
+        # is never left in the saved XML.
+        if params.get("apply_score_metadata", True):
+            score_properties = {
+                "albumTitle": params["show_title"],
+                "trackNum": params["show_number"],
+                "versionNum": params["version_num"],
+            }
+            set_score_properties(score, score_properties)
 
         staves = score.findall("Staff")
 
         staff = staves[0]  # noqa  -- only add layout breaks to the first staff
-        prep_mm_rests(
-            staff,
+        needs_mm_marks = (
+            params.get("apply_rehearsal_line_breaks", True)
+            or params.get("apply_double_bar_line_breaks", True)
+            or params.get("apply_measure_count_line_breaks", True)
         )
-        add_rehearsal_mark_line_breaks(staff)
-        add_double_bar_line_breaks(staff)
-        if is_part:
-            add_regular_line_breaks(staff, params["num_measures_per_line_part"])
-        else:
-            add_regular_line_breaks(staff, params["num_measures_per_line_score"])
-        final_pass_through(staff)
+        run_mm_prep = (
+            params.get("apply_multimeasure_rest_prep", True) and needs_mm_marks
+        )
+        if run_mm_prep:
+            prep_mm_rests(staff)
+        if params.get("apply_rehearsal_line_breaks", True):
+            add_rehearsal_mark_line_breaks(staff)
+        if params.get("apply_double_bar_line_breaks", True):
+            add_double_bar_line_breaks(staff)
+        if params.get("apply_measure_count_line_breaks", True):
+            if is_part:
+                add_regular_line_breaks(staff, params["num_measures_per_line_part"])
+            else:
+                add_regular_line_breaks(staff, params["num_measures_per_line_score"])
+        if params.get("apply_line_break_balancing", True):
+            final_pass_through(staff)
         #TODO: fix this
         # new_add_page_breaks(staff, params["num_lines_per_page"])
-        cleanup_mm_rests(staff)
-        if params["selected_style"] == Style.BROADWAY:
+        if run_mm_prep:
+            cleanup_mm_rests(staff)
+        if (
+            params.get("apply_broadway_vbox_header", True)
+            and params["selected_style"] == Style.BROADWAY
+        ):
             add_broadway_header(staff, params["show_number"], params["show_title"])
-        add_part_name(staff)
+        if params.get("apply_part_name_in_header", True):
+            add_part_name(staff)
 
         with open(mscx_path, "wb") as f:
             ET.indent(tree, space="  ", level=0)
@@ -136,6 +165,11 @@ def format_mscz(
             "num_lines_per_page": params.get("num_lines_per_page", 8),
         }
 
+    for key in FORMATTING_STEP_KEYS:
+        if key in params:
+            prepped_params[key] = params[key]  # type: ignore[literal-required]
+    merge_formatting_step_defaults(prepped_params)
+
     # do prediction logic
 
     shutil.copyfile(input_path, output_path)
@@ -144,11 +178,12 @@ def format_mscz(
 
     try:
         with unpack_mscz_to_tempdir(output_path) as (work_dir, mscx_files):
-            add_styles_to_score_and_parts(
-                prepped_params["selected_style"],  # type-ignore
-                work_dir,
-                score_info=score_info,
-            )
+            if prepped_params.get("apply_mss_style", True):
+                add_styles_to_score_and_parts(
+                    prepped_params["selected_style"],  # type-ignore
+                    work_dir,
+                    score_info=score_info,
+                )
 
             if not mscx_files:
                 LOGGER.warning("No .mscx files found in the provided mscz file.")
