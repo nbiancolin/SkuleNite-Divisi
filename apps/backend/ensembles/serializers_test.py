@@ -137,6 +137,7 @@ def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(arr
     assert serializer.is_valid(), serializer.errors
     assert serializer.validated_data["formatting_steps"]["apply_mss_style"] is False
     assert serializer.validated_data["formatting_steps"]["apply_score_metadata"] is True
+    assert serializer.validated_data["formatting_steps"]["apply_scrub_existing_line_breaks"] is False
 
 
 @pytest.mark.django_db

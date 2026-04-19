@@ -698,6 +698,13 @@ pip install -e .
 ```
 
 
+Current Project: Inspecting a score, and getting its properties (from the title box, and meta properties)
+by-project: Using these inspected values to format the score intelligently
+by-by project: using different nmpl's 
+
+TODO: last test: get all part names of all parts in score
+
+
 Notes about the Musescore Uncompressed (XML Based) File Format:
 - MM Rests appear to have changed?
   - It seems that now, for a MM rest of length 4, there are 5 measures ??

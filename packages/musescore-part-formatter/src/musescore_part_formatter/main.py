@@ -9,6 +9,7 @@ from .utils import set_score_properties
 from .formatting import add_styles_to_score_and_parts
 from .formatting import (
     prep_mm_rests,
+    scrub_existing_line_breaks,
     add_rehearsal_mark_line_breaks,
     add_double_bar_line_breaks,
     add_regular_line_breaks,
@@ -33,9 +34,22 @@ LOGGER = getLogger("PartFormatter")
 
 def merge_formatting_step_defaults(params: dict) -> None:
     """Ensure every apply_* key exists (mutates). Omitted keys default to True."""
+    defaults = {
+        "apply_mss_style": True,
+        "apply_score_metadata": True,
+        "apply_scrub_existing_line_breaks": False,
+        "apply_multimeasure_rest_prep": True,
+        "apply_rehearsal_line_breaks": True,
+        "apply_double_bar_line_breaks": True,
+        "apply_measure_count_line_breaks": True,
+        "apply_line_break_balancing": True,
+        "apply_multimeasure_rest_cleanup": True,
+        "apply_broadway_vbox_header": True,
+        "apply_part_name_in_header": True,
+    }
     for key in FORMATTING_STEP_KEYS:
         if key not in params:
-            params[key] = True
+            params[key] = defaults[key]
     if (
         params.get("apply_rehearsal_line_breaks", True)
         or params.get("apply_double_bar_line_breaks", True)
@@ -90,6 +104,8 @@ def format_mscx(
         run_mm_prep = (
             params.get("apply_multimeasure_rest_prep", True) and needs_mm_marks
         )
+        if params.get("apply_scrub_existing_line_breaks", False):
+            scrub_existing_line_breaks(staff)
         if run_mm_prep:
             prep_mm_rests(staff)
         if params.get("apply_rehearsal_line_breaks", True):

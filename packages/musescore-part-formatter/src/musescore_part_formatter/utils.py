@@ -50,6 +50,7 @@ class FormattingParams(TypedDict):
     # Optional pipeline toggles; omitted keys default to True (full legacy behavior).
     apply_mss_style: NotRequired[bool]
     apply_score_metadata: NotRequired[bool]
+    apply_scrub_existing_line_breaks: NotRequired[bool]
     apply_multimeasure_rest_prep: NotRequired[bool]
     apply_rehearsal_line_breaks: NotRequired[bool]
     apply_double_bar_line_breaks: NotRequired[bool]
@@ -64,6 +65,7 @@ class FormattingParams(TypedDict):
 FORMATTING_STEP_KEYS: tuple[str, ...] = (
     "apply_mss_style",
     "apply_score_metadata",
+    "apply_scrub_existing_line_breaks",
     "apply_multimeasure_rest_prep",
     "apply_rehearsal_line_breaks",
     "apply_double_bar_line_breaks",
@@ -74,9 +76,23 @@ FORMATTING_STEP_KEYS: tuple[str, ...] = (
     "apply_part_name_in_header",
 )
 
+DEFAULT_FORMATTING_STEPS: dict[str, bool] = {
+    "apply_mss_style": True,
+    "apply_score_metadata": True,
+    "apply_scrub_existing_line_breaks": False,
+    "apply_multimeasure_rest_prep": True,
+    "apply_rehearsal_line_breaks": True,
+    "apply_double_bar_line_breaks": True,
+    "apply_measure_count_line_breaks": True,
+    "apply_line_break_balancing": True,
+    "apply_multimeasure_rest_cleanup": True,
+    "apply_broadway_vbox_header": True,
+    "apply_part_name_in_header": True,
+}
+
 
 def default_formatting_steps() -> dict[str, bool]:
-    return {k: True for k in FORMATTING_STEP_KEYS}
+    return dict(DEFAULT_FORMATTING_STEPS)
 
 
 LOGGER = getLogger("PartFormatter")

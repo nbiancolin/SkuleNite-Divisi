@@ -51,6 +51,11 @@ export default function FormattingStepsFormSection({ value, onChange }: Props) {
         Line breaks
       </Text>
       {row(
+        value.apply_scrub_existing_line_breaks,
+        (v) => patch({ apply_scrub_existing_line_breaks: v }),
+        "Scrub all existing line breaks before applying formatter line breaks"
+      )}
+      {row(
         value.apply_rehearsal_line_breaks,
         (v) => patch({ apply_rehearsal_line_breaks: v }),
         "Line breaks before rehearsal marks"

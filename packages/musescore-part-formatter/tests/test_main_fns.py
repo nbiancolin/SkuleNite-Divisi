@@ -13,6 +13,21 @@ from musescore_part_formatter.utils import _measure_has_line_break
 OUTPUT_DIRECTORY = "tests/processing"
 
 
+def _assert_no_layout_breaks_in_any_measure(mscx_path: str) -> None:
+    tree = ET.parse(mscx_path)
+    score = tree.getroot().find("Score")
+    assert score is not None
+    locations: list[str] = []
+    for staff_idx, staff in enumerate(score.findall("Staff")):
+        for measure_idx, measure in enumerate(staff.findall("Measure")):
+            if measure.find("LayoutBreak") is not None:
+                locations.append(f"staff={staff_idx} measure_index={measure_idx}")
+    assert not locations, (
+        "Expected no <LayoutBreak> inside <Measure> elements; found in: "
+        + ", ".join(locations)
+    )
+
+
 @pytest.mark.parametrize("style", ("jazz", "broadway"))
 def test_mscz_formatter_works(style):
     input_path = "tests/test-data/New-Test-Score.mscz"
@@ -51,6 +66,66 @@ def test_mscz_formatter_works(style):
                             "Staff Spacing not properly set"
                         )
 
+
+@pytest.mark.parametrize("case", ("apply_scrub_existing_line_breaks",))
+def test_mscz_formatter_works_individual_cases(case):
+    input_path = "tests/test-data/New-Test-Score.mscz"
+    output_path = f"tests/test-data/New-Test-Score-jazz-processed-{case}.mscz"
+
+    params: FormattingParams = {
+        "selected_style": "jazz",
+        "show_number": "1",
+        "show_title": "TEST Show",
+        "version_num": "1.0.0",
+        "num_measures_per_line_part": 6,
+        "num_measures_per_line_score": 4,
+        "num_lines_per_page": 7,
+        case: True,
+    }
+    if case == "apply_scrub_existing_line_breaks":
+        # Scrub only removes breaks; other steps would insert <LayoutBreak> again.
+        params.update(
+            {
+                "apply_rehearsal_line_breaks": False,
+                "apply_double_bar_line_breaks": False,
+                "apply_measure_count_line_breaks": False,
+                "apply_line_break_balancing": False,
+            }
+        )
+
+    res = format_mscz(input_path, output_path, params)
+    assert res
+    warnings.warn("Inspect processed files and confirm they look good! :sunglasses: ")
+
+    # check that the style mss file has a value set (not the placeholder)
+    # unzio output file, find mss file,
+    with tempfile.TemporaryDirectory() as tempdir:
+        with zipfile.ZipFile(output_path, "r") as zf:
+            zf.extractall(tempdir)
+
+            for root, _, files in os.walk(tempdir):
+                for filename in files:
+                    if not filename.lower().endswith(".mss"):
+                        continue
+
+                    full_path = os.path.join(root, filename)
+
+                    with open(full_path, "r") as f:
+                        f_contents = f.read()
+                        assert "DIVISI:staff_spacing" not in f_contents, (
+                            "Staff Spacing not properly set"
+                        )
+
+            if case == "apply_scrub_existing_line_breaks":
+                matches = []
+                for root, _, files in os.walk(tempdir):
+                    if "New-Test-Score.mscx" in files:
+                        matches.append(os.path.join(root, "New-Test-Score.mscx"))
+                assert len(matches) == 1, (
+                    "Expected exactly one New-Test-Score.mscx in extracted mscz; "
+                    f"found {matches!r}"
+                )
+                _assert_no_layout_breaks_in_any_measure(matches[0])
 
 def test_params_incorrect():
     pass
@@ -114,7 +189,6 @@ def test_apply_measure_count_line_breaks_false_skips_regular_breaks():
         assert staff is not None
         measures = staff.findall("Measure")
         assert not any(_measure_has_line_break(m) for m in measures)
-
 
 # TODO: Quickly test what jappens if you pass in bogus params and ensure that its caught
 

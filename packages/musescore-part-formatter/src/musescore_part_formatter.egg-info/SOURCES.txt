@@ -1,8 +1,9 @@
 LICENSE
-MANIFEST.in
 README.md
 pyproject.toml
 src/musescore_part_formatter/__init__.py
+src/musescore_part_formatter/estimating_formatting_params.py
+src/musescore_part_formatter/file_inspect.py
 src/musescore_part_formatter/file_processing.py
 src/musescore_part_formatter/formatting.py
 src/musescore_part_formatter/main.py
@@ -15,5 +16,7 @@ src/musescore_part_formatter/resources/broadway_part.mss
 src/musescore_part_formatter/resources/broadway_score.mss
 src/musescore_part_formatter/resources/jazz_part.mss
 src/musescore_part_formatter/resources/jazz_score.mss
+tests/test_estmating_formatting_params.py
+tests/test_file_inspecting.py
 tests/test_main_fns.py
 tests/test_utils.py
