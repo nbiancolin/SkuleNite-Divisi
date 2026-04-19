@@ -72,7 +72,10 @@ class Commit(models.Model):
             return cls.objects.create(arrangement=arrangement, created_by=created_by_user, **create_kwargs)
 
         return cls.objects.create(
-            arrangement=arrangement, parent_commit=latest_commit, **create_kwargs
+            arrangement=arrangement,
+            parent_commit=latest_commit,
+            created_by=created_by_user,
+            **create_kwargs,
         )
 
     @classmethod

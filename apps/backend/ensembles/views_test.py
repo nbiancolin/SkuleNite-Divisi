@@ -1,10 +1,40 @@
 import pytest
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from ensembles.models import ArrangementVersion, EnsembleUsership
+from ensembles.models import ArrangementVersion, Commit, EnsembleUsership
 from ensembles.factories import ArrangementFactory, ArrangementVersionFactory, EnsembleUsershipFactory
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.save")
+def test_upload_new_commit_sets_created_by_on_second_upload(mock_save, arrangement, user, client):
+    """Follow-up commits must record the authenticated user as created_by (regression)."""
+    url = reverse("ensembles:arrangement-upload-new-commit", kwargs={"slug": arrangement.slug})
+    r1 = client.post(
+        url,
+        data={
+            "file": SimpleUploadedFile("first.mscz", b"x", content_type="application/octet-stream"),
+            "message": "first",
+        },
+        format="multipart",
+    )
+    assert r1.status_code == 200, r1.content
+    r2 = client.post(
+        url,
+        data={
+            "file": SimpleUploadedFile("second.mscz", b"y", content_type="application/octet-stream"),
+            "message": "second",
+        },
+        format="multipart",
+    )
+    assert r2.status_code == 200, r2.content
+    commits = list(Commit.objects.filter(arrangement=arrangement).order_by("id"))
+    assert len(commits) == 2
+    assert commits[0].created_by_id == user.id
+    assert commits[1].created_by_id == user.id
 
 
 @pytest.mark.django_db
