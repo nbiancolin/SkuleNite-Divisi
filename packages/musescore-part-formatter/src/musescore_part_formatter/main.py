@@ -36,6 +36,13 @@ def merge_formatting_step_defaults(params: dict) -> None:
     for key in FORMATTING_STEP_KEYS:
         if key not in params:
             params[key] = True
+    if (
+        params.get("apply_rehearsal_line_breaks", True)
+        or params.get("apply_double_bar_line_breaks", True)
+        or params.get("apply_measure_count_line_breaks", True)
+    ):
+        params["apply_multimeasure_rest_prep"] = True
+        params["apply_multimeasure_rest_cleanup"] = True
 
 
 def format_mscx(

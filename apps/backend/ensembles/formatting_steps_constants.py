@@ -19,6 +19,12 @@ FORMATTING_STEP_KEYS: tuple[str, ...] = (
     "apply_part_name_in_header",
 )
 
+LINE_BREAK_STEP_KEYS: tuple[str, ...] = (
+    "apply_rehearsal_line_breaks",
+    "apply_double_bar_line_breaks",
+    "apply_measure_count_line_breaks",
+)
+
 
 def default_formatting_steps() -> dict[str, bool]:
     return {k: True for k in FORMATTING_STEP_KEYS}
@@ -29,3 +35,6 @@ def merge_formatting_step_defaults(params: dict) -> None:
     for key in FORMATTING_STEP_KEYS:
         if key not in params:
             params[key] = True
+    if any(params.get(k, True) for k in LINE_BREAK_STEP_KEYS):
+        params["apply_multimeasure_rest_prep"] = True
+        params["apply_multimeasure_rest_cleanup"] = True

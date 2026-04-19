@@ -20,7 +20,11 @@ import { X } from "lucide-react";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit } from "../../services/apiService";
 import FormattingStepsFormSection from "./FormattingStepsFormSection";
-import { defaultFormattingSteps, type FormattingStepsState } from "./formattingSteps";
+import {
+  defaultFormattingSteps,
+  normalizedFormattingSteps,
+  type FormattingStepsState,
+} from "./formattingSteps";
 
 export default function CreateVersionFromCommitPage() {
   const { arrangementId = "0", commitId = "" } = useParams();
@@ -144,7 +148,7 @@ export default function CreateVersionFromCommitPage() {
         num_measures_per_line_part: nPart,
         num_lines_per_page: nLines,
         format_parts: formatParts,
-        ...(formatParts ? { formatting_steps: formattingSteps } : {}),
+        ...(formatParts ? { formatting_steps: normalizedFormattingSteps(formattingSteps) } : {}),
       });
       navigate(`/app/arrangements/${arrangementId}`);
     } catch (err) {
@@ -240,7 +244,7 @@ export default function CreateVersionFromCommitPage() {
         <Checkbox
           checked={formatParts}
           onChange={() => setFormatParts((o) => !o)} 
-          label="Use Divisi Part Formatter when exporting parts (Coming Soon!)"
+          label="Use Divisi Part Formatter when exporting parts"
           mt="md"
         />
       </Center>

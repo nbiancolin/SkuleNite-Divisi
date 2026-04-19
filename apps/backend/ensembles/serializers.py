@@ -24,7 +24,11 @@ from django.contrib.auth import get_user_model
 
 from logging import getLogger
 
-from ensembles.formatting_steps_constants import FORMATTING_STEP_KEYS, default_formatting_steps
+from ensembles.formatting_steps_constants import (
+    FORMATTING_STEP_KEYS,
+    default_formatting_steps,
+    merge_formatting_step_defaults,
+)
 
 logger = getLogger("EnsembleViews")
 
@@ -52,6 +56,7 @@ def coerce_formatting_steps(raw) -> dict[str, bool]:
                     {k: "Each formatting_steps value must be a boolean."}
                 )
             base[k] = v
+    merge_formatting_step_defaults(base)
     return base
 
 

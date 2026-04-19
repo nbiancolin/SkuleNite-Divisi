@@ -19,7 +19,11 @@ import axios from "axios";
 import { apiService } from "../../services/apiService";
 import type { Arrangement } from "../../services/apiService";
 import FormattingStepsFormSection from "./FormattingStepsFormSection";
-import { defaultFormattingSteps, type FormattingStepsState } from "./formattingSteps";
+import {
+  defaultFormattingSteps,
+  normalizedFormattingSteps,
+  type FormattingStepsState,
+} from "./formattingSteps";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -129,7 +133,7 @@ export default function UploadArrangementVersionPage() {
     formData.append("num_lines_per_page", linesPerPage);
     formData.append("format_parts", enableDivisiFormatting.toString());
     if (enableDivisiFormatting) {
-      formData.append("formatting_steps", JSON.stringify(formattingSteps));
+      formData.append("formatting_steps", JSON.stringify(normalizedFormattingSteps(formattingSteps)));
     }
     const csrf = getCsrfToken();
     try {

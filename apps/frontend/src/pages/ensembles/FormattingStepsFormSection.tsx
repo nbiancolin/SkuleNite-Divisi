@@ -28,9 +28,6 @@ export default function FormattingStepsFormSection({ value, onChange }: Props) {
     onChange({ ...value, ...partial });
   };
 
-  const mmLinked =
-    value.apply_multimeasure_rest_prep && value.apply_multimeasure_rest_cleanup;
-
   return (
     <Stack gap="sm" mt="md">
       <Text size="sm" fw={600}>
@@ -72,19 +69,6 @@ export default function FormattingStepsFormSection({ value, onChange }: Props) {
         value.apply_line_break_balancing,
         (v) => patch({ apply_line_break_balancing: v }),
         "Balance short lines (final pass)"
-      )}
-
-      <Text size="xs" fw={500} mt="xs">
-        Multimeasure rests
-      </Text>
-      {row(
-        mmLinked,
-        (v) =>
-          patch({
-            apply_multimeasure_rest_prep: v,
-            apply_multimeasure_rest_cleanup: v,
-          }),
-        "Multimeasure rest prep & cleanup (needed for correct line breaks around MM rests)"
       )}
 
       <Text size="xs" fw={500} mt="xs">
