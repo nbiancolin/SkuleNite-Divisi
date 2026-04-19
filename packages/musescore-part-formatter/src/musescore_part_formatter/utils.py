@@ -1,7 +1,7 @@
 # Utils file contains barebones definitions
 # Like adding page breaks and adding styles and stuff that is not logic based
 
-from typing import TypedDict
+from typing import TypedDict, NotRequired
 from enum import Enum
 import xml.etree.ElementTree as ET
 
@@ -42,11 +42,57 @@ class Style(Enum):
 class FormattingParams(TypedDict):
     selected_style: str | Style
     show_title: str
-    show_number: str 
-    version_num: str 
+    show_number: str
+    version_num: str
     num_measures_per_line_score: int
     num_measures_per_line_part: int
     num_lines_per_page: int
+    # Optional pipeline toggles; omitted keys default to True (full legacy behavior).
+    apply_mss_style: NotRequired[bool]
+    apply_score_metadata: NotRequired[bool]
+    apply_scrub_existing_line_breaks: NotRequired[bool]
+    apply_multimeasure_rest_prep: NotRequired[bool]
+    apply_rehearsal_line_breaks: NotRequired[bool]
+    apply_double_bar_line_breaks: NotRequired[bool]
+    apply_measure_count_line_breaks: NotRequired[bool]
+    apply_line_break_balancing: NotRequired[bool]
+    apply_multimeasure_rest_cleanup: NotRequired[bool]
+    apply_broadway_vbox_header: NotRequired[bool]
+    apply_part_name_in_header: NotRequired[bool]
+
+
+# Keys for serializers / persistence; each maps to FormattingParams field name.
+FORMATTING_STEP_KEYS: tuple[str, ...] = (
+    "apply_mss_style",
+    "apply_score_metadata",
+    "apply_scrub_existing_line_breaks",
+    "apply_multimeasure_rest_prep",
+    "apply_rehearsal_line_breaks",
+    "apply_double_bar_line_breaks",
+    "apply_measure_count_line_breaks",
+    "apply_line_break_balancing",
+    "apply_multimeasure_rest_cleanup",
+    "apply_broadway_vbox_header",
+    "apply_part_name_in_header",
+)
+
+DEFAULT_FORMATTING_STEPS: dict[str, bool] = {
+    "apply_mss_style": True,
+    "apply_score_metadata": True,
+    "apply_scrub_existing_line_breaks": False,
+    "apply_multimeasure_rest_prep": True,
+    "apply_rehearsal_line_breaks": True,
+    "apply_double_bar_line_breaks": True,
+    "apply_measure_count_line_breaks": True,
+    "apply_line_break_balancing": True,
+    "apply_multimeasure_rest_cleanup": True,
+    "apply_broadway_vbox_header": True,
+    "apply_part_name_in_header": True,
+}
+
+
+def default_formatting_steps() -> dict[str, bool]:
+    return dict(DEFAULT_FORMATTING_STEPS)
 
 
 LOGGER = getLogger("PartFormatter")

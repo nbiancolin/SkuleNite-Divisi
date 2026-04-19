@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-import os, shutil
+import os
 
 from .utils import (
     _make_part_name_text,
@@ -77,6 +77,15 @@ def cleanup_mm_rests(staff: ET.Element) -> ET.Element:
     for elem in staff:
         if elem.attrib.get("_mm") is not None:
             del elem.attrib["_mm"]
+    return staff
+
+
+def scrub_existing_line_breaks(staff: ET.Element) -> ET.Element:
+    """Remove all existing LayoutBreak elements from measures in this staff."""
+    for measure in staff.findall("Measure"):
+        for child in list(measure):
+            if child.tag == "LayoutBreak":
+                measure.remove(child)
     return staff
 
 

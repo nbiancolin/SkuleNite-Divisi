@@ -758,14 +758,14 @@ export default function ArrangementDisplay() {
                           <Menu.Item
                             component={Link}
                             to={msczUrl}
-                            disabled={msczUrl !== ''}
+                            disabled={msczUrl === ''}
                           >
                             Download Latest Formatted Version mscz
                           </Menu.Item>
                           <Menu.Item
                             component={Link}
                             to={rawMsczUrl}
-                            disabled={rawMsczUrl !== ''}
+                            disabled={rawMsczUrl === ''}
                           >
                             Download Latest Raw Version mscz
                           </Menu.Item>
@@ -1067,19 +1067,17 @@ export default function ArrangementDisplay() {
                   rightSection={<IconDownload size={16} />}
                   disabled={!versionDownloadLinks.msczUrl}
                 >
-                  Latest version MSCZ
+                  Download Formatted MSCZ
                 </Button>
-                
                 <Button
                   component="a"
-                  href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
+                  href={versionDownloadLinks.rawMsczUrl}
                   target="_blank"
-                  rel="noopener noreferrer"
-                  variant="subtle"
+                  variant="filled"
                   rightSection={<IconDownload size={16} />}
-                  disabled={!canDownloadLatestCommitMscz}
+                  disabled={!versionDownloadLinks.rawMsczUrl}
                 >
-                  MSCZ from latest commit
+                  Download Raw MSCZ
                 </Button>
               </Group>
 

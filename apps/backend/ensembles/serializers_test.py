@@ -108,3 +108,52 @@ def test_create_arrangement_version_mscz_serializer_invalid_version_type(arrange
     serializer = CreateArrangementVersionMsczSerializer(data=data)
     assert not serializer.is_valid()
     assert "Version type not one of" in str(serializer.errors)
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_formatting_steps_unknown_key(arrangement):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "formatting_steps": {"apply_mss_style": False, "not_a_real_step": True},
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert not serializer.is_valid()
+    assert "Unknown formatting_steps keys" in str(serializer.errors)
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(arrangement):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "formatting_steps": {"apply_mss_style": False},
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["formatting_steps"]["apply_mss_style"] is False
+    assert serializer.validated_data["formatting_steps"]["apply_score_metadata"] is True
+    assert serializer.validated_data["formatting_steps"]["apply_scrub_existing_line_breaks"] is False
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_steps(arrangement):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "formatting_steps": {
+            "apply_rehearsal_line_breaks": True,
+            "apply_multimeasure_rest_prep": False,
+            "apply_multimeasure_rest_cleanup": False,
+        },
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_prep"] is True
+    assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_cleanup"] is True

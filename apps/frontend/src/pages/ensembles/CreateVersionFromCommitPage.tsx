@@ -19,6 +19,12 @@ import {
 import { X } from "lucide-react";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit } from "../../services/apiService";
+import FormattingStepsFormSection from "./FormattingStepsFormSection";
+import {
+  defaultFormattingSteps,
+  normalizedFormattingSteps,
+  type FormattingStepsState,
+} from "./formattingSteps";
 
 export default function CreateVersionFromCommitPage() {
   const { arrangementId = "0", commitId = "" } = useParams();
@@ -35,6 +41,9 @@ export default function CreateVersionFromCommitPage() {
   const [linesPerPage, setLinesPerPage] = useState<string>("8");
   const [formatParts, setFormatParts] = useState<boolean>(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [formattingSteps, setFormattingSteps] = useState<FormattingStepsState>(() =>
+    defaultFormattingSteps()
+  );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -138,7 +147,8 @@ export default function CreateVersionFromCommitPage() {
         num_measures_per_line_score: nScore,
         num_measures_per_line_part: nPart,
         num_lines_per_page: nLines,
-        format_parts: formatParts
+        format_parts: formatParts,
+        ...(formatParts ? { formatting_steps: normalizedFormattingSteps(formattingSteps) } : {}),
       });
       navigate(`/app/arrangements/${arrangementId}`);
     } catch (err) {
@@ -234,7 +244,7 @@ export default function CreateVersionFromCommitPage() {
         <Checkbox
           checked={formatParts}
           onChange={() => setFormatParts((o) => !o)} 
-          label="Use Divisi Part Formatter when exporting parts (Coming Soon!)"
+          label="Use Divisi Part Formatter when exporting parts"
           mt="md"
         />
       </Center>
@@ -277,6 +287,9 @@ export default function CreateVersionFromCommitPage() {
             min={1}
             mt="md"
           />
+          {formatParts && (
+            <FormattingStepsFormSection value={formattingSteps} onChange={setFormattingSteps} />
+          )}
         </Collapse>
 
         <Group>
