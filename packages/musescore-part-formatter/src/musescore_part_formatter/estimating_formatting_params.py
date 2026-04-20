@@ -1,11 +1,10 @@
 """
 Code to dynamically predict the optimal formatting params for a score
-
-WIP still but Im working on it
 """
 
-from .utils import FormattingParams
+from __future__ import annotations
 
+from typing import Final
 
 
 def _predict_nmpl(time_sig) -> int:
@@ -21,7 +20,7 @@ def _predict_nmpl(time_sig) -> int:
             return 8
 
 
-#NEW ONE use this!!
+# NEW ONE use this!!
 NUM_INSTS_TO_SPATIUM_MAP = {
     1: 1.75,
     2: 1.75,
@@ -31,10 +30,19 @@ NUM_INSTS_TO_SPATIUM_MAP = {
     6: 1.65,
     7: 1.60,
     8: 1.55,
-    9: 1.65,#jumps back up
+    9: 1.65,  # jumps back up
     10: 1.65,
     11: 1.60,
 }
+
+
+STAFF_SPACING_STRATEGIES: Final[tuple[str, ...]] = ("predict", "preserve", "override")
+
+
+def normalize_staff_spacing_strategy(strategy: str | None) -> str:
+    if strategy in STAFF_SPACING_STRATEGIES:
+        return strategy
+    return "predict"
 
 
 def _predict_staff_spacing(num_staves, page_dimensions=(8.5, 11)) -> float:
@@ -51,22 +59,21 @@ def _predict_staff_spacing(num_staves, page_dimensions=(8.5, 11)) -> float:
     return round(res, 4)
 
 
-#REFACTOR NOTICE
-#style params will be anything changed in the style.mss file
-#formatting params will be anything changed in the mscx file (line breaks, etc)
+# REFACTOR NOTICE
+# style params will be anything changed in the style.mss file
+# formatting params will be anything changed in the mscx file (line breaks, etc)
 
 
-def predict_style_params(score_info) -> dict[str, str]:
-    res = {}
+def predict_style_params(score_info: dict | None) -> dict[str, str]:
+    score_info = score_info or {}
     if num_staves := score_info.get("num_staves"):
-        res["staff_spacing"] = str(_predict_staff_spacing(num_staves))
-
-    return res
+        return {"staff_spacing": str(_predict_staff_spacing(int(num_staves)))}
+    return {}
 
 
 def predict_formatting_params(score_info) -> dict[str, object]:
     res = {}
     if time_sig := score_info.get("time_sig"):
         res["nmpl"] = _predict_nmpl(time_sig)
-    
+
     return res

@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import os
+import re
 
 from .utils import (
     _make_part_name_text,
@@ -22,11 +23,61 @@ from .utils import (
 from .utils import Style
 
 from .file_inspect import set_style_params
-from .estimating_formatting_params import predict_style_params
+from .estimating_formatting_params import (
+    normalize_staff_spacing_strategy,
+    predict_style_params,
+)
 
 from logging import getLogger
 
 LOGGER = getLogger("PartFormatter")
+
+
+def collect_spatium_from_existing_mss_files(work_dir: str) -> dict[str, str]:
+    """
+    Read <spatium> from each .mss under work_dir before templates overwrite them.
+    Keys are paths relative to work_dir using forward slashes.
+    """
+    found: dict[str, str] = {}
+    for root, _, files in os.walk(work_dir):
+        for filename in files:
+            if not filename.lower().endswith(".mss"):
+                continue
+            full_path = os.path.join(root, filename)
+            rel = os.path.relpath(full_path, work_dir).replace("\\", "/")
+            try:
+                with open(full_path, "r", encoding="utf-8") as f:
+                    txt = f.read()
+            except OSError:
+                continue
+            m = re.search(r"<spatium>\s*([^<]+?)\s*</spatium>", txt)
+            if not m:
+                continue
+            val = m.group(1).strip()
+            if val and not val.startswith("DIVISI:"):
+                found[rel] = val
+    return found
+
+
+def _style_params_for_mss(
+    *,
+    strategy: str,
+    rel_key: str,
+    is_excerpt: bool,
+    score_info,
+    preserved: dict[str, str],
+    override_value: str | None,
+) -> dict[str, str]:
+    strategy = normalize_staff_spacing_strategy(strategy)
+    if strategy == "override" and override_value:
+        return {"staff_spacing": override_value}
+    if strategy == "preserve":
+        raw = preserved.get(rel_key)
+        if raw:
+            return {"staff_spacing": raw}
+    if is_excerpt:
+        return predict_style_params({"num_staves": 1})
+    return predict_style_params(score_info)
 
 
 # UTIL FNS -- Broadway Specific Formatting
@@ -451,7 +502,13 @@ def final_pass_through(staff: ET.Element) -> ET.Element:
 # TODO[SC-43]: Modify it so that the score style is selected based on the # of instruments
 # UPDATE TO ABOVE: Instead of hardcoding values, load in the styles file, and using the # of instruments
 #   Determine a staff spacing value wrt the page size (letter), orientation (vertical or horizontal), # of instruments, and
-def add_styles_to_score_and_parts(style: Style, work_dir: str, score_info=None) -> None:
+def add_styles_to_score_and_parts(
+    style: Style,
+    work_dir: str,
+    score_info=None,
+    staff_spacing_strategy: str = "predict",
+    staff_spacing_value: str | None = None,
+) -> None:
     """
     Depending on what style enum is selected, load either the jazz or broadway style file.
 
@@ -469,6 +526,12 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str, score_info=None) 
     else:
         raise ValueError(f"Unsupported style: {style}")
 
+    strategy = normalize_staff_spacing_strategy(staff_spacing_strategy)
+    override_val = (staff_spacing_value or "").strip() or None
+    preserved: dict[str, str] = {}
+    if strategy == "preserve":
+        preserved = collect_spatium_from_existing_mss_files(work_dir)
+
     # Walk through files in temp directory
     for root, _, files in os.walk(work_dir):
         for filename in files:
@@ -478,17 +541,22 @@ def add_styles_to_score_and_parts(style: Style, work_dir: str, score_info=None) 
             full_path = os.path.join(root, filename)
             # Get relative path from work_dir to check if it's inside "excerpts/"
             rel_path = os.path.relpath(full_path, work_dir)
+            rel_key = rel_path.replace("\\", "/")
             is_excerpt = "Excerpts" in rel_path
 
             if is_excerpt:
-                #For now, assuming all parts contain 1 instrument
                 source_style = part_style_path
-                style_params = predict_style_params({
-                    "num_staves": 1,
-                })
             else:
                 source_style = score_style_path
-                style_params = predict_style_params(score_info)
+
+            style_params = _style_params_for_mss(
+                strategy=strategy,
+                rel_key=rel_key,
+                is_excerpt=is_excerpt,
+                score_info=score_info,
+                preserved=preserved,
+                override_value=override_val,
+            )
             
             with open(source_style, "r") as f:
                 style_text = f.read()

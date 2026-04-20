@@ -1,7 +1,7 @@
 # Utils file contains barebones definitions
 # Like adding page breaks and adding styles and stuff that is not logic based
 
-from typing import TypedDict, NotRequired
+from typing import TypedDict, NotRequired, Literal
 from enum import Enum
 import xml.etree.ElementTree as ET
 
@@ -47,6 +47,9 @@ class FormattingParams(TypedDict):
     num_measures_per_line_score: int
     num_measures_per_line_part: int
     num_lines_per_page: int
+    # MuseScore spatium: predict from score, keep from each raw .mss, or single override value.
+    staff_spacing_strategy: NotRequired[Literal["predict", "preserve", "override"]]
+    staff_spacing_value: NotRequired[str | None]
     # Optional pipeline toggles; omitted keys default to True (full legacy behavior).
     apply_mss_style: NotRequired[bool]
     apply_score_metadata: NotRequired[bool]

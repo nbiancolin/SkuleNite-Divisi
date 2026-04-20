@@ -13,7 +13,9 @@ import {
   Collapse,
   TextInput,
   Stack,
+  Radio,
 } from "@mantine/core";
+import type { StaffSpacingStrategy } from "../../services/apiService";
 import { X, UploadCloud } from "lucide-react";
 import axios from "axios";
 import { apiService } from "../../services/apiService";
@@ -37,6 +39,9 @@ export default function UploadArrangementVersionPage() {
   const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
   const [linesPerPage, setLinesPerPage] = useState<string>("8")
+  const [staffSpacingStrategy, setStaffSpacingStrategy] =
+    useState<StaffSpacingStrategy>("preserve")
+  const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75")
 
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null);
@@ -131,6 +136,10 @@ export default function UploadArrangementVersionPage() {
     formData.append("num_measures_per_line_score", measuresPerLineScore);
     formData.append("num_measures_per_line_part", measuresPerLinePart);
     formData.append("num_lines_per_page", linesPerPage);
+    formData.append("staff_spacing_strategy", staffSpacingStrategy);
+    if (staffSpacingStrategy === "override") {
+      formData.append("staff_spacing_value", staffSpacingCustom.trim());
+    }
     formData.append("format_parts", enableDivisiFormatting.toString());
     if (enableDivisiFormatting) {
       formData.append("formatting_steps", JSON.stringify(normalizedFormattingSteps(formattingSteps)));
@@ -230,6 +239,28 @@ export default function UploadArrangementVersionPage() {
               onChange={(e) => setLinesPerPage(e.currentTarget.value)}
               mt="md"
             />
+            <Radio.Group
+              value={staffSpacingStrategy}
+              onChange={(v) => setStaffSpacingStrategy(v as StaffSpacingStrategy)}
+              label="Staff spacing (MuseScore spatium)"
+              description="How spatium is chosen when the part formatter applies score/part styles."
+            >
+              <Stack gap="xs" mt="xs">
+                <Radio value="predict" label="Predict from score (recommended)" />
+                <Radio value="preserve" label="Keep values from your uploaded .mscz" />
+                <Radio value="override" label="Use one custom spatium everywhere" />
+              </Stack>
+            </Radio.Group>
+            {staffSpacingStrategy === "override" && (
+              <TextInput
+                label="Custom spatium"
+                description="Typical range roughly 1.4–2.0"
+                value={staffSpacingCustom}
+                onChange={(e) => setStaffSpacingCustom(e.currentTarget.value)}
+                placeholder="1.74978"
+                mt="md"
+              />
+            )}
             {enableDivisiFormatting && (
               <FormattingStepsFormSection value={formattingSteps} onChange={setFormattingSteps} />
             )}

@@ -11,12 +11,14 @@ import {
   TextInput,
   Collapse,
   Stack,
-  Checkbox, 
+  Checkbox,
+  Radio,
 } from "@mantine/core";
 import { Check, X, UploadCloud } from "lucide-react";
 import axios from "axios";
 import { ScoreTitlePreview } from "../components/ScoreTitlePreview";
 import { apiService } from "../services/apiService";
+import type { StaffSpacingStrategy } from "../services/apiService";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -56,6 +58,9 @@ export default function PartFormatterPage() {
   const [versionNum, setVersionNum] = useState<string>("1.0.0")
   const [composer, setComposer] = useState<string>("")
   const [arranger, setArranger] = useState<string>("")
+  const [staffSpacingStrategy, setStaffSpacingStrategy] =
+    useState<StaffSpacingStrategy>("predict")
+  const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75")
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -135,6 +140,14 @@ export default function PartFormatterPage() {
       return;
     }
 
+    if (staffSpacingStrategy === "override") {
+      const spat = parseFloat(staffSpacingCustom.trim());
+      if (Number.isNaN(spat) || spat <= 0) {
+        setError("Custom spatium must be a positive number.");
+        return;
+      }
+    }
+
     setIsFormatting(true);
     setError(null);
     setDownloadUrl(null);
@@ -146,6 +159,10 @@ export default function PartFormatterPage() {
         style: selectedStyle,
         composer: composer,
         arranger: arranger,
+        staff_spacing_strategy: staffSpacingStrategy,
+        ...(staffSpacingStrategy === "override"
+          ? { staff_spacing_value: staffSpacingCustom.trim() }
+          : {}),
         ...(selectedStyle === "broadway" && {
           show_title: showTitle,
           show_number: showNumber,
@@ -226,6 +243,27 @@ export default function PartFormatterPage() {
               mt="md"
             />
           </Collapse>
+          <Radio.Group
+            value={staffSpacingStrategy}
+            onChange={(v) => setStaffSpacingStrategy(v as StaffSpacingStrategy)}
+            label="Staff spacing (MuseScore spatium)"
+            description="Predict from score, keep values from your file, or set one custom spatium."
+          >
+            <Stack gap="xs" mt="xs">
+              <Radio value="predict" label="Predict from score" />
+              <Radio value="preserve" label="Keep from uploaded file" />
+              <Radio value="override" label="Custom spatium" />
+            </Stack>
+          </Radio.Group>
+          {staffSpacingStrategy === "override" && (
+            <TextInput
+              label="Custom spatium"
+              value={staffSpacingCustom}
+              onChange={(e) => setStaffSpacingCustom(e.currentTarget.value)}
+              placeholder="1.74978"
+              mt="md"
+            />
+          )}
           <ScoreTitlePreview
             selectedStyle={selectedStyle}
             setSelectedStyle={setSelectedStyle}

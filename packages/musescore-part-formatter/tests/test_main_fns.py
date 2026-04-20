@@ -6,6 +6,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 import os
 import hashlib
+import re
 
 from musescore_part_formatter import format_mscz, format_mscx, FormattingParams
 from musescore_part_formatter.utils import _measure_has_line_break
@@ -129,6 +130,62 @@ def test_mscz_formatter_works_individual_cases(case):
 
 def test_params_incorrect():
     pass
+
+
+def _first_score_spatium_from_mscz(mscz_path: str) -> float:
+    with zipfile.ZipFile(mscz_path, "r") as zf:
+        names = [n for n in zf.namelist() if n.endswith("score_style.mss")]
+        assert names, f"No score_style.mss in {mscz_path}"
+        txt = zf.read(names[0]).decode("utf-8")
+    m = re.search(r"<spatium>([^<]+)</spatium>", txt)
+    assert m is not None, txt[:400]
+    return float(m.group(1).strip())
+
+
+def test_staff_spacing_override_sets_score_spatium():
+    input_path = "tests/test-data/New-Test-Score.mscz"
+    base_params: FormattingParams = {
+        "selected_style": "broadway",
+        "show_number": "1",
+        "show_title": "TEST Show",
+        "version_num": "1.0.0",
+        "num_measures_per_line_part": 6,
+        "num_measures_per_line_score": 4,
+        "num_lines_per_page": 7,
+        "staff_spacing_strategy": "override",
+        "staff_spacing_value": "1.88777",
+    }
+    with tempfile.NamedTemporaryFile(suffix=".mscz", delete=False) as tmp:
+        output_path = tmp.name
+    try:
+        assert format_mscz(input_path, output_path, base_params)
+        assert abs(_first_score_spatium_from_mscz(output_path) - 1.88777) < 1e-5
+    finally:
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+
+def test_staff_spacing_preserve_keeps_input_score_spatium():
+    input_path = "tests/test-data/New-Test-Score.mscz"
+    expected = _first_score_spatium_from_mscz(input_path)
+    base_params: FormattingParams = {
+        "selected_style": "broadway",
+        "show_number": "1",
+        "show_title": "TEST Show",
+        "version_num": "1.0.0",
+        "num_measures_per_line_part": 6,
+        "num_measures_per_line_score": 4,
+        "num_lines_per_page": 7,
+        "staff_spacing_strategy": "preserve",
+    }
+    with tempfile.NamedTemporaryFile(suffix=".mscz", delete=False) as tmp:
+        output_path = tmp.name
+    try:
+        assert format_mscz(input_path, output_path, base_params)
+        assert abs(_first_score_spatium_from_mscz(output_path) - expected) < 1e-5
+    finally:
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
 
 def _score_style_mss_sha256(mscz_path: str) -> str:

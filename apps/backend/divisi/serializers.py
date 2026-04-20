@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
+from ensembles.models import ArrangementVersion
+
 from divisi.models import UploadSession
 from divisi.tasks import format_upload_session, export_mscz_to_pdf
 
@@ -34,6 +36,17 @@ class FormatMsczFileSerializer(serializers.Serializer):
         required=False, allow_null=True, allow_blank=True, default=None
     )
     version_num = serializers.CharField(required=False, default=None)
+    staff_spacing_strategy = serializers.ChoiceField(
+        choices=ArrangementVersion.StaffSpacingStrategy.choices,
+        default="predict",
+        required=False,
+    )
+    staff_spacing_value = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=5,
+        required=False,
+        allow_null=True,
+    )
 
     def validate_session_id(self, value):
         if not value:
@@ -41,6 +54,19 @@ class FormatMsczFileSerializer(serializers.Serializer):
         if not UploadSession.objects.filter(id=value).exists():
             self.fail("invalid_session", session_id=value)
         return value
+
+    def validate(self, attrs):
+        strategy = attrs.get("staff_spacing_strategy", "predict")
+        val = attrs.get("staff_spacing_value")
+        if strategy != "override":
+            attrs["staff_spacing_value"] = None
+        elif val is None:
+            raise serializers.ValidationError(
+                {
+                    "staff_spacing_value": "Required when staff_spacing_strategy is override."
+                }
+            )
+        return attrs
 
     def save(self, **kwargs):
         #TODO[SC-276]: This could be refactored for readability
@@ -54,6 +80,8 @@ class FormatMsczFileSerializer(serializers.Serializer):
         composer = self.validated_data.get("composer")
         arranger = self.validated_data.get("arranger")
         version_num = self.validated_data["version_num"]
+        staff_spacing_strategy = self.validated_data["staff_spacing_strategy"]
+        staff_spacing_value = self.validated_data["staff_spacing_value"]
 
         # Classical is just broadway minus show text
         if style == "classical":
@@ -66,9 +94,15 @@ class FormatMsczFileSerializer(serializers.Serializer):
                 show_title=show_title,
                 show_number=show_number,
                 num_measures_per_line_part=num_measure_per_line,
-                version=version_num,
+                version_num=version_num,
                 composer=composer,
                 arranger=arranger,
+                staff_spacing_strategy=staff_spacing_strategy,
+                staff_spacing_value=(
+                    str(staff_spacing_value)
+                    if staff_spacing_value is not None
+                    else None
+                ),
             )
 
             if res["status"] != "success":

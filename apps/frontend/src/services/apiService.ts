@@ -27,6 +27,9 @@ export interface Commit {
   created_by?: UserObj | null;
 }
 
+/** MuseScore spatium handling; matches backend ArrangementVersion.staff_spacing_strategy. */
+export type StaffSpacingStrategy = "predict" | "preserve" | "override";
+
 export interface ArrangementVersion {
   id: number;
   arrangementId: number;
@@ -638,6 +641,9 @@ export const apiService = {
       num_measures_per_line_score?: number;
       num_measures_per_line_part?: number;
       num_lines_per_page?: number;
+      staff_spacing_strategy?: StaffSpacingStrategy;
+      /** Required when staff_spacing_strategy is override (MuseScore spatium, e.g. 1.75). */
+      staff_spacing_value?: string | number;
       format_parts?: boolean;
       /** Part-formatter apply_* flags; keys must match backend / musescore_part_formatter. */
       formatting_steps?: Record<string, boolean>;
@@ -655,6 +661,12 @@ export const apiService = {
     }
     if (options?.num_lines_per_page != null) {
       body.num_lines_per_page = options.num_lines_per_page;
+    }
+    if (options?.staff_spacing_strategy != null) {
+      body.staff_spacing_strategy = options.staff_spacing_strategy;
+    }
+    if (options?.staff_spacing_value != null) {
+      body.staff_spacing_value = options.staff_spacing_value;
     }
     if (options?.format_parts != null) {
       body.format_parts = options.format_parts;
