@@ -28,9 +28,9 @@ export default function CreateEnsemblePage() {
       const data = await apiService.createEnsemble(ensembleName, selectedStyle)
       
       window.location.href = `/app/ensembles/${data.slug}/arrangements`;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Formatting error:", err);
-      setError(err.message || "Create Ensemble failed."); 
+      setError(err instanceof Error ? err.message : "Create Ensemble failed."); 
     } 
   };
 

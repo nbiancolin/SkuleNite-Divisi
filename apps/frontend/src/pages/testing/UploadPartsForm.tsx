@@ -68,8 +68,13 @@ export function UploadPartsForm() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMessage(response.data.message || 'Upload successful');
-    } catch (error: any) {
-      setMessage('Upload failed: ' + (error.response?.data?.detail || ''));
+    } catch (error: unknown) {
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.detail || error.message
+        : error instanceof Error
+          ? error.message
+          : '';
+      setMessage('Upload failed: ' + errorMessage);
     }
   };
   if (loading) {
@@ -90,7 +95,7 @@ export function UploadPartsForm() {
         multiple
         accept="application/pdf"
         value={files}
-        onChange={(f: any) => setFiles(Array.isArray(f) ? f : [f])}
+        onChange={(f) => setFiles(Array.isArray(f) ? f : f ? [f] : [])}
       />
       <Radio.Group value={versionType} onChange={setVersionType} name="pickVersionLabel" label="Select Release Type" withAsterisk>
         <Radio value="major" label="Major (v1.0.0)" />

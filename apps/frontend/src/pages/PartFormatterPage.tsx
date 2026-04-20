@@ -124,9 +124,14 @@ export default function PartFormatterPage() {
       const id = response.data.session_id;
       if (!id) throw new Error("No session ID returned");
       setSessionId(id);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setError(err.response?.data?.detail || "Upload failed.");
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.data?.detail || err.message
+        : err instanceof Error
+          ? err.message
+          : "Upload failed.";
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -178,9 +183,14 @@ export default function PartFormatterPage() {
 
       setDownloadUrl(response.data.score_download_url);
       setMsczUrl(response.data.mscz_download_url);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Formatting error:", err);
-      setError(err.response?.data?.detail || "Formatting failed.");  //TODO[SC-XX] make this acc display the error at hand
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.data?.detail || err.message
+        : err instanceof Error
+          ? err.message
+          : "Formatting failed.";
+      setError(errorMessage);  //TODO[SC-XX] make this acc display the error at hand
     } finally {
       setIsFormatting(false);
     }

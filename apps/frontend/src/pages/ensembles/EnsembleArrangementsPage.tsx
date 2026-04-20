@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -22,13 +22,13 @@ import {
   Tabs,
 } from '@mantine/core';
 import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
-import { apiService, type Ensemble, type EnsemblePartBook, type PartName } from '../../services/apiService';
+import { apiService, type Ensemble, type EnsemblePartBook, type PartName, type Arrangement } from '../../services/apiService';
 
 const ArrangementsPage = () => {
   const { slug = "NA" } = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
   const [ensemble, setEnsemble] = useState<Ensemble | null>(null);
-  const [arrangements, setArrangements] = useState<any[]>([]);
+  const [arrangements, setArrangements] = useState<Arrangement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
@@ -39,7 +39,7 @@ const ArrangementsPage = () => {
   const [copied, setCopied] = useState(false);
   const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
 
-  const fetchData = async (quiet = false) => {
+  const fetchData = useCallback(async (quiet = false) => {
     if (!slug) return;
     try {
       if (!quiet) setLoading(true);
@@ -56,18 +56,18 @@ const ArrangementsPage = () => {
     } finally {
       if (!quiet) setLoading(false);
     }
-  };
+  }, [slug]);
 
   useEffect(() => {
     if (slug) fetchData();
-  }, [slug]);
+  }, [slug, fetchData]);
 
   // Poll while part books are generating (quiet refetch so we don't show full-page loader)
   useEffect(() => {
     if (!slug || !ensemble?.part_books_generating) return;
     const interval = setInterval(() => fetchData(true), 3000);
     return () => clearInterval(interval);
-  }, [slug, ensemble?.part_books_generating]);
+  }, [slug, ensemble?.part_books_generating, fetchData]);
 
   const handleBackClick = () => {
     navigate('/app/ensembles');

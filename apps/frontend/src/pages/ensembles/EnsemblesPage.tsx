@@ -21,7 +21,7 @@ import type { Ensemble } from '../../services/apiService';
 const EnsemblesPage = () => {
   const [ensembles, setEnsembles] = useState<Ensemble[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchEnsembles = async () => {
@@ -30,9 +30,7 @@ const EnsemblesPage = () => {
         const data = await apiService.getEnsembles();
         setEnsembles(data);
       } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        }
+        setError(err instanceof Error ? err.message : 'Failed to load ensembles');
       } finally {
         setLoading(false);
       }

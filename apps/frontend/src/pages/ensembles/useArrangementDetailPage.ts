@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit, EditableArrangementData, VersionHistoryItem } from "../../services/apiService";
@@ -207,7 +207,7 @@ export function useArrangementDetailPage() {
     }
   };
 
-  const fetchArrangement = async (id: number) => {
+  const fetchArrangement = useCallback(async (id: number) => {
     try {
       setLoading(true);
       setError(null);
@@ -243,7 +243,7 @@ export function useArrangementDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleSaveChanges = async () => {
     if (!arrangement) return;
@@ -279,7 +279,7 @@ export function useArrangementDetailPage() {
 
   useEffect(() => {
     fetchArrangement(+arrangementId);
-  }, [arrangementId]);
+  }, [arrangementId, fetchArrangement]);
 
   const handleRefresh = () => {
     fetchArrangement(+arrangementId);

@@ -58,9 +58,9 @@ export default function UploadArrangementVersionFromCommitPage() {
         commitMessage
       );
       navigate(`/app/arrangements/${arrangementId}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setError(err?.message || "Upload failed.");
+      setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
     }

@@ -155,9 +155,14 @@ export default function UploadArrangementVersionPage() {
       });
       console.log(response)
       navigate(`/app/arrangements/${arrangementId}`)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setError(err.response?.data?.detail || "Upload failed.");
+      const errorMessage = axios.isAxiosError(err)
+        ? err.response?.data?.detail || err.message
+        : err instanceof Error
+          ? err.message
+          : "Upload failed.";
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
