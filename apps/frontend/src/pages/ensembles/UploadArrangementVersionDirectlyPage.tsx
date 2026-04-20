@@ -40,7 +40,7 @@ export default function UploadArrangementVersionPage() {
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
   const [linesPerPage, setLinesPerPage] = useState<string>("8")
   const [staffSpacingStrategy, setStaffSpacingStrategy] =
-    useState<StaffSpacingStrategy>("predict")
+    useState<StaffSpacingStrategy>("preserve")
   const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75")
 
   const navigate = useNavigate()
