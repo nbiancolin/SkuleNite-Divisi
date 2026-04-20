@@ -37,6 +37,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 
 import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
+import { ScoreTitlePreview, type PreviewStyleName } from '../../components/ScoreTitlePreview';
 
 type LegacyPartNameMap = Record<string, string>;
 type EnsembleWithPartNames = Ensemble & {
@@ -55,6 +56,8 @@ export default function EnsembleDisplay() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [joinLinkDraft, setJoinLinkDraft] = useState<string | null | undefined>('');
+  const [selectedStyleDraft, setSelectedStyleDraft] = useState<PreviewStyleName>("broadway");
+
   const [saving, setSaving] = useState(false);
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
@@ -92,9 +95,8 @@ export default function EnsembleDisplay() {
       setError(null);
       const data = await apiService.getEnsemble(slug);
       setEnsemble(data);
-      // seed drafts
       setNameDraft(data?.name || '');
-      setJoinLinkDraft(data?.join_link || '');
+      setSelectedStyleDraft(data.default_style);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -168,7 +170,7 @@ export default function EnsembleDisplay() {
 
       const body = JSON.stringify({
         name: nameDraft,
-        join_link: joinLinkDraft,
+        default_style: selectedStyleDraft,
       });
 
       const resp = await fetch(url, {
@@ -334,10 +336,19 @@ export default function EnsembleDisplay() {
           <Card withBorder mb="md">
             <Stack>
               <TextInput label="Ensemble name" value={nameDraft} onChange={(e) => setNameDraft(e.currentTarget.value)} />
-              <TextInput label="Join link (preview)" value={joinLinkDraft ?? ''} onChange={(e) => setJoinLinkDraft(e.currentTarget.value)} />
+                <ScoreTitlePreview
+                  selectedStyle={selectedStyleDraft}
+                  setSelectedStyle={setSelectedStyleDraft}
+                  title={"Title"}
+                  subtitle={"subtitle"}
+                  ensemble={nameDraft}
+                  composer={"composer"}
+                  arranger={"arranger"}
+                  mvtNo={"1"}
+                />
               <Group>
                 <Button onClick={handleSaveEnsemble} loading={saving}>Save</Button>
-                <Button variant="outline" onClick={() => { setEditing(false); setNameDraft(ensemble.name); setJoinLinkDraft(ensemble.join_link); }}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setEditing(false); setNameDraft(ensemble.name); setSelectedStyleDraft(ensemble.default_style); }}>Cancel</Button>
               </Group>
             </Stack>
           </Card>
@@ -444,17 +455,6 @@ export default function EnsembleDisplay() {
                   <Text size="xs" c="dimmed" mb={4}>Invite link</Text>
                   <Group gap="xs">
                     <Text size="sm" style={{ flex: 1, minWidth: 0 }} truncate>{ensemble.join_link ?? 'No invite link'}</Text>
-                    {isAdmin && (
-                      <Button size="xs" variant="outline" onClick={async () => {
-                        try {
-                          const data = await apiService.getInviteLink(ensemble.slug);
-                          await fetchEnsemble(ensemble.slug);
-                          setJoinLinkDraft(data?.invite_link ?? data?.join_link ?? ensemble.join_link);
-                        } catch (err: unknown) {
-                          setError(err instanceof Error ? err.message : String(err));
-                        }
-                      }}>Generate</Button>
-                    )}
                   </Group>
                 </Card>
               </Grid.Col>

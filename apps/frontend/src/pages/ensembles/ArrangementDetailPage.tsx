@@ -326,7 +326,6 @@ export default function ArrangementDisplay() {
                   composer={editData.composer}
                   arranger={null}
                   mvtNo={mvtNo}
-                  showTitle={arrangement.ensemble_name}
                   />
               ) : (
                 <div id="nickId"> 
