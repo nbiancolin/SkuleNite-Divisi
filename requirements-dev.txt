@@ -1,0 +1,2 @@
+# Dev-only tools (linting). Use alongside apps/backend/requirements.txt for backend work.
+ruff>=0.8,<1

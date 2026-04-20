@@ -37,6 +37,7 @@ WORKDIR /app
 # Copy backend + packages so ../../packages works
 COPY apps/backend /app/apps/backend
 COPY packages /app/packages
+COPY requirements-dev.txt /tmp/requirements-dev.txt
 
 # Move into backend directory
 WORKDIR /app/apps/backend
@@ -44,7 +45,8 @@ WORKDIR /app/apps/backend
 # --------------------------------------------------
 # Python dependencies
 # --------------------------------------------------
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-dev.txt
 
 # --------------------------------------------------
 # Install Fonts
