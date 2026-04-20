@@ -164,7 +164,11 @@ const emptyEnsemble = (): Ensemble => ({
         onChange={(e) => setComposer(e.currentTarget.value)}
         mt="md"
       />
-      <Text mt="md"> If you're not sure what this means, don't worry about it, you can set it later.</Text>
+      <Text mt="md" style={{ whiteSpace: "pre-line" }} ta="center">{`
+        Score Number is used in Musical Theater to denote the position of the song in the show. 
+        For other uses, you can use this field as the "order" of a piece in a setlist or ensemble. 
+        (Yes, skule nite folks can use the '1-2' style, this is supported)
+      `} </Text>
       <TextInput
         label="Score Number"
         value={mvtNo}
@@ -176,12 +180,11 @@ const emptyEnsemble = (): Ensemble => ({
         selectedStyle={selectedStyle}
         setSelectedStyle={setSelectedStyle}
         title={title}
-        ensemble={slug}
+        ensemble={ensemble.name}
         subtitle={subtitle}
         composer={composer}
         arranger={null}
         mvtNo={mvtNo}
-        showTitle={null}
       />
 
       <Button

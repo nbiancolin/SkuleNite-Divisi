@@ -15,7 +15,6 @@ type TextStyleKey =
   | "composer"
   | "arranger"
   | "mvtNo"
-  | "showTitle"
   | "partName"
   | "ensemble";
 
@@ -44,7 +43,6 @@ interface ScoreTitlePreviewProps {
   ensemble: string | null;
   composer: string | null;
   arranger: string | null;
-  showTitle: string | null;
   mvtNo: string | null;
 }
 
@@ -57,7 +55,6 @@ export function ScoreTitlePreview({
   composer,
   arranger, 
   mvtNo,
-  showTitle,
 }: ScoreTitlePreviewProps) {
 
   const previewStyleOptions: PreviewStyleOptions = {
@@ -72,7 +69,13 @@ export function ScoreTitlePreview({
         fontWeight: "normal",
         fontFamily: "Palatino, sans-serif",
       },
-      ensemble: {},
+      ensemble: {
+        margin: "0",
+        fontWeight: "normal",
+        fontFamily: "Palatino, sans-serif",
+        textDecoration: "underline",
+        whiteSpace: "nowrap",
+      },
       composer: {
         margin: "0",
         fontWeight: "normal",
@@ -88,13 +91,6 @@ export function ScoreTitlePreview({
         margin: 0,
         fontSize: "1.5rem",
         fontFamily: "Palatino, sans-serif",
-      },
-      showTitle: {
-        margin: "0",
-        fontWeight: "normal",
-        fontFamily: "Palatino, sans-serif",
-        textDecoration: "underline",
-        whiteSpace: "nowrap",
       },
       partName: {
         fontFamily: "Palatino, sans-serif",
@@ -128,7 +124,6 @@ export function ScoreTitlePreview({
         fontStyle: "italic",
       },
       mvtNo: {},
-      showTitle: {},
       partName: {
         fontFamily: "Palatino, sans-serif",
       },
@@ -160,7 +155,6 @@ export function ScoreTitlePreview({
         fontFamily: "Inkpen2, sans-serif",
       },
       mvtNo: {},
-      showTitle: {},
       partName: {
         fontFamily: "Inkpen2, sans-serif",
       },
@@ -208,11 +202,11 @@ export function ScoreTitlePreview({
               Conductor Score
             </h3>
 
-            {(mvtNo || showTitle) && selectedStyle === "broadway" && (
+            {(mvtNo || ensemble) && selectedStyle === "broadway" && (
               <Box style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                {showTitle && (
-                  <span style={previewStyleOptions[selectedStyle].showTitle ?? {}}>
-                    {showTitle}
+                {ensemble && (
+                  <span style={previewStyleOptions[selectedStyle].ensemble ?? {}}>
+                    {ensemble}
                   </span>
                 )}
                 <Box
