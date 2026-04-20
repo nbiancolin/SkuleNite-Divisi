@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Shell scripts run in Linux containers; CRLF breaks dash parsing (e.g. `then^M`).
+scripts/**/*.sh text eol=lf
