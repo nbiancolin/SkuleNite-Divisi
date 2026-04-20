@@ -47,6 +47,23 @@ class ArrangementVersion(models.Model):
     num_measures_per_line_part = models.IntegerField()
     num_lines_per_page = models.IntegerField()
 
+    class StaffSpacingStrategy(models.TextChoices):
+        PREDICT = "predict", "Predict from score"
+        PRESERVE = "preserve", "Keep from uploaded file"
+        OVERRIDE = "override", "Custom spatium"
+
+    staff_spacing_strategy = models.CharField(
+        max_length=16,
+        choices=StaffSpacingStrategy.choices,
+        default=StaffSpacingStrategy.PREDICT,
+    )
+    staff_spacing_value = models.DecimalField(
+        max_digits=10,
+        decimal_places=5,
+        null=True,
+        blank=True,
+    )
+
     # Part-formatter pipeline toggles used when format_parts runs; all True = legacy behavior.
     formatting_steps = models.JSONField(default=default_formatting_steps)
 

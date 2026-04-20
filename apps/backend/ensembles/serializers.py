@@ -442,6 +442,18 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
     num_measures_per_line_part = serializers.IntegerField(default=6)
     num_lines_per_page = serializers.IntegerField(default=8)
 
+    staff_spacing_strategy = serializers.ChoiceField(
+        choices=ArrangementVersion.StaffSpacingStrategy.choices,
+        default="predict",
+        required=False,
+    )
+    staff_spacing_value = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=5,
+        required=False,
+        allow_null=True,
+    )
+
     format_parts = serializers.BooleanField(default=True)
     formatting_steps = FormattingStepsField(required=False, allow_null=True)
 
@@ -455,6 +467,18 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
             self.fail("invalid_commit_id", value)
         return value
 
+    def validate(self, attrs):
+        strategy = attrs.get("staff_spacing_strategy", "predict")
+        val = attrs.get("staff_spacing_value")
+        if strategy != "override":
+            attrs["staff_spacing_value"] = None
+        elif val is None:
+            raise serializers.ValidationError(
+                {
+                    "staff_spacing_value": "Required when staff_spacing_strategy is override."
+                }
+            )
+        return attrs
 
     def save(self, **kwargs):
         assert self.validated_data, "Must call is_valid first!"
@@ -475,6 +499,8 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
                     "num_measures_per_line_part"
                 ],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
+                staff_spacing_strategy=self.validated_data["staff_spacing_strategy"],
+                staff_spacing_value=self.validated_data["staff_spacing_value"],
                 formatting_steps=(
                     fs if fs is not None else default_formatting_steps()
                 ),
@@ -523,6 +549,18 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
     num_measures_per_line_part = serializers.IntegerField(default=6)
     num_lines_per_page = serializers.IntegerField(default=8)
 
+    staff_spacing_strategy = serializers.ChoiceField(
+        choices=ArrangementVersion.StaffSpacingStrategy.choices,
+        default="predict",
+        required=False,
+    )
+    staff_spacing_value = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=5,
+        required=False,
+        allow_null=True,
+    )
+
     format_parts = serializers.BooleanField(default=True)
     formatting_steps = FormattingStepsField(required=False, allow_null=True)
 
@@ -535,6 +573,19 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
         if not Arrangement.objects.filter(id=value).exists():
             self.fail("invalid_arr_id", id=value)
         return value
+
+    def validate(self, attrs):
+        strategy = attrs.get("staff_spacing_strategy", "predict")
+        val = attrs.get("staff_spacing_value")
+        if strategy != "override":
+            attrs["staff_spacing_value"] = None
+        elif val is None:
+            raise serializers.ValidationError(
+                {
+                    "staff_spacing_value": "Required when staff_spacing_strategy is override."
+                }
+            )
+        return attrs
 
     def save(self, **kwargs):
         assert self.validated_data, "Must call is_valid first!"
@@ -552,6 +603,8 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
                     "num_measures_per_line_part"
                 ],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
+                staff_spacing_strategy=self.validated_data["staff_spacing_strategy"],
+                staff_spacing_value=self.validated_data["staff_spacing_value"],
                 formatting_steps=(
                     fs if fs is not None else default_formatting_steps()
                 ),

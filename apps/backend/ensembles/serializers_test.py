@@ -1,4 +1,5 @@
 import pytest
+from decimal import Decimal
 from unittest.mock import patch
 from rest_framework.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -157,3 +158,66 @@ def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_st
     assert serializer.is_valid(), serializer.errors
     assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_prep"] is True
     assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_cleanup"] is True
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_staff_spacing_defaults(arrangement):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["staff_spacing_strategy"] == "predict"
+    assert serializer.validated_data["staff_spacing_value"] is None
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_staff_spacing_override_requires_value(
+    arrangement,
+):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "staff_spacing_strategy": "override",
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert not serializer.is_valid()
+    assert "staff_spacing_value" in serializer.errors
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_staff_spacing_override_ok(arrangement):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "staff_spacing_strategy": "override",
+        "staff_spacing_value": "1.65",
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["staff_spacing_strategy"] == "override"
+    assert serializer.validated_data["staff_spacing_value"] == Decimal("1.65")
+
+
+@pytest.mark.django_db
+def test_create_arrangement_version_mscz_serializer_staff_spacing_predict_clears_value(
+    arrangement,
+):
+    fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
+    data = {
+        "file": fake_file,
+        "arrangement_id": arrangement.id,
+        "version_type": "minor",
+        "staff_spacing_strategy": "predict",
+        "staff_spacing_value": "9.99",
+    }
+    serializer = CreateArrangementVersionMsczSerializer(data=data)
+    assert serializer.is_valid(), serializer.errors
+    assert serializer.validated_data["staff_spacing_value"] is None

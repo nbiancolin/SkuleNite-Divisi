@@ -15,10 +15,11 @@ import {
   Center,
   Loader,
   Checkbox,
+  Radio,
 } from "@mantine/core";
 import { X } from "lucide-react";
 import { apiService } from "../../services/apiService";
-import type { Arrangement, Commit } from "../../services/apiService";
+import type { Arrangement, Commit, StaffSpacingStrategy } from "../../services/apiService";
 import FormattingStepsFormSection from "./FormattingStepsFormSection";
 import {
   defaultFormattingSteps,
@@ -39,6 +40,9 @@ export default function CreateVersionFromCommitPage() {
   const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
   const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
   const [linesPerPage, setLinesPerPage] = useState<string>("8");
+  const [staffSpacingStrategy, setStaffSpacingStrategy] =
+    useState<StaffSpacingStrategy>("predict");
+  const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75");
   const [formatParts, setFormatParts] = useState<boolean>(true);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [formattingSteps, setFormattingSteps] = useState<FormattingStepsState>(() =>
@@ -139,6 +143,14 @@ export default function CreateVersionFromCommitPage() {
       return;
     }
 
+    if (staffSpacingStrategy === "override") {
+      const spat = parseFloat(staffSpacingCustom.trim());
+      if (Number.isNaN(spat) || spat <= 0) {
+        setSubmitError("Custom spatium must be a positive number.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     setSubmitError(null);
     try {
@@ -147,6 +159,10 @@ export default function CreateVersionFromCommitPage() {
         num_measures_per_line_score: nScore,
         num_measures_per_line_part: nPart,
         num_lines_per_page: nLines,
+        staff_spacing_strategy: staffSpacingStrategy,
+        ...(staffSpacingStrategy === "override"
+          ? { staff_spacing_value: staffSpacingCustom.trim() }
+          : {}),
         format_parts: formatParts,
         ...(formatParts ? { formatting_steps: normalizedFormattingSteps(formattingSteps) } : {}),
       });
@@ -287,6 +303,27 @@ export default function CreateVersionFromCommitPage() {
             min={1}
             mt="md"
           />
+          <Radio.Group
+            value={staffSpacingStrategy}
+            onChange={(v) => setStaffSpacingStrategy(v as StaffSpacingStrategy)}
+            label="Staff spacing (MuseScore spatium)"
+            description="Predict from score, keep each value from the .mscz, or set one custom spatium for all style files."
+          >
+            <Stack gap="xs" mt="xs">
+              <Radio value="predict" label="Predict from score (recommended)" />
+              <Radio value="preserve" label="Keep values from the file" />
+              <Radio value="override" label="Custom spatium everywhere" />
+            </Stack>
+          </Radio.Group>
+          {staffSpacingStrategy === "override" && (
+            <TextInput
+              label="Custom spatium"
+              value={staffSpacingCustom}
+              onChange={(e) => setStaffSpacingCustom(e.currentTarget.value)}
+              placeholder="1.74978"
+              mt="md"
+            />
+          )}
           {formatParts && (
             <FormattingStepsFormSection value={formattingSteps} onChange={setFormattingSteps} />
           )}

@@ -78,6 +78,8 @@ def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
         "num_measures_per_line_score": kwargs.get("num_measures_per_line_score"),
         "num_measures_per_line_part": kwargs.get("num_measures_per_line_part"),
         "num_lines_per_page": kwargs.get("num_lines_per_page"),
+        "staff_spacing_strategy": kwargs.get("staff_spacing_strategy"),
+        "staff_spacing_value": kwargs.get("staff_spacing_value"),
     }
 
     return _format_mscz_file(input_key, output_key, params)
@@ -99,6 +101,12 @@ def format_arrangement_version(version_id: int) -> dict[str, str]:
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
         "num_lines_per_page": version.num_lines_per_page,
+        "staff_spacing_strategy": version.staff_spacing_strategy,
+        "staff_spacing_value": (
+            str(version.staff_spacing_value)
+            if version.staff_spacing_value is not None
+            else None
+        ),
     }
 
     stored = version.formatting_steps or {}

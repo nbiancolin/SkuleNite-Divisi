@@ -25,6 +25,7 @@ from .file_inspect import (
     get_all_properties,
     set_all_properties,
 )
+from .estimating_formatting_params import normalize_staff_spacing_strategy
 
 from logging import getLogger
 
@@ -198,6 +199,13 @@ def format_mscz(
     shutil.copyfile(input_path, output_path)
 
     score_info = get_score_attributes(input_path)
+    staff_spacing_strategy = normalize_staff_spacing_strategy(
+        params.get("staff_spacing_strategy")
+    )
+    raw_val = params.get("staff_spacing_value")
+    if raw_val is not None and not isinstance(raw_val, str):
+        raw_val = str(raw_val)
+    staff_spacing_value = (raw_val or "").strip() or None
 
     try:
         with unpack_mscz_to_tempdir(output_path) as (work_dir, mscx_files):
@@ -206,6 +214,8 @@ def format_mscz(
                     prepped_params["selected_style"],  # type-ignore
                     work_dir,
                     score_info=score_info,
+                    staff_spacing_strategy=staff_spacing_strategy,
+                    staff_spacing_value=staff_spacing_value,
                 )
 
             if not mscx_files:
@@ -292,7 +302,8 @@ def main():
             --show-number "01" \
             --num-measures-per-line-score 4 \
             --num-measures-per-line-part 6 \
-            --num-lines-per-page 7
+            --num-lines-per-page 7 \
+            --staff-spacing-strategy predict
     """
     parser = argparse.ArgumentParser(description="Format a MuseScore file (.mscz).")
 
@@ -331,6 +342,18 @@ def main():
         default=7,
         help="Number of lines per page (default: 7)",
     )
+    parser.add_argument(
+        "--staff-spacing-strategy",
+        choices=("predict", "preserve", "override"),
+        default="predict",
+        dest="staff_spacing_strategy",
+        help="Spatium: predict from staff count, keep values from input .mss files, or override.",
+    )
+    parser.add_argument(
+        "--staff-spacing-value",
+        default=None,
+        help="When strategy is override, MuseScore spatium (e.g. 1.74978). Ignored otherwise.",
+    )
 
     args = parser.parse_args()
 
@@ -342,6 +365,8 @@ def main():
         "num_measures_per_line_score": args.num_measures_per_line_score,
         "num_measures_per_line_part": args.num_measures_per_line_part,
         "num_lines_per_page": args.num_lines_per_page,
+        "staff_spacing_strategy": args.staff_spacing_strategy,
+        "staff_spacing_value": args.staff_spacing_value,
     }
 
     try:
