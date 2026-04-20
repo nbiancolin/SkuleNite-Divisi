@@ -27,6 +27,15 @@ jobs:
         run: |
           npm ci || npm install
 
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Typecheck frontend
+        run: npm run typecheck
+
+      - name: Run frontend tests
+        run: npm run test
+
       - name: Run frontend build
         run: |
           npm run build
@@ -72,6 +81,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install -r ${{ github.workspace }}/requirements-dev.txt
+
+      - name: Ruff check
+        run: python -m ruff check apps/backend/ensembles/views
 
       - name: Wait for Postgres
         run: |
@@ -89,3 +102,28 @@ jobs:
       - name: Run tests
         working-directory: apps/backend
         run: pytest --disable-warnings -q
+
+  # Disabling this because packages tests are flaky, should be run on demand when needed
+  # python-packages:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.11'
+
+  #     - name: Install package test dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip
+  #         pip install pytest
+  #         pip install -e packages/musescore-part-formatter
+  #         pip install -e packages/musescore-score-diff
+
+  #     - name: Pytest musescore-part-formatter
+  #       run: pytest packages/musescore-part-formatter/tests --disable-warnings -q
+
+  #     - name: Pytest musescore-score-diff
+  #       run: pytest packages/musescore-score-diff/tests --disable-warnings -q

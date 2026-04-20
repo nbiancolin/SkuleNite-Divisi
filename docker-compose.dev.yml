@@ -18,14 +18,14 @@ services:
       - 0.0.0.0:8000
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
-      - POSTGRES_DB=mydb
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=${POSTGRES_DB:-mydb}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}
       - POSTGRES_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - DISCORD_CLIENT_ID=1454625091517284455
-      - DISCORD_CLIENT_SECRET=pwwrXKWn81RzpiipzU2ChrzrDu0Dkewh
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
     depends_on:
       - db
       - redis
@@ -48,9 +48,9 @@ services:
   db:
     image: postgres:17
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: ${POSTGRES_DB:-mydb}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pass}
     volumes:
       - postgres_data:/var/lib/postgresql/data/
 
@@ -75,14 +75,14 @@ services:
       - --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
-      - POSTGRES_DB=mydb
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=${POSTGRES_DB:-mydb}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}
       - POSTGRES_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - DISCORD_CLIENT_ID=1454625091517284455
-      - DISCORD_CLIENT_SECRET=pwwrXKWn81RzpiipzU2ChrzrDu0Dkewh
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
     depends_on:
       - backend
       - redis

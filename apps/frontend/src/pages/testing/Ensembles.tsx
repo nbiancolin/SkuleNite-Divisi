@@ -25,8 +25,7 @@ const EnsemblesPage: React.FC = () => {
   useEffect(() => {
     const fetchEnsembles = async () => {
       try {
-        let response;
-        response = await axios.get<EnsembleWithArrangements[]>(`${API_BASE_URL}/ensembles/`);
+        const response = await axios.get<EnsembleWithArrangements[]>(`${API_BASE_URL}/ensembles/`);
         setEnsembles(response.data);
         
       } catch (error) {

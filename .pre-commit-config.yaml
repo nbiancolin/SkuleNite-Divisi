@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^apps/backend/ensembles/views/.*\.py$
+      - id: ruff-format
+        files: ^apps/backend/ensembles/views/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: eslint-frontend
+        name: eslint (frontend)
+        language: system
+        pass_filenames: false
+        entry: npm run lint --prefix apps/frontend
+
+      - id: tsc-frontend
+        name: tsc (frontend)
+        language: system
+        pass_filenames: false
+        entry: npm run typecheck --prefix apps/frontend

@@ -38,6 +38,12 @@ import { useParams, Link } from 'react-router-dom';
 
 import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
 
+type LegacyPartNameMap = Record<string, string>;
+type EnsembleWithPartNames = Ensemble & {
+  part_names?: unknown;
+  part_name?: unknown;
+};
+
 export default function EnsembleDisplay() {
   const { slug = '' } = useParams();
 
@@ -89,8 +95,8 @@ export default function EnsembleDisplay() {
       // seed drafts
       setNameDraft(data?.name || '');
       setJoinLinkDraft(data?.join_link || '');
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -119,8 +125,8 @@ export default function EnsembleDisplay() {
       await apiService.removeUserFromEnsemble(removeCandidate.id, ensemble.slug);
       // refresh
       await fetchEnsemble(ensemble.slug);
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
       setConfirmRemoveOpen(false);
@@ -135,8 +141,8 @@ export default function EnsembleDisplay() {
       await apiService.changeUserRole(userId, ensemble.slug, newRole);
       // refresh
       await fetchEnsemble(ensemble.slug);
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -186,8 +192,8 @@ export default function EnsembleDisplay() {
       // refresh from server
       await fetchEnsemble(ensemble.slug);
       setEditing(false);
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -230,18 +236,22 @@ export default function EnsembleDisplay() {
 
   const partNames: PartName[] = (() => {
     // Prefer backend shape (`part_names`), fallback to older (`part_name`)
-    const raw = (ensemble as any).part_names ?? (ensemble as any).part_name ?? [];
+    const ensembleWithPartNames = ensemble as EnsembleWithPartNames;
+    const raw = ensembleWithPartNames.part_names ?? ensembleWithPartNames.part_name ?? [];
     if (!Array.isArray(raw)) return [];
 
     return raw
-      .map((p: any) => {
+      .map((p: unknown) => {
         if (p && typeof p === 'object') {
           // New backend shape
-          if (typeof p.id === 'number' && typeof p.display_name === 'string') {
-            return { id: p.id, display_name: p.display_name, arrangements: p.arrangements } as PartName;
+          if ('id' in p && 'display_name' in p && typeof p.id === 'number' && typeof p.display_name === 'string') {
+            const arrangements = 'arrangements' in p && Array.isArray(p.arrangements)
+              ? p.arrangements.filter((arr): arr is string => typeof arr === 'string')
+              : undefined;
+            return { id: p.id, display_name: p.display_name, arrangements } as PartName;
           }
           // Old backend shape: { [id]: "name" }
-          const entries = Object.entries(p);
+          const entries = Object.entries(p as LegacyPartNameMap);
           if (entries.length === 1) {
             const [idStr, name] = entries[0];
             const id = Number(idStr);
@@ -266,8 +276,8 @@ export default function EnsembleDisplay() {
       setError(null);
       await apiService.generatePartBooksForEnsemble(ensemble.slug);
       await fetchEnsemble(ensemble.slug);
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -294,8 +304,8 @@ export default function EnsembleDisplay() {
       setMergeFirstId(null);
       setMergeSecondId(null);
       setMergeNewDisplayName('');
-    } catch (err: any) {
-      setError(err?.message || String(err));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
     }
@@ -356,7 +366,7 @@ export default function EnsembleDisplay() {
                   <div style={{ height: 320, overflowY: 'auto', minHeight: 0 }}>
                     <Stack mt="md" gap="xs">
                       {(ensemble.arrangements && ensemble.arrangements.length > 0) ? (
-                        ensemble.arrangements.slice(0, 8).map((arr: any) => (
+                        ensemble.arrangements.slice(0, 8).map((arr) => (
                           <Card key={arr.id} withBorder radius="sm" p="sm" component={Link} to={`/app/arrangements/${arr.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                             <Text size="sm" fw={500} lineClamp={1}>{arr.title}{arr.subtitle ? ` — ${arr.subtitle}` : ''}</Text>
                             <Text size="xs" c="dimmed">{arr.composer ?? ''} {arr.mvt_no ? `· Mvt ${arr.mvt_no}` : ''}</Text>
@@ -440,8 +450,8 @@ export default function EnsembleDisplay() {
                           const data = await apiService.getInviteLink(ensemble.slug);
                           await fetchEnsemble(ensemble.slug);
                           setJoinLinkDraft(data?.invite_link ?? data?.join_link ?? ensemble.join_link);
-                        } catch (err: any) {
-                          setError(err?.message || String(err));
+                        } catch (err: unknown) {
+                          setError(err instanceof Error ? err.message : String(err));
                         }
                       }}>Generate</Button>
                     )}

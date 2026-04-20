@@ -1,60 +1,78 @@
 # SkuleNite-Divisi
+
 Skule Nite Arrangement Management Website
 
-Liam off-handedly referred to this as "Magellan but for Skule Nite" and I think that is the most perfect description ever. 
+Liam off-handedly referred to this as "Magellan but for Skule Nite" and I think that is the most perfect description ever.
 
 http://divisi.nbiancolin.ca
 
-Runs inside a docker containter!
+Runs inside a Docker container.
 
-3 main apps:
-- React Frontend (/frontend)
-- Django Backend (/backend)
-  - (& associated postgresql database)
-  - And associated Celery Server
+## Repository layout
 
-to run (dev):
-```
-docker-compose up --build -d
-```
+- **React frontend**: [`apps/frontend`](apps/frontend) (Vite)
+- **Django backend**: [`apps/backend`](apps/backend) (REST API, PostgreSQL, Celery)
+- **Python packages**: [`packages/`](packages/) (e.g. MuseScore tooling), installed editable from the backend
 
-to run prod:
-```
+**Python version**: CI and production use **Python 3.11**. Match that locally to avoid subtle differences (use a 3.11 venv when working on the backend or packages).
+
+## Developer commands (from repo root)
+
+- **Frontend**: `npm run lint --prefix apps/frontend`, `npm run typecheck --prefix apps/frontend`, `npm run test --prefix apps/frontend`, `npm run build --prefix apps/frontend`
+- **Python lint** (install [Ruff](https://docs.astral.sh/ruff/) via `pip install -r requirements-dev.txt`): `python -m ruff check apps/backend/ensembles/views` (matches CI; expand paths locally as needed)
+- **Package tests** (with dev deps installed): `pytest packages/musescore-part-formatter/tests`, `pytest packages/musescore-score-diff/tests`
+- **Pre-commit** (optional): `pre-commit install` then hooks run on commit
+
+The backend dev image installs `requirements-dev.txt` so Ruff is available inside the container.
+
+## Local development (Docker)
+
+1. Copy environment templates and fill in secrets (never commit real secrets):
+
+   ```bash
+   cp .env.example .env
+   # Edit .env: set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET for Discord OAuth.
+   ```
+
+   For the Vite app, see [`apps/frontend/.env.example`](apps/frontend/.env.example) (e.g. copy to `apps/frontend/.env.development`).
+
+2. Start the stack:
+
+   ```bash
+   docker compose -f docker-compose.dev.yml up --build -d
+   ```
+
+## Production
+
+```bash
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-Backend:
-- `backend` contains django config things
-- `divisi` contains everything needed to do the part-prep stuff
-- `ensembles` contains everything needed for score management
+## Backend apps (Django)
 
+- `backend` — Django project settings and URLs
+- `divisi` — part-prep / formatter flows
+- `ensembles` — score and arrangement management
 
-# TODO: Fix this documentation
+## How file storage is structured
 
-## How Files storage is structured
+### Part Formatter (Divisi)
 
-### Part Formatter (Divisi):
-
-- On upload action, the files are stored to `/blob/uploads/<uuid>/<file>.mscz`
-- Then, the process step grabs the file from its uuid, copies it into a temp working directory, then outputs the processed file in `/blob/processed/<uuid>/<file>`
-- From there, the output msc file and score pdf have the same name.
+- On upload, files are stored under `/blob/uploads/<uuid>/<file>.mscz`
+- Processing copies into a temp working directory and writes output to `/blob/processed/<uuid>/<file>`
+- The processed `.msc` and score PDF share the same base name
 
 ### Score Management (Ensembles)
 
-- raw uploaded files are stored in `/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/raw/`
-- Once processed, moved out of raw folder (`/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/processed/`)
-- Files Exported:
-  - Formatted Mscz (same file name, in root uuid folder)
-  - Formatted Score (same file name, extension.pdf)
-  - Raw score XML (for computing Diffs)   TODO: This should probably export with just notes and text, no other formatting at all.
+- Raw uploads: `/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/raw/`
+- After processing: `/blob/_ensembles/<ensemble>/<arrangement>/<version uuid>/processed/`
+- Exported artifacts: formatted `.mscz`, PDF, and raw score XML for diffs (the XML export may later be narrowed to notes and text only)
 
-> NOTE: If you log into DJANGO ADMIN then try to use the website it wont work. Clear cookies for the site then try again
+> **Note:** If you log into Django Admin and then use the site, auth can conflict. Clear cookies for the site and try again.
 
-# How to Contribute:
+## Contributing
 
-- Reach out to me (Nick) for access to the Shortcut (https://app.shortcut.com/divisi-app/epics)
-- Add yourself as an owner to a ticket
-- Create a new branch with your changes
-- Open a PR describing your changes, and request a review from me!
+- Reach out for access to [Shortcut](https://app.shortcut.com/divisi-app/epics)
+- Own a ticket, branch from `main`, open a PR with a clear description, and request review
 
-The reason for doing it this way is because ** the main branch needs to ALWAYS be in a deployable state**. On every merge/commit to main, a new deploy is triggered. This is so that I / we can ship code quickly, and incrementally
+**Main must stay deployable.** Every merge to `main` triggers a deploy so we can ship incrementally.

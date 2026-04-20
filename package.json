@@ -1,0 +1,11 @@
+{
+  "name": "skulenite-divisi",
+  "private": true,
+  "scripts": {
+    "lint:frontend": "npm run lint --prefix apps/frontend",
+    "lint:python": "python -m ruff check apps/backend/ensembles/views",
+    "build:frontend": "npm run build --prefix apps/frontend",
+    "test:frontend": "npm run test --prefix apps/frontend",
+    "typecheck:frontend": "npm run typecheck --prefix apps/frontend"
+  }
+}
