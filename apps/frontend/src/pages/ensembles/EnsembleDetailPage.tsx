@@ -55,7 +55,6 @@ export default function EnsembleDisplay() {
 
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
-  const [joinLinkDraft, setJoinLinkDraft] = useState<string | null | undefined>('');
   const [selectedStyleDraft, setSelectedStyleDraft] = useState<PreviewStyleName>("broadway");
 
   const [saving, setSaving] = useState(false);
