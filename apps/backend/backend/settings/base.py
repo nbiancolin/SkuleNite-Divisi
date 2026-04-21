@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.discord',
     'core',
     'divisi',
+    'comments',
     'ensembles',
     'storages',
     'django.contrib.staticfiles',
