@@ -56,6 +56,7 @@ urlpatterns = [
     path("api/auth/discord/login/", DirectDiscordLoginView.as_view(), name="direct-discord-login"),
     path("api/", include((divisi_router.urls, "divisi"), namespace="divisi")),
     path("api/", include((ensembles_router.urls, "ensembles"), namespace="ensembles")),
+    path("api/", include("comments.urls")),
     # Django Allauth URLs for Discord OAuth (mounted under /api for consistency)
     path("api/accounts/", include("allauth.urls")),
 ]

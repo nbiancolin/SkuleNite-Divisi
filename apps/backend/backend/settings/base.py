@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'core',
     'divisi',
     'ensembles',
+    'comments',
     'storages',
     'django.contrib.staticfiles',
     'django_extensions',

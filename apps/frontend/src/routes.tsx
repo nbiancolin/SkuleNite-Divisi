@@ -19,6 +19,7 @@ const UploadArrangementVersionDirectlyPage = lazy(
 );
 const CreateVersionFromCommitPage = lazy(() => import("./pages/ensembles/CreateVersionFromCommitPage"));
 const ArrangementDisplay = lazy(() => import("./pages/ensembles/ArrangementDetailPage"));
+const ScoreReviewPage = lazy(() => import("./pages/ensembles/ScoreReviewPage"));
 const UploadPartsForm = lazy(() =>
   import("./pages/testing/UploadPartsForm").then((m) => ({ default: m.UploadPartsForm }))
 );
@@ -47,6 +48,7 @@ export function AppRoutes() {
           <Route path="/app/ensembles/:slug/arrangements" element={<ArrangementsPage />} />
           <Route path="/app/ensembles/:slug/create-arrangement" element={<CreateArrangementPage />} />
           <Route path="/app/arrangements/:arrangementId" element={<ArrangementDisplay />} />
+          <Route path="/app/arrangements/:id/review-score" element={<ScoreReviewPage />} />
           <Route path="/app/arrangements/:slug/edit" element={<div>Edit Arrangement Page (Coming Soon)</div>} />
           <Route path="/app/arrangements/:arrangementId/new-commit" element={<UploadArrangementVersionFromCommitPage />} />
           <Route path="/app/arrangements/:arrangementId/new-version" element={<UploadArrangementVersionDirectlyPage />} />
