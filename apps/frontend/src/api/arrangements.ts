@@ -2,7 +2,6 @@ import { API_BASE_URL, getCsrfToken, getHeadersWithCsrf } from "./client";
 import type {
   Arrangement,
   ArrangementVersion,
-  ArrangementVersionCommentThread,
   Commit,
   EditableArrangementData,
   StaffSpacingStrategy,
@@ -316,91 +315,5 @@ export const arrangementApi = {
     }
 
     return await response.json();
-  },
-
-  async getVersionComments(versionId: number): Promise<{ threads: ArrangementVersionCommentThread[] }> {
-    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/comments/`, {
-      credentials: "include",
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch comments (status: ${response.status}) - ${errorText}`);
-    }
-    return response.json();
-  },
-
-  async createVersionCommentThread(
-    versionId: number,
-    payload: { page_number: number; x: number; y: number; body: string }
-  ): Promise<ArrangementVersionCommentThread> {
-    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/comments/threads/`, {
-      method: "POST",
-      headers: getHeadersWithCsrf(),
-      body: JSON.stringify(payload),
-      credentials: "include",
-    });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create comment thread (status: ${response.status}) - ${errorText}`);
-    }
-    return response.json();
-  },
-
-  async createVersionCommentMessage(
-    versionId: number,
-    threadId: number,
-    payload: { body: string }
-  ): Promise<void> {
-    const response = await fetch(
-      `${API_BASE_URL}/arrangementversions/${versionId}/comments/threads/${threadId}/messages/`,
-      {
-        method: "POST",
-        headers: getHeadersWithCsrf(),
-        body: JSON.stringify(payload),
-        credentials: "include",
-      }
-    );
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create comment message (status: ${response.status}) - ${errorText}`);
-    }
-  },
-
-  async resolveVersionCommentThread(
-    versionId: number,
-    threadId: number
-  ): Promise<ArrangementVersionCommentThread> {
-    const response = await fetch(
-      `${API_BASE_URL}/arrangementversions/${versionId}/comments/threads/${threadId}/resolve/`,
-      {
-        method: "POST",
-        headers: getHeadersWithCsrf(),
-        credentials: "include",
-      }
-    );
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to resolve comment thread (status: ${response.status}) - ${errorText}`);
-    }
-    return response.json();
-  },
-
-  async reopenVersionCommentThread(
-    versionId: number,
-    threadId: number
-  ): Promise<ArrangementVersionCommentThread> {
-    const response = await fetch(
-      `${API_BASE_URL}/arrangementversions/${versionId}/comments/threads/${threadId}/reopen/`,
-      {
-        method: "POST",
-        headers: getHeadersWithCsrf(),
-        credentials: "include",
-      }
-    );
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to reopen comment thread (status: ${response.status}) - ${errorText}`);
-    }
-    return response.json();
   },
 };

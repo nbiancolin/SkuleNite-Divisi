@@ -39,7 +39,6 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconGitCommit,
-  IconMessageCircle,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 
@@ -370,15 +369,6 @@ export default function ArrangementDisplay() {
                     </Group>
                     {arrangement.latest_version && !exportLoading && !exportError && (
                     <>
-                      <Button
-                        component={Link}
-                        to={`/app/arrangements/${arrangement.id}/review-score?version_id=${arrangement.latest_version.id}`}
-                        variant="light"
-                        size="sm"
-                        rightSection={<IconMessageCircle size={16} />}
-                      >
-                        Review Score
-                      </Button>
                       <Button
                         onClick={handleAudioButtonClick}
                         variant="filled"
