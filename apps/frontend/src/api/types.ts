@@ -1,3 +1,5 @@
+import type { PreviewStyleName } from "../components/ScoreTitlePreview";
+
 export interface User {
   id: number;
   username: string;
@@ -95,7 +97,7 @@ export interface Ensemble {
   part_books_generating?: boolean;
   latest_part_book_revision?: number;
   part_books?: EnsemblePartBook[];
-  default_style?: string;
+  default_style: PreviewStyleName;
 }
 
 export interface EditableArrangementData {
