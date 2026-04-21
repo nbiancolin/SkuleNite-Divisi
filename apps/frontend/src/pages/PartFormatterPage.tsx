@@ -282,7 +282,6 @@ export default function PartFormatterPage() {
             ensemble={null}
             composer={composer}
             arranger={arranger}
-            showTitle={showTitle}
             mvtNo={showNumber}
           />
           {/* <Button onClick={handleFormatRequest}>Format Musescore File</Button> */}

@@ -47,6 +47,7 @@ const emptyEnsemble = (): Ensemble => ({
   slug: '',
   is_admin: false,
   arrangements: [emptyArrangement()],
+  default_style: "broadway",
 })
 
   const [error, setError] = useState<string | null>(null);
