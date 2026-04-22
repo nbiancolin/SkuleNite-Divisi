@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseVersionIdParam } from "./ScoreReviewPage";
+import { parseVersionIdParam } from "./scoreReviewUtils";
 
 describe("parseVersionIdParam", () => {
   it("parses valid positive integer ids", () => {

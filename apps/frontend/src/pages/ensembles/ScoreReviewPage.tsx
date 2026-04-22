@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   Alert,
@@ -9,6 +9,7 @@ import {
   Container,
   Group,
   Loader,
+  Modal,
   Select,
   Stack,
   Text,
@@ -16,15 +17,12 @@ import {
   Title,
 } from "@mantine/core";
 import { IconArrowLeft, IconMessageCircle, IconCheck } from "@tabler/icons-react";
+import { Document, Page, pdfjs } from "react-pdf";
 import { apiService } from "../../services/apiService";
 import type { ArrangementVersionCommentThread, VersionHistoryItem } from "../../services/apiService";
+import { parseVersionIdParam } from "./scoreReviewUtils";
 
-export function parseVersionIdParam(raw: string | null): number | null {
-  if (!raw) return null;
-  const id = Number(raw);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  return id;
-}
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function ScoreReviewPage() {
   const { id: arrangementIdParam = "" } = useParams();
@@ -36,11 +34,17 @@ export default function ScoreReviewPage() {
   const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [renderableScoreUrl, setRenderableScoreUrl] = useState<string>("");
+  const [scoreLoadError, setScoreLoadError] = useState<string | null>(null);
+  const [numPages, setNumPages] = useState<number>(0);
   const [threads, setThreads] = useState<ArrangementVersionCommentThread[]>([]);
   const [threadBody, setThreadBody] = useState("");
   const [replyBodies, setReplyBodies] = useState<Record<number, string>>({});
   const [placingAnchor, setPlacingAnchor] = useState<{ x: number; y: number } | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   const versionOptions = useMemo(
     () =>
@@ -57,6 +61,43 @@ export default function ScoreReviewPage() {
   }
 
   const requestedVersionParam = searchParams.get("version_id");
+
+  useEffect(() => {
+    let isCancelled = false;
+    let nextBlobUrl: string | null = null;
+
+    async function fetchPdfData() {
+      setRenderableScoreUrl("");
+      setScoreLoadError(null);
+      setNumPages(0);
+      if (!scoreUrl) return;
+
+      try {
+        const response = await fetch(scoreUrl, { credentials: "include" });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PDF bytes (status ${response.status})`);
+        }
+        const blob = await response.blob();
+        nextBlobUrl = URL.createObjectURL(blob);
+        if (!isCancelled) {
+          setRenderableScoreUrl(nextBlobUrl);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setScoreLoadError(err instanceof Error ? err.message : "Unable to fetch PDF file.");
+        }
+      }
+    }
+
+    fetchPdfData();
+
+    return () => {
+      isCancelled = true;
+      if (nextBlobUrl) {
+        URL.revokeObjectURL(nextBlobUrl);
+      }
+    };
+  }, [scoreUrl]);
 
   useEffect(() => {
     async function loadInitial() {
@@ -113,6 +154,18 @@ export default function ScoreReviewPage() {
     await loadThreads(nextId);
   }
 
+  function onDocumentLoadSuccess({ numPages: nextNumPages }: { numPages: number }) {
+    setNumPages(nextNumPages);
+    if (pageNumber > nextNumPages) {
+      setPageNumber(nextNumPages);
+    }
+    setScoreLoadError(null);
+  }
+
+  function onDocumentLoadError() {
+    setScoreLoadError("Could not load this PDF in the in-page viewer.");
+  }
+
   async function onCreateThread() {
     if (!selectedVersionId || !placingAnchor || !threadBody.trim()) return;
     await apiService.createVersionCommentThread(selectedVersionId, {
@@ -123,6 +176,7 @@ export default function ScoreReviewPage() {
     });
     setThreadBody("");
     setPlacingAnchor(null);
+    setCreateModalOpen(false);
     await loadThreads(selectedVersionId);
   }
 
@@ -150,6 +204,39 @@ export default function ScoreReviewPage() {
     const x = (event.clientX - rect.left) / rect.width;
     const y = (event.clientY - rect.top) / rect.height;
     setPlacingAnchor({ x, y });
+    setCreateModalOpen(true);
+  }
+
+  function handlePageSelect(value: string | null) {
+    const nextPage = Number(value || "1");
+    if (!Number.isInteger(nextPage) || nextPage < 1) return;
+    setPageNumber(nextPage);
+    const pageNode = pageRefs.current[nextPage];
+    if (pageNode) {
+      pageNode.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function onScrollPdfContainer() {
+    if (!scrollContainerRef.current) return;
+    const containerRect = scrollContainerRef.current.getBoundingClientRect();
+    let bestPage = pageNumber;
+    let bestDistance = Number.MAX_SAFE_INTEGER;
+
+    for (let p = 1; p <= numPages; p += 1) {
+      const node = pageRefs.current[p];
+      if (!node) continue;
+      const pageRect = node.getBoundingClientRect();
+      const distance = Math.abs(pageRect.top - containerRect.top);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestPage = p;
+      }
+    }
+
+    if (bestPage !== pageNumber) {
+      setPageNumber(bestPage);
+    }
   }
 
   if (loading) {
@@ -199,79 +286,109 @@ export default function ScoreReviewPage() {
           <Card withBorder style={{ flex: 3, minHeight: 700 }}>
             <Stack gap="sm">
               <Text size="sm" c="dimmed">
-                Click on the score area to place a page-position anchor, then submit your thread.
+                Click on the score to place an anchor. A comment composer opens immediately.
               </Text>
               <Group>
                 <Text size="sm">Page number</Text>
                 <Select
-                  data={Array.from({ length: 200 }).map((_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+                  data={Array.from({ length: Math.max(numPages, 1) }).map((_, i) => ({
+                    value: String(i + 1),
+                    label: String(i + 1),
+                  }))}
                   value={String(pageNumber)}
-                  onChange={(v) => setPageNumber(Number(v || 1))}
+                  onChange={handlePageSelect}
                   w={110}
                 />
               </Group>
-              <Box pos="relative" style={{ width: "100%", height: 900, border: "1px solid var(--mantine-color-gray-3)" }}>
-                {scoreUrl ? (
-                  // Figure out why this isnt displaying the PDF
-                  // also figure out why the comment clicking and adding doesnt work ether
-                  <object data={scoreUrl} type="application/pdf" width="100%" height="100%">
-                    <Text p="md">Unable to render PDF in-browser. Use download links on arrangement page.</Text>
-                  </object>
-                ) : (
-                  <Text p="md">No score PDF available for this version.</Text>
+              <Box
+                ref={scrollContainerRef}
+                onScroll={onScrollPdfContainer}
+                style={{
+                  width: "100%",
+                  height: 900,
+                  border: "1px solid var(--mantine-color-gray-3)",
+                  overflowY: "auto",
+                  padding: 8,
+                  background: "var(--mantine-color-gray-0)",
+                }}
+              >
+                {!scoreUrl && <Text p="md">No score PDF available for this version.</Text>}
+                {scoreUrl && !renderableScoreUrl && !scoreLoadError && (
+                  <Group justify="center" py="xl">
+                    <Loader size="sm" />
+                    <Text size="sm" c="dimmed">
+                      Loading PDF...
+                    </Text>
+                  </Group>
                 )}
-                <Box
-                  pos="absolute"
-                  top={0}
-                  left={0}
-                  right={0}
-                  bottom={0}
-                  onClick={onOverlayClick}
-                  style={{ cursor: "crosshair" }}
-                />
-                {threads
-                  .filter((t) => t.page_number === pageNumber)
-                  .map((thread) => (
-                    <Badge
-                      key={thread.id}
-                      color={thread.status === "resolved" ? "green" : "blue"}
-                      style={{
-                        position: "absolute",
-                        left: `${thread.x * 100}%`,
-                        top: `${thread.y * 100}%`,
-                        transform: "translate(-50%, -50%)",
-                      }}
-                    >
-                      #{thread.id}
-                    </Badge>
-                  ))}
-                {placingAnchor && (
-                  <Badge
-                    color="orange"
-                    style={{
-                      position: "absolute",
-                      left: `${placingAnchor.x * 100}%`,
-                      top: `${placingAnchor.y * 100}%`,
-                      transform: "translate(-50%, -50%)",
-                    }}
+                {renderableScoreUrl && (
+                  <Document
+                    file={renderableScoreUrl}
+                    onLoadSuccess={onDocumentLoadSuccess}
+                    onLoadError={onDocumentLoadError}
                   >
-                    New
-                  </Badge>
+                    {Array.from({ length: numPages || 0 }).map((_, index) => {
+                      const renderedPage = index + 1;
+                      return (
+                        <Box
+                          key={renderedPage}
+                          ref={(node) => {
+                            pageRefs.current[renderedPage] = node;
+                          }}
+                          pos="relative"
+                          mb="md"
+                          onClick={(event) => {
+                            setPageNumber(renderedPage);
+                            onOverlayClick(event);
+                          }}
+                          style={{ cursor: "crosshair", width: "fit-content", marginInline: "auto" }}
+                        >
+                          <Page pageNumber={renderedPage} width={900} renderTextLayer={false} renderAnnotationLayer={false} />
+                          {threads
+                            .filter((t) => t.page_number === renderedPage)
+                            .map((thread) => (
+                              <Badge
+                                key={thread.id}
+                                color={thread.status === "resolved" ? "green" : "blue"}
+                                style={{
+                                  position: "absolute",
+                                  left: `${thread.x * 100}%`,
+                                  top: `${thread.y * 100}%`,
+                                  transform: "translate(-50%, -50%)",
+                                  pointerEvents: "none",
+                                }}
+                              >
+                                #{thread.id}
+                              </Badge>
+                            ))}
+                          {placingAnchor && pageNumber === renderedPage && (
+                            <Badge
+                              color="orange"
+                              style={{
+                                position: "absolute",
+                                left: `${placingAnchor.x * 100}%`,
+                                top: `${placingAnchor.y * 100}%`,
+                                transform: "translate(-50%, -50%)",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              New
+                            </Badge>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Document>
                 )}
               </Box>
-              <Textarea
-                placeholder="Write a new comment thread..."
-                value={threadBody}
-                onChange={(e) => setThreadBody(e.currentTarget.value)}
-                minRows={2}
-              />
-              <Button
-                leftSection={<IconMessageCircle size={16} />}
-                onClick={onCreateThread}
-                disabled={!placingAnchor || !threadBody.trim() || !selectedVersionId}
-              >
-                Add Comment Thread
-              </Button>
+              {scoreLoadError && (
+                <Alert color="yellow" variant="light">
+                  {scoreLoadError} Open the source PDF directly:{" "}
+                  <a href={scoreUrl} target="_blank" rel="noreferrer">
+                    Open score PDF
+                  </a>
+                </Alert>
+              )}
             </Stack>
           </Card>
 
@@ -326,6 +443,34 @@ export default function ScoreReviewPage() {
             </Stack>
           </Card>
         </Group>
+        <Modal
+          opened={createModalOpen}
+          onClose={() => setCreateModalOpen(false)}
+          title="Add Comment Thread"
+        >
+          <Stack>
+            <Text size="sm" c="dimmed">
+              Page {pageNumber}
+              {placingAnchor
+                ? ` at (${placingAnchor.x.toFixed(3)}, ${placingAnchor.y.toFixed(3)})`
+                : ""}
+            </Text>
+            <Textarea
+              placeholder="Write a new comment thread..."
+              value={threadBody}
+              onChange={(e) => setThreadBody(e.currentTarget.value)}
+              minRows={3}
+              autoFocus
+            />
+            <Button
+              leftSection={<IconMessageCircle size={16} />}
+              onClick={onCreateThread}
+              disabled={!placingAnchor || !threadBody.trim() || !selectedVersionId}
+            >
+              Add Comment Thread
+            </Button>
+          </Stack>
+        </Modal>
       </Stack>
     </Container>
   );
