@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Card,
+  Collapse,
   Container,
   Group,
   Loader,
@@ -43,6 +44,7 @@ export default function ScoreReviewPage() {
   const [placingAnchor, setPlacingAnchor] = useState<{ x: number; y: number } | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [collapsedResolvedThreads, setCollapsedResolvedThreads] = useState<Record<number, boolean>>({});
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -143,6 +145,18 @@ export default function ScoreReviewPage() {
       setLoading(false);
     }
   }, [arrangementId, requestedVersionParam, setSearchParams]);
+
+  useEffect(() => {
+    setCollapsedResolvedThreads((prev) => {
+      const next = { ...prev };
+      for (const thread of threads) {
+        if (thread.status === "resolved" && next[thread.id] === undefined) {
+          next[thread.id] = true;
+        }
+      }
+      return next;
+    });
+  }, [threads]);
 
   async function onSelectVersion(value: string | null) {
     const nextId = parseVersionIdParam(value);
@@ -349,7 +363,7 @@ export default function ScoreReviewPage() {
                             .map((thread) => (
                               <Badge
                                 key={thread.id}
-                                color={thread.status === "resolved" ? "green" : "blue"}
+                                color={thread.status === "resolved" ? "gray" : "blue"}
                                 style={{
                                   position: "absolute",
                                   left: `${thread.x * 100}%`,
@@ -396,50 +410,78 @@ export default function ScoreReviewPage() {
             <Stack gap="sm">
               <Title order={4}>Comment Threads</Title>
               {threads.length === 0 && <Text c="dimmed">No comments yet for this version.</Text>}
-              {threads.map((thread) => (
-                <Card key={thread.id} withBorder padding="sm">
+              {threads.map((thread) => {
+                const isResolved = thread.status === "resolved";
+                const isCollapsed = isResolved && collapsedResolvedThreads[thread.id] !== false;
+                return (
+                <Card
+                  key={thread.id}
+                  withBorder
+                  padding="sm"
+                  style={isResolved ? { opacity: 0.78 } : undefined}
+                >
                   <Stack gap="xs">
                     <Group justify="space-between">
                       <Group>
-                        <Badge color={thread.status === "resolved" ? "green" : "blue"}>{thread.status}</Badge>
+                        <Badge color={thread.status === "resolved" ? "gray" : "blue"}>{thread.status}</Badge>
                         <Text size="sm">Page {thread.page_number}</Text>
                       </Group>
-                      <Button
-                        size="xs"
-                        variant="light"
-                        leftSection={<IconCheck size={14} />}
-                        onClick={() => onResolveToggle(thread)}
-                      >
-                        {thread.status === "open" ? "Resolve" : "Reopen"}
-                      </Button>
+                      <Group gap="xs">
+                        {isResolved && (
+                          <Button
+                            size="xs"
+                            variant="subtle"
+                            onClick={() =>
+                              setCollapsedResolvedThreads((prev) => ({
+                                ...prev,
+                                [thread.id]: !isCollapsed,
+                              }))
+                            }
+                          >
+                            {isCollapsed ? "Expand" : "Collapse"}
+                          </Button>
+                        )}
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={<IconCheck size={14} />}
+                          onClick={() => onResolveToggle(thread)}
+                        >
+                          {thread.status === "open" ? "Resolve" : "Reopen"}
+                        </Button>
+                      </Group>
                     </Group>
                     {thread.resolved_by && thread.resolved_at && (
                       <Text size="xs" c="dimmed">
                         Resolved by {thread.resolved_by.username} at {new Date(thread.resolved_at).toLocaleString()}
                       </Text>
                     )}
-                    {thread.comments.map((comment) => (
-                      <Card key={comment.id} withBorder padding="xs">
-                        <Text size="sm">{comment.body}</Text>
-                        <Text size="xs" c="dimmed">
-                          {comment.author.username} · {new Date(comment.created_at).toLocaleString()}
-                        </Text>
-                      </Card>
-                    ))}
-                    <Textarea
-                      placeholder="Reply..."
-                      value={replyBodies[thread.id] || ""}
-                      onChange={(e) =>
-                        setReplyBodies((prev) => ({ ...prev, [thread.id]: e.currentTarget.value }))
-                      }
-                      minRows={2}
-                    />
-                    <Button size="xs" variant="light" onClick={() => onReply(thread.id)}>
-                      Reply
-                    </Button>
+                    <Collapse in={!isCollapsed}>
+                      <Stack gap="xs">
+                        {thread.comments.map((comment) => (
+                          <Card key={comment.id} withBorder padding="xs">
+                            <Text size="sm">{comment.body}</Text>
+                            <Text size="xs" c="dimmed">
+                              {comment.author.username} · {new Date(comment.created_at).toLocaleString()}
+                            </Text>
+                          </Card>
+                        ))}
+                        <Textarea
+                          placeholder="Reply..."
+                          value={replyBodies[thread.id] || ""}
+                          onChange={(e) =>
+                            setReplyBodies((prev) => ({ ...prev, [thread.id]: e.currentTarget.value }))
+                          }
+                          minRows={2}
+                        />
+                        <Button size="xs" variant="light" onClick={() => onReply(thread.id)}>
+                          Reply
+                        </Button>
+                      </Stack>
+                    </Collapse>
                   </Stack>
                 </Card>
-              ))}
+              )})}
             </Stack>
           </Card>
         </Group>
