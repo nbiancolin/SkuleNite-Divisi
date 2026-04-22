@@ -45,6 +45,7 @@ export default function ScoreReviewPage() {
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [collapsedResolvedThreads, setCollapsedResolvedThreads] = useState<Record<number, boolean>>({});
+  const [pdfPageWidth, setPdfPageWidth] = useState<number>(900);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -157,6 +158,29 @@ export default function ScoreReviewPage() {
       return next;
     });
   }, [threads]);
+
+  useEffect(() => {
+    function updatePdfPageWidth() {
+      if (!scrollContainerRef.current) return;
+      const containerWidth = scrollContainerRef.current.clientWidth;
+      // Account for container padding and keep a small right-side gutter.
+      const width = Math.max(320, Math.floor(containerWidth - 28));
+      setPdfPageWidth(width);
+    }
+
+    updatePdfPageWidth();
+
+    const observer = new ResizeObserver(() => updatePdfPageWidth());
+    if (scrollContainerRef.current) {
+      observer.observe(scrollContainerRef.current);
+    }
+
+    window.addEventListener("resize", updatePdfPageWidth);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updatePdfPageWidth);
+    };
+  }, []);
 
   async function onSelectVersion(value: string | null) {
     const nextId = parseVersionIdParam(value);
@@ -357,7 +381,12 @@ export default function ScoreReviewPage() {
                           }}
                           style={{ cursor: "crosshair", width: "fit-content", marginInline: "auto" }}
                         >
-                          <Page pageNumber={renderedPage} width={900} renderTextLayer={false} renderAnnotationLayer={false} />
+                          <Page
+                            pageNumber={renderedPage}
+                            width={pdfPageWidth}
+                            renderTextLayer={false}
+                            renderAnnotationLayer={false}
+                          />
                           {threads
                             .filter((t) => t.page_number === renderedPage)
                             .map((thread) => (
