@@ -212,6 +212,8 @@ export default function ScoreReviewPage() {
               </Group>
               <Box pos="relative" style={{ width: "100%", height: 900, border: "1px solid var(--mantine-color-gray-3)" }}>
                 {scoreUrl ? (
+                  // Figure out why this isnt displaying the PDF
+                  // also figure out why the comment clicking and adding doesnt work ether
                   <object data={scoreUrl} type="application/pdf" width="100%" height="100%">
                     <Text p="md">Unable to render PDF in-browser. Use download links on arrangement page.</Text>
                   </object>
