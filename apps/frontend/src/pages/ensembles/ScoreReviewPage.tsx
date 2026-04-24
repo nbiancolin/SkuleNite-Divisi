@@ -289,14 +289,24 @@ export default function ScoreReviewPage() {
     pageNode.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [pageNumber]);
 
-  function onSelectThread(threadId: number, threadPage: number) {
+  function onSelectThread(thread: ArrangementVersionCommentThread) {
+    const threadId = thread.id;
+    const threadPage = thread.page_number;
     setSelectedThreadId(threadId);
     if (threadPage !== pageNumber) {
       setPageNumber(threadPage);
-      const pageNode = pageRefs.current[threadPage];
-      if (pageNode) {
-        pageNode.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+    }
+    const scrollContainer = scrollContainerRef.current;
+    const pageNode = pageRefs.current[threadPage];
+    if (scrollContainer && pageNode) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const pageRect = pageNode.getBoundingClientRect();
+      const pageTopWithinContainer = pageRect.top - containerRect.top + scrollContainer.scrollTop;
+      const targetTop = pageTopWithinContainer + thread.y * pageNode.clientHeight - scrollContainer.clientHeight * 0.25;
+      scrollContainer.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "smooth",
+      });
     }
     const threadNode = threadCardRefs.current[threadId];
     if (threadNode) {
@@ -324,8 +334,13 @@ export default function ScoreReviewPage() {
   }
 
   return (
-    <Container fluid py="xl" px="md">
-      <Stack gap="md">
+    <Container
+      fluid
+      py={0}
+      px="md"
+      style={{ height: "100%", overflow: "hidden", boxSizing: "border-box" }}
+    >
+      <Stack gap="md" style={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
         <Group justify="space-between">
           <Group>
             <Button
@@ -347,9 +362,9 @@ export default function ScoreReviewPage() {
           />
         </Group>
 
-        <Group align="flex-start" wrap="nowrap">
-          <Card withBorder style={{ flex: 4, minHeight: 700 }}>
-            <Stack gap="sm">
+        <Group align="stretch" wrap="nowrap" style={{ flex: 1, minHeight: 0 }}>
+          <Card withBorder style={{ flex: 4, minHeight: 0, height: "100%", display: "flex" }}>
+            <Stack gap="sm" style={{ flex: 1, minHeight: 0 }}>
               <Group>
                 <Text size="sm">Jump to page:</Text>
                 <Select
@@ -367,7 +382,8 @@ export default function ScoreReviewPage() {
                 onScroll={onScrollPdfContainer}
                 style={{
                   width: "100%",
-                  height: 900,
+                  flex: 1,
+                  minHeight: 0,
                   border: "1px solid var(--mantine-color-gray-3)",
                   overflowY: "auto",
                   padding: 8,
@@ -418,9 +434,9 @@ export default function ScoreReviewPage() {
                                 key={thread.id}
                                 color={thread.status === "resolved" ? "gray" : "blue"}
                                 variant={selectedThreadId === thread.id ? "filled" : "light"}
-                                onClick={(event) => {
+                                  onClick={(event) => {
                                   event.stopPropagation();
-                                  onSelectThread(thread.id, renderedPage);
+                                  onSelectThread(thread);
                                 }}
                                 style={{
                                   position: "absolute",
@@ -464,7 +480,11 @@ export default function ScoreReviewPage() {
             </Stack>
           </Card>
 
-          <Card withBorder style={{ flex: 1.5, maxHeight: 1000, overflowY: "auto" }} ref={commentsContainerRef}>
+          <Card
+            withBorder
+            style={{ flex: 1.5, minHeight: 0, height: "100%", overflowY: "auto" }}
+            ref={commentsContainerRef}
+          >
             <Stack gap="sm">
               <Title order={4}>Comment Threads</Title>
               {threads.length === 0 && <Text c="dimmed">No comments yet for this version.</Text>}
@@ -503,7 +523,7 @@ export default function ScoreReviewPage() {
                             ref={(node) => {
                               threadCardRefs.current[thread.id] = node;
                             }}
-                            onClick={() => onSelectThread(thread.id, thread.page_number)}
+                            onClick={() => onSelectThread(thread)}
                             style={{
                               opacity: isResolved ? 0.78 : 1,
                               cursor: "pointer",
