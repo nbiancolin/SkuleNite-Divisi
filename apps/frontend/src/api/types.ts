@@ -115,3 +115,26 @@ export interface VersionHistoryItem {
   timestamp: string;
   is_latest: boolean;
 }
+
+export interface ArrangementVersionComment {
+  id: number;
+  author: UserObj;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ArrangementVersionCommentThread {
+  id: number;
+  arrangement_version: number;
+  created_by: UserObj;
+  status: "open" | "resolved";
+  page_number: number;
+  x: number;
+  y: number;
+  resolved_by: UserObj | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  comments: ArrangementVersionComment[];
+}
