@@ -292,7 +292,7 @@ def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.Eleme
 
     return (diff_score_tree, part_names)
 
-def mark_diffs_in_staff_pair(staff1, staff2, measures_to_mark) -> None:
+def mark_diffs_in_staff_pair(staff1, staff2, measures_to_mark, unified=True) -> None:
     """
     Fn that goes through diff score, iterates over each staff.
     for each (staff, staff-1) pairing, and applies the selected diff
@@ -328,7 +328,10 @@ def mark_diffs_in_staff_pair(staff1, staff2, measures_to_mark) -> None:
                     m2_processed.append(make_highlight_end_empty_measure())
                     prev_measure_highlighted = False
                 else:
-                    m2_processed.append(_make_empty_measure())
+                    if unified:
+                        m2_processed.append(_make_empty_measure())
+                    else:
+                        m2_processed.append(m2)
                 # m2_processed.append(m2)   # <-- For testing
             case State.MODIFIED:
                 #highlight staff1 red and staff2 green
@@ -366,7 +369,21 @@ def mark_diffs_in_staff_pair(staff1, staff2, measures_to_mark) -> None:
         staff1.append(m1)
         staff2.append(m2)
 
-def mark_diffs(diff_score, diffs) -> None:
+def mark_diffs_separate(lhs_score: ET.Element, rhs_score: ET.Element, diffs) -> None:
+    """
+    same as mark_diffs below, just without the diff score
+    """
+
+    lhs_staves, rhs_staves = lhs_score.findall("Staff"), rhs_score.findall("Staff")
+
+    assert len(lhs_staves) == len(rhs_staves) #TODO remove this assertion and see if it works
+
+    j = 1
+    for lhs_staff, rhs_staff in zip(lhs_staves, rhs_staves):
+        mark_diffs_in_staff_pair(lhs_staff, rhs_staff, diffs[j], unified=False)
+        j += 1
+
+def mark_diffs_unified(diff_score, diffs) -> None:
     """
     Create staff pairs to be sent to `mark_diffs_in_staff_pair`
     
@@ -382,7 +399,7 @@ def mark_diffs(diff_score, diffs) -> None:
         j += 1
 
 
-def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None) -> str:
+def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True) -> str:
     """
     Main function to compare two MuseScore files and create a diff score.
     
@@ -390,6 +407,7 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         file1_path: Path to the old version (score1)
         file2_path: Path to the new version (score2)
         output_path: Optional output path for the diff file
+        unified_diff: Optional: a method for displaying large diffs as 2 separate files instead of one unified
     
     Returns:
         Path to the generated diff file
@@ -402,24 +420,48 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
     print(f"Comparing {file1_path} and {file2_path}")
     
     # Create merged score with both versions
-    diff_score_tree, part_names = new_merge_musescore_files(file1_path, file2_path)
-    
-    # Get the score element
-    diff_root = diff_score_tree.getroot()
-    diff_score = diff_root.find("Score")
-    
-    diffs = compute_diff(file1_path, file2_path)
+    if unified_diff is True:
+        diff_score_tree, part_names = new_merge_musescore_files(file1_path, file2_path)
+        
+        # Get the score element
+        diff_root = diff_score_tree.getroot()
+        diff_score = diff_root.find("Score")
+        
+        diffs = compute_diff(file1_path, file2_path)
 
-    mark_diffs(diff_score, diffs)
+        mark_diffs_unified(diff_score, diffs)
 
+        
+        # Save the diff score
+        diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
+        
+        print(f"Diff score saved as: {output_path}")
+        return output_path
     
-    # Save the diff score
-    diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
-    
-    print(f"Diff score saved as: {output_path}")
-    return output_path
+    else:
+        #load the staves
+        tree1 = ET.parse(file1_path)
+        tree2 = ET.parse(file2_path)
 
-def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None) -> str:
+        root1 = tree1.getroot()
+        root2 = tree2.getroot()
+
+        score1 = root1.find("Score")
+        score2 = root2.find("Score")
+
+        diffs = compute_diff(file1_path, file2_path)
+        mark_diffs_separate(score1, score2, diffs)
+
+        #save both scores as new files
+        lhs_output = f"{output_path}-lhs.mscx"
+        tree1.write(lhs_output, encoding="UTF-8", xml_declaration=True)
+        
+        rhs_output = f"{output_path}-rhs.mscx"
+        tree2.write(rhs_output, encoding="UTF-8", xml_declaration=True)
+
+
+
+def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True) -> str:
     """
     Compare two .mscz files by extracting and processing their .mscx contents.
 
@@ -448,7 +490,7 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
         output_files = []
         for file1, file2 in zip(both_mscx_files[0], both_mscx_files[1]):
             mscx_output = file1.replace(os.path.basename(file1), f"diff-{os.path.basename(file1)}")
-            compare_musescore_files(file1, file2, mscx_output)
+            compare_musescore_files(file1, file2, mscx_output, unified_diff=unified_diff)
             output_files.append(mscx_output)
             print(f"Processed: {os.path.basename(file1)}")
 

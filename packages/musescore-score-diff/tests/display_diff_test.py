@@ -25,7 +25,7 @@ def test_mscz_compare_visually():
         FILE2_MSCZ_PATH,
         "tests/fixtures/_sample_output/Test-Score.mscz",
     )
-    warnings.warn("Check the outputted file that output looks correct!")
+    warnings.warn("Check the outputted file that output looks correct! 'tests/fixtures/_sample_output/Test-Score.mscz'")
 
 def test_initial_diff_score_generated_properly():
     diff_score_tree, _ = merge_musescore_files_for_diff(
@@ -36,7 +36,7 @@ def test_initial_diff_score_generated_properly():
         encoding="UTF-8",
         xml_declaration=True,
     )
-    warnings.warn("Check the outputted file that output looks correct!")
+    warnings.warn(f"Check the outputted file that output looks correct! {TEST_SCORE_OUTPUT_PATH}")
 
 #test whole thing with just this score to ensure things are marked correctly. 
 # Test each phase (computing diff, displaying diff) indepenently
@@ -48,8 +48,20 @@ def test_mscx_single_staff_compare_visually():
     )
 
     warnings.warn(
-        "Check the outputted file to ensure that output looks correct "
+        "Check the outputted file to ensure that output looks correct 'tests/fixtures/single-staff/test_score_output/test-score-2.mscx"
     )
 
 
+# TODO: SPlit these into mscx tests and mscz tests, and test both either unified or split diff
 
+def test_mscx_single_staff_split_diff_compare_visually():
+    compare_musescore_files(
+        "tests/fixtures/single-staff/test-score/test-score.mscx",
+        "tests/fixtures/single-staff/test-score2/test-score2.mscx",
+        "tests/fixtures/single-staff/test_score_split_output/test-score.mscx",
+        unified_diff=False,
+    )
+
+    warnings.warn(
+        "Check the outputted file to ensure that output looks correct 'tests/fixtures/single-staff/test_score_split_output/test-score.mscx'"
+    )
