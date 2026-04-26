@@ -22,7 +22,7 @@ class Commit(models.Model):
     )
 
     file_name = models.CharField(max_length=128)
-    message = models.CharField(max_length=128)
+    message = models.CharField(max_length=256)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")

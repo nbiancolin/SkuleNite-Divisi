@@ -30,7 +30,7 @@ class ArrangementVersion(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
     
-    #TODO[SC-241]: Convert these fields to a state field
+    #TODO[SC-241]: Convert these fields to a state field like Audio Status
     is_processing = models.BooleanField(default=True)
     error_on_export = models.BooleanField(default=False)
 
@@ -55,7 +55,7 @@ class ArrangementVersion(models.Model):
     staff_spacing_strategy = models.CharField(
         max_length=16,
         choices=StaffSpacingStrategy.choices,
-        default=StaffSpacingStrategy.PREDICT,
+        default=StaffSpacingStrategy.PRESERVE,
     )
     staff_spacing_value = models.DecimalField(
         max_digits=10,
@@ -215,3 +215,10 @@ class ArrangementVersion(models.Model):
 
     class Meta:
         ordering = ["-timestamp"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["arrangement"],
+                condition=models.Q(is_latest=True),
+                name="unique_latest_version_per_arrangement",
+            )
+        ]
