@@ -81,7 +81,7 @@ export default function ScoreReviewPage() {
       if (!scoreUrl) return;
 
       try {
-        const response = await fetch(scoreUrl, { credentials: "include" });
+        const response = await fetch(scoreUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch PDF bytes (status ${response.status})`);
         }
