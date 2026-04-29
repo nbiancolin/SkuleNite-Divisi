@@ -49,7 +49,7 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                         "id", "user_id", "ensemble_id", "role"
                     ),
                 )
-            ).distinct()
+            ).order_by("id").distinct()
 
         arrangements_queryset = Arrangement.objects.select_related("ensemble").prefetch_related(
             Prefetch(
