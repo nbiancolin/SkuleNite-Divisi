@@ -55,19 +55,37 @@ export default function ScoreReviewPage() {
   const commentPageRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const threadCardRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
+  const versionSequenceById = useMemo(() => {
+    // Compute a user-facing version number from oldest -> newest.
+    const sorted = [...versionHistory].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+    return new Map(sorted.map((version, index) => [version.id, index + 1]));
+  }, [versionHistory]);
+
   const versionOptions = useMemo(
     () =>
       versionHistory.map((v) => ({
         value: String(v.id),
-        label: `v${v.version_label}${v.is_latest ? " (latest)" : ""}`,
+        label: `v${versionSequenceById.get(v.id) ?? "?"}${v.is_latest ? " (latest)" : ""}`,
       })),
-    [versionHistory]
+    [versionHistory, versionSequenceById]
   );
 
   const audioState = useMemo(() => {
     if (!selectedVersionId) return "none" as const;
     return versionHistory.find((v) => v.id === selectedVersionId)?.audio_state ?? "none";
   }, [versionHistory, selectedVersionId]);
+
+  const sortedThreads = useMemo(
+    () => [...threads].sort((a, b) => a.page_number - b.page_number || a.id - b.id),
+    [threads]
+  );
+
+  const unresolvedThreadCount = useMemo(
+    () => threads.filter((thread) => thread.status === "open").length,
+    [threads]
+  );
 
   async function refreshAudioLinks(versionId: number) {
     const links = await apiService.getDownloadLinksForVersion(versionId);
@@ -562,7 +580,7 @@ export default function ScoreReviewPage() {
                             renderTextLayer={false}
                             renderAnnotationLayer={false}
                           />
-                          {threads
+                          {sortedThreads
                             .filter((t) => t.page_number === renderedPage)
                             .map((thread) => (
                               <Badge
@@ -621,11 +639,16 @@ export default function ScoreReviewPage() {
             ref={commentsContainerRef}
           >
             <Stack gap="sm">
-              <Title order={4}>Comment Threads</Title>
+              <Group justify="space-between" align="center">
+                <Title order={4}>Comment Threads</Title>
+                <Text size="sm" c="dimmed">
+                  {unresolvedThreadCount} unresolved
+                </Text>
+              </Group>
               {threads.length === 0 && <Text c="dimmed">No comments yet for this version.</Text>}
               {Array.from({ length: Math.max(numPages, 1) }).map((_, index) => {
                 const renderedPage = index + 1;
-                const threadsForPage = threads.filter((t) => t.page_number === renderedPage);
+                const threadsForPage = sortedThreads.filter((t) => t.page_number === renderedPage);
                 return (
                   <Box
                     key={renderedPage}
