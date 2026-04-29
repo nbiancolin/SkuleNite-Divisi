@@ -17,7 +17,7 @@ import {
   Textarea,
   Title,
 } from "@mantine/core";
-import { IconArrowLeft, IconMessageCircle, IconCheck } from "@tabler/icons-react";
+import { IconArrowLeft, IconMessageCircle, IconCheck, IconMusic, IconRefresh } from "@tabler/icons-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { apiService } from "../../services/apiService";
 import type { ArrangementVersionCommentThread, VersionHistoryItem } from "../../services/apiService";
@@ -35,6 +35,8 @@ export default function ScoreReviewPage() {
   const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
   const [scoreUrl, setScoreUrl] = useState<string>("");
+  const [audioUrl, setAudioUrl] = useState<string>("");
+  const [audioActionLoading, setAudioActionLoading] = useState(false);
   const [renderableScoreUrl, setRenderableScoreUrl] = useState<string>("");
   const [scoreLoadError, setScoreLoadError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -61,6 +63,68 @@ export default function ScoreReviewPage() {
       })),
     [versionHistory]
   );
+
+  const audioState = useMemo(() => {
+    if (!selectedVersionId) return "none" as const;
+    return versionHistory.find((v) => v.id === selectedVersionId)?.audio_state ?? "none";
+  }, [versionHistory, selectedVersionId]);
+
+  async function refreshAudioLinks(versionId: number) {
+    const links = await apiService.getDownloadLinksForVersion(versionId);
+    setAudioUrl(links.mp3_link || "");
+  }
+
+  async function pollUntilAudioSettled(versionId: number) {
+    const maxAttempts = 120;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const history = await apiService.getVersionHistory(arrangementId);
+      setVersionHistory(history);
+      const state = history.find((v) => v.id === versionId)?.audio_state ?? "none";
+      if (state === "complete" || state === "error") {
+        return state;
+      }
+    }
+    return "none" as const;
+  }
+
+  async function onCheckAudioStatus() {
+    if (!selectedVersionId) return;
+    try {
+      setAudioActionLoading(true);
+      const history = await apiService.getVersionHistory(arrangementId);
+      setVersionHistory(history);
+      const state = history.find((v) => v.id === selectedVersionId)?.audio_state ?? "none";
+      if (state === "complete") {
+        await refreshAudioLinks(selectedVersionId);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setAudioActionLoading(false);
+    }
+  }
+
+  async function onGenerateMidi() {
+    if (!selectedVersionId || audioState === "error") return;
+    try {
+      setAudioActionLoading(true);
+      await apiService.triggerAudioExport(selectedVersionId);
+      setVersionHistory((prev) =>
+        prev.map((v) => (v.id === selectedVersionId ? { ...v, audio_state: "processing" } : v))
+      );
+      const settled = await pollUntilAudioSettled(selectedVersionId);
+      if (settled === "complete") {
+        await refreshAudioLinks(selectedVersionId);
+      }
+    } catch (err) {
+      console.error(err);
+      const history = await apiService.getVersionHistory(arrangementId);
+      setVersionHistory(history);
+    } finally {
+      setAudioActionLoading(false);
+    }
+  }
 
   async function loadThreads(versionId: number) {
     const data = await apiService.getVersionComments(versionId);
@@ -136,6 +200,7 @@ export default function ScoreReviewPage() {
         const links = await apiService.getDownloadLinksForVersion(versionIdToLoad);
         setSelectedVersionId(versionIdToLoad);
         setScoreUrl(links.score_parts_pdf_link || links.score_pdf_url || "");
+        setAudioUrl(links.mp3_link || "");
         await loadThreads(versionIdToLoad);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load score review.");
@@ -194,6 +259,7 @@ export default function ScoreReviewPage() {
     const links = await apiService.getDownloadLinksForVersion(nextId);
     setSelectedVersionId(nextId);
     setScoreUrl(links.score_parts_pdf_link || links.score_pdf_url || "");
+    setAudioUrl(links.mp3_link || "");
     await loadThreads(nextId);
   }
 
@@ -377,6 +443,75 @@ export default function ScoreReviewPage() {
                   w={110}
                 />
               </Group>
+              <Card withBorder padding="sm" bg="var(--mantine-color-gray-0)">
+                <Group gap="xs" mb={6} justify="space-between" wrap="nowrap">
+                  <Group gap="xs">
+                    <IconMusic size={16} />
+                    <Text size="sm" fw={600}>
+                      MIDI playback
+                    </Text>
+                  </Group>
+                  {audioState === "none" && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      leftSection={<IconMusic size={14} />}
+                      loading={audioActionLoading}
+                      onClick={onGenerateMidi}
+                    >
+                      Generate audio
+                    </Button>
+                  )}
+                  {audioState === "processing" && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      leftSection={<IconRefresh size={14} />}
+                      loading={audioActionLoading}
+                      onClick={onCheckAudioStatus}
+                    >
+                      Check status
+                    </Button>
+                  )}
+                </Group>
+                {audioState === "processing" && (
+                  <Group gap="xs" py="xs">
+                    <Loader size="sm" />
+                    <Text size="sm" c="dimmed">
+                      Generating audio…
+                    </Text>
+                  </Group>
+                )}
+                {audioState === "error" && (
+                  <Alert color="red" variant="light" py="xs">
+                    Audio export failed. Try again from the arrangement page or contact an admin.
+                  </Alert>
+                )}
+                {audioState === "complete" && audioUrl && (
+                  <audio controls preload="none" src={audioUrl}>
+                    Your browser does not support embedded audio playback.
+                  </audio>
+                )}
+                {audioState === "complete" && !audioUrl && (
+                  <Text size="sm" c="dimmed">
+                    Audio is ready but no file URL was returned.{" "}
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      onClick={() => {
+                        if (selectedVersionId) void refreshAudioLinks(selectedVersionId);
+                      }}
+                    >
+                      Retry load
+                    </Button>
+                  </Text>
+                )}
+                {audioState === "none" && (
+                  <Text size="xs" c="dimmed">
+                    Export an MP3 preview of this version to listen while you review.
+                  </Text>
+                )}
+              </Card>
               <Box
                 ref={scrollContainerRef}
                 onScroll={onScrollPdfContainer}
