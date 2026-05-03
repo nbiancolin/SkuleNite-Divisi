@@ -79,6 +79,18 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
                         "user_download_commit": user_download_commit.id,
                     }
                 )
+        except Commit.DoesNotExist:
+            # arrangement with no commits
+            LOGGER.warning("Tried to check score version on an arrangement without any commits. Returning OK")
+            return Response({"status": "ok"})
+        except UserScoreVersion.DoesNotExist:
+            return Response(
+                    {
+                        "status": "error",
+                        "head_commit": head_commit.id,
+                        "user_download_commit": user_download_commit.id,
+                    }
+                )
 
         except Exception as e:
             LOGGER.warning(f"Error in Check Score Version:\n {e}")
