@@ -88,6 +88,7 @@ def new_merge_musescore_files(f1_path, f2_path, output_path=None):
     part_names = [part.find("trackName").text for part in score1.findall("Part")]
     union_staff_list = [staff for staff in score1.findall("Staff")]
 
+    #TODO: move to utils
     def _make_cutaway() -> ET.Element:
         return ET.fromstring("<cutaway>1</cutaway>")
 
@@ -399,7 +400,7 @@ def mark_diffs_unified(diff_score, diffs) -> None:
         j += 1
 
 
-def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True) -> str:
+def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs: dict | None = None) -> str:
     """
     Main function to compare two MuseScore files and create a diff score.
     
@@ -408,6 +409,7 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         file2_path: Path to the new version (score2)
         output_path: Optional output path for the diff file
         unified_diff: Optional: a method for displaying large diffs as 2 separate files instead of one unified
+        diffs: DO NOT USE: for divisi, for overriding with custom diffs to mark / display
     
     Returns:
         Path to the generated diff file
@@ -427,7 +429,8 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         diff_root = diff_score_tree.getroot()
         diff_score = diff_root.find("Score")
         
-        diffs = compute_diff(file1_path, file2_path)
+        if not diffs:
+            diffs = compute_diff(file1_path, file2_path)
 
         mark_diffs_unified(diff_score, diffs)
 
@@ -449,7 +452,8 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         score1 = root1.find("Score")
         score2 = root2.find("Score")
 
-        diffs = compute_diff(file1_path, file2_path)
+        if not diffs:
+            diffs = compute_diff(file1_path, file2_path)
         mark_diffs_separate(score1, score2, diffs)
 
         #save both scores as new files
@@ -461,7 +465,7 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
 
 
 
-def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True) -> str:
+def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs = None) -> str:
     """
     Compare two .mscz files by extracting and processing their .mscx contents.
 
@@ -490,7 +494,7 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
         output_files = []
         for file1, file2 in zip(both_mscx_files[0], both_mscx_files[1]):
             mscx_output = file1.replace(os.path.basename(file1), f"diff-{os.path.basename(file1)}")
-            compare_musescore_files(file1, file2, mscx_output, unified_diff=unified_diff)
+            compare_musescore_files(file1, file2, mscx_output, unified_diff=unified_diff, diffs=diffs)
             output_files.append(mscx_output)
             print(f"Processed: {os.path.basename(file1)}")
 

@@ -47,8 +47,18 @@ def backtrack(L: list[list[int]], measures1, measures2)-> dict[int, State]:
     return diffs
 
 def compute_diff(file1: str, file2: str) -> dict[int, dict[int, State]]:
+    """
+    dict[int, dict[int, State]]
+          /\        /\
+      staff_id      measure num
+    
+    """
 
     staves1, staves2 = get_staves(file1), get_staves(file2)
+    #TODO: Adress this
+    # I think the solution is to map the staves to eachother based on the staff name. But I am not sure how to do that.
+    # A project for soon
+    
     assert len(staves1) == len(staves2), "Currently, only supported on files that have the same # of instruments"
     i = 1
     res = {}
