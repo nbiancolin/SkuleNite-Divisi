@@ -206,14 +206,14 @@ def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measure
                 raise MergeConflictException
             case (State.INSERTED, State.INSERTED):
                 # Potential merge conflict
+                # IN this case, we should be taking all the inserted measures from one score and then all the inserted measures form the other
                 print("WARNING: Potential merge conflict, resolved by taking User's inserted measure")
                 m_processed.append(m2)
             case (State.REMOVED, State.REMOVED):
-                # Potential merge conflict
-                print("WARNING: Potential merge conflict, resolved by taking User's deleted measure")
-                m_processed.append(m2)
+                # Not a merge onflict if they both indepenently did this... don't add either
+                pass
             case (a, b) if (a == State.INSERTED) != (b == State.INSERTED):
-                # Only one of them is added, so add both measure (no offset needed)
+                # Only one of them is added, so add both measure
                 if head_state == State.INSERTED:
                     m_processed.append(m1)
                     user_offset -= 1
@@ -232,9 +232,11 @@ def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measure
 
             case (State.UNCHANGED, State.REMOVED):
                 #don't do anything
+                measures2.insert(0, m2)
                 pass
             case (State.REMOVED, State.UNCHANGED):
                 # do nothing
+                measures1.insert(0, m1)
                 pass
             case _:
                 raise AssertionError(
