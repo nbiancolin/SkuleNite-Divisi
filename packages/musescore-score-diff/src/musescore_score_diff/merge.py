@@ -1,18 +1,15 @@
+import os
+import shutil
+import tempfile
 import xml.etree.ElementTree as ET
+import zipfile
+
 from musescore_score_diff.display_diff import compare_mscz_files
 from musescore_score_diff.compute_diff import compute_diff
 from typing import Any
 
 from musescore_score_diff.utils import get_staves
 
-
-"""
-
-Pseudocode for 3 way merge fn
-
-
-
-"""
 
 class ComplicatedMergeException(Exception):
     pass
@@ -44,7 +41,69 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     Tries to auto merge and write output to output_mscz_path.
     If a merge conflict is found, write the unified merge score (to be handled by the user) and raises MergeConflictException
     if a merge score cannot be generated, raises ComplicatedMergeException
-    """ 
+    """
+    def _mscx_arcnames(mscz_path: str) -> set[str]:
+        with zipfile.ZipFile(mscz_path, "r") as zf:
+            return {name for name in zf.namelist() if name.endswith(".mscx")}
+
+    def _write_mscz_from_dir(source_dir: str, output_path: str) -> None:
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(source_dir):
+                for filename in files:
+                    full_path = os.path.join(root, filename)
+                    arcname = os.path.relpath(full_path, source_dir).replace(os.sep, "/")
+                    zipf.write(full_path, arcname)
+
+    mscx_arcnames = _mscx_arcnames(base_mscz_path)
+    if mscx_arcnames != _mscx_arcnames(head_mscz_path) or mscx_arcnames != _mscx_arcnames(user_mscz_path):
+        raise ComplicatedMergeException("MSCZ archives do not contain the same .mscx files")
+
+    merge_error: Exception | None = None
+
+    with tempfile.TemporaryDirectory() as work_dir:
+        extract_dirs = {
+            "base": os.path.join(work_dir, "base"),
+            "head": os.path.join(work_dir, "head"),
+            "user": os.path.join(work_dir, "user"),
+        }
+        output_dir = os.path.join(work_dir, "output")
+
+        for label, mscz_path in (
+            ("base", base_mscz_path),
+            ("head", head_mscz_path),
+            ("user", user_mscz_path),
+        ):
+            os.makedirs(extract_dirs[label], exist_ok=True)
+            with zipfile.ZipFile(mscz_path, "r") as zip_ref:
+                zip_ref.extractall(extract_dirs[label])
+
+        shutil.copytree(extract_dirs["head"], output_dir)
+
+        for arcname in sorted(mscx_arcnames):
+            base_mscx = os.path.join(extract_dirs["base"], arcname)
+            head_mscx = os.path.join(extract_dirs["head"], arcname)
+            user_mscx = os.path.join(extract_dirs["user"], arcname)
+            output_mscx = os.path.join(output_dir, arcname)
+
+            for path in (base_mscx, head_mscx, user_mscx):
+                if not os.path.isfile(path):
+                    raise ComplicatedMergeException(f"Missing {arcname} after extracting MSCZ archives")
+
+            out_parent = os.path.dirname(output_mscx)
+            if out_parent:
+                os.makedirs(out_parent, exist_ok=True)
+            try:
+                three_way_merge_musescore(base_mscx, head_mscx, user_mscx, output_mscx)
+            except MergeConflictException as exc:
+                merge_error = exc
+            except ComplicatedMergeException as exc:
+                if not isinstance(merge_error, MergeConflictException):
+                    merge_error = exc
+
+        _write_mscz_from_dir(output_dir, output_mscz_path)
+
+    if merge_error is not None:
+        raise merge_error
 
 
 def three_way_merge_musescore(base_mscx_path, head_mscx_path, user_mscx_path, output_mscx_path) -> None:
@@ -175,7 +234,6 @@ def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measure
     for m2 in m_processed:
         user_staff.append(m2)
 
-def auto_merge_
 
 def auto_merge_musescore_files(head_mscx_path: str, user_mscx_path: str, output_mscx_path: str, base_2_head, base_2_user):
     #Head staff
