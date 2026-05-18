@@ -4,11 +4,9 @@ import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
 
-from musescore_score_diff.display_diff import compare_mscz_files
+from musescore_score_diff.display_diff import compare_musescore_files
 from musescore_score_diff.compute_diff import compute_diff
-from typing import Any
-
-from musescore_score_diff.utils import get_staves
+from musescore_score_diff.utils import State, get_staves
 
 
 class ComplicatedMergeException(Exception):
@@ -18,19 +16,28 @@ class MergeConflictException(Exception):
     pass
 
 
-def find_symmetric_difference(head_measure_states: dict[int, dict[int, Any]], user_measure_states: dict[int, dict[int, Any]]) -> dict[int, dict[int, Any]]:
-    res = {}
-    for staff_id in head_measure_states.keys():
-        # measure states for that staff
-        head_measures = {(i, head_measure_states[staff_id][i]) for i in head_measure_states[staff_id].keys()}
-        user_measures = {(i, user_measure_states[staff_id][i]) for i in user_measure_states[staff_id].keys()}
-
-        if diffs := head_measures.symmetric_difference(user_measures):
-            #deconstruct from this form
-            temp = {t[0]: t[1] for t in diffs}
-            res[staff_id] = temp
-    
-    # Dont use this result, it will have duplicates
+def find_merge_conflicts(
+    base_to_head: dict[int, dict[int, State]],
+    base_to_user: dict[int, dict[int, State]],
+) -> dict[int, dict[int, State]]:
+    """Measures where head and user both changed the same index relative to base."""
+    res: dict[int, dict[int, State]] = {}
+    for staff_id in base_to_head:
+        head_states = base_to_head[staff_id]
+        user_states = base_to_user[staff_id]
+        measures = set(head_states) | set(user_states)
+        conflicts: dict[int, State] = {}
+        for measure_num in measures:
+            head_state = head_states.get(measure_num, State.UNCHANGED)
+            user_state = user_states.get(measure_num, State.UNCHANGED)
+            if head_state == State.UNCHANGED or user_state == State.UNCHANGED:
+                continue
+            if head_state == State.MODIFIED and user_state == State.MODIFIED:
+                conflicts[measure_num] = head_state
+            elif head_state != user_state:
+                conflicts[measure_num] = head_state
+        if conflicts:
+            res[staff_id] = conflicts
     return res
 
 
@@ -54,8 +61,15 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                     arcname = os.path.relpath(full_path, source_dir).replace(os.sep, "/")
                     zipf.write(full_path, arcname)
 
-    mscx_arcnames = _mscx_arcnames(base_mscz_path)
-    if mscx_arcnames != _mscx_arcnames(head_mscz_path) or mscx_arcnames != _mscx_arcnames(user_mscz_path):
+    base_arcs = sorted(_mscx_arcnames(base_mscz_path))
+    head_arcs = sorted(_mscx_arcnames(head_mscz_path))
+    user_arcs = sorted(_mscx_arcnames(user_mscz_path))
+
+    if base_arcs == head_arcs == user_arcs:
+        mscx_merge_plan = [(arc, arc, arc) for arc in base_arcs]
+    elif len(base_arcs) == len(head_arcs) == len(user_arcs) == 1:
+        mscx_merge_plan = [(base_arcs[0], head_arcs[0], user_arcs[0])]
+    else:
         raise ComplicatedMergeException("MSCZ archives do not contain the same .mscx files")
 
     merge_error: Exception | None = None
@@ -79,15 +93,17 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
 
         shutil.copytree(extract_dirs["head"], output_dir)
 
-        for arcname in sorted(mscx_arcnames):
-            base_mscx = os.path.join(extract_dirs["base"], arcname)
-            head_mscx = os.path.join(extract_dirs["head"], arcname)
-            user_mscx = os.path.join(extract_dirs["user"], arcname)
-            output_mscx = os.path.join(output_dir, arcname)
+        for base_arc, head_arc, user_arc in mscx_merge_plan:
+            base_mscx = os.path.join(extract_dirs["base"], base_arc)
+            head_mscx = os.path.join(extract_dirs["head"], head_arc)
+            user_mscx = os.path.join(extract_dirs["user"], user_arc)
+            output_mscx = os.path.join(output_dir, head_arc)
 
             for path in (base_mscx, head_mscx, user_mscx):
                 if not os.path.isfile(path):
-                    raise ComplicatedMergeException(f"Missing {arcname} after extracting MSCZ archives")
+                    raise ComplicatedMergeException(
+                        f"Missing {head_arc} after extracting MSCZ archives"
+                    )
 
             out_parent = os.path.dirname(output_mscx)
             if out_parent:
@@ -128,11 +144,10 @@ def three_way_merge_musescore(base_mscx_path, head_mscx_path, user_mscx_path, ou
         raise ComplicatedMergeException
     
     
-    # Want the opposite of the intersection, as the 
-    diffs = find_symmetric_difference(base_2_head, base_2_user)
-    if diffs:
+    conflicts = find_merge_conflicts(base_2_head, base_2_user)
+    if conflicts:
         # Merge conflict!
-        compare_mscz_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
+        compare_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
         raise MergeConflictException
     
     else:
@@ -142,7 +157,7 @@ def three_way_merge_musescore(base_mscx_path, head_mscx_path, user_mscx_path, ou
             auto_merge_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, base_2_head, base_2_user)
         except MergeConflictException:
             # Generate merge conflicyt score and re-raise
-            compare_mscz_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
+            compare_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
             raise MergeConflictException
 
         pass
@@ -163,7 +178,7 @@ def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measure
     m2_processed = []
     # upper_bound = max(len(measures1), len(measures2))
     prev_measure_highlighted = False
-    upper_bound = max(len(head_measures_to_mark.keys()) +1, len(user_measures_to_mark.keys() +1))
+    upper_bound = max(max(head_measures_to_mark), max(user_measures_to_mark)) + 1
 
     # If a measure is inserted / deleted in one and not the other,
     # will be out of sync.
@@ -201,10 +216,12 @@ def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measure
                 # Only one of them is added, so add both measure (no offset needed)
                 if head_state == State.INSERTED:
                     m_processed.append(m1)
-                    m_processed.append(m2)
+                    user_offset -= 1
+                    measures2.insert(0, m2)
                 else:
                     m_processed.append(m2)
-                    m_processed.append(m1)
+                    head_offset -= 1
+                    measures1.insert(0, m1)
             
             case (State.UNCHANGED, State.MODIFIED):
                 # take from user
@@ -257,7 +274,8 @@ def auto_merge_musescore_files(head_mscx_path: str, user_mscx_path: str, output_
     user_staves =  score.findall("Staff")
 
     for i, (head_staff, user_staff) in enumerate(zip(head_staves, user_staves)):
-        merge_staff_pair(head_staff, user_staff, base_2_head[i], base_2_user[i])
+        staff_id = i + 1
+        merge_staff_pair(head_staff, user_staff, base_2_head[staff_id], base_2_user[staff_id])
 
     # Output user tree to new path
     user_tree.write(output_mscx_path, encoding="UTF-8", xml_declaration=True)
