@@ -490,6 +490,28 @@
             </Chord>
           </voice>
         </Measure>
-      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
+      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure>
+        <eid>e5KFxNa33RL_De3g3TTvqtP</eid>
+        <voice>
+          <Chord>
+            <eid>L/j+9jRCoME_sVjbFb9IkwF</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>wC5DjeUUuYP_RW1aBdxky3P</eid>
+              <pitch>60</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          <Rest>
+            <eid>Oj115UbxQZH_FfTY9rfQJtF</eid>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <eid>ccRShcd0egG_YOcDN+7BNrC</eid>
+            <durationType>half</durationType>
+            </Rest>
+          </voice>
+        </Measure>
+      </Staff>
     </Score>
   </museScore>

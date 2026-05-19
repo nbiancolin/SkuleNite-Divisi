@@ -514,6 +514,6 @@
             </Rest>
           </voice>
         </Measure>
-      </Staff>
+      <Measure><voice><Spanner type="TextLine"><prev><location><measures>-1</measures></location></prev></Spanner><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
     </Score>
   </museScore>

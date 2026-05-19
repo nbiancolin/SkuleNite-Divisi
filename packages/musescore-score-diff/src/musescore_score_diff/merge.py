@@ -3,17 +3,81 @@ import shutil
 import tempfile
 import xml.etree.ElementTree as ET
 import zipfile
+from dataclasses import dataclass, replace
 
-from musescore_score_diff.display_diff import compare_musescore_files
+from musescore_score_diff.display_diff import compare_musescore_files, compare_mscz_files
 from musescore_score_diff.compute_diff import compute_diff
-from musescore_score_diff.utils import State, get_staves
+from musescore_score_diff.utils import (
+    State,
+    _hash_measure,
+    _sanitize_measure,
+    get_parts_staff_elements,
+)
+from musescore_score_diff.compute_diff import _pair_staves
 
 
 class ComplicatedMergeException(Exception):
     pass
 
+
+@dataclass(frozen=True)
+class MergeConflictDetail:
+    """One incompatible head/user change during a three-way merge."""
+
+    staff_id: int
+    alignment_step: int
+    head_state: State
+    user_state: State
+    staff_name: str | None = None
+    head_measure_no: int | None = None
+    user_measure_no: int | None = None
+    mscx_path: str | None = None
+
+    def describe(self) -> str:
+        part = f"staff {self.staff_id}"
+        if self.staff_name:
+            part += f" ({self.staff_name!r})"
+        measures = []
+        if self.head_measure_no is not None:
+            measures.append(f"head m.{self.head_measure_no}")
+        if self.user_measure_no is not None:
+            measures.append(f"user m.{self.user_measure_no}")
+        measure_str = f", {', '.join(measures)}" if measures else ""
+        file_str = f", file {self.mscx_path!r}" if self.mscx_path else ""
+        return (
+            f"{part}, alignment step {self.alignment_step}{measure_str}: "
+            f"head={self.head_state.name}, user={self.user_state.name}{file_str}"
+        )
+
+
 class MergeConflictException(Exception):
-    pass
+    """Raised when head and user versions cannot be auto-merged."""
+
+    def __init__(
+        self,
+        conflicts: list[MergeConflictDetail] | None = None,
+        *,
+        source_mscx: str | None = None,
+    ) -> None:
+        details = list(conflicts or [])
+        if source_mscx is not None:
+            details = [
+                replace(d, mscx_path=d.mscx_path or source_mscx) for d in details
+            ]
+        self.conflicts = details
+        self.source_mscx = source_mscx
+        super().__init__(self._format_message())
+
+    @classmethod
+    def single(cls, detail: MergeConflictDetail) -> "MergeConflictException":
+        return cls([detail], source_mscx=detail.mscx_path)
+
+    def _format_message(self) -> str:
+        if not self.conflicts:
+            return "Merge conflict"
+        lines = [f"Merge conflict ({len(self.conflicts)} location(s)):"]
+        lines.extend(f"  - {c.describe()}" for c in self.conflicts)
+        return "\n".join(lines)
 
 
 def _is_excerpt_mscx_arc(arcname: str) -> bool:
@@ -134,26 +198,50 @@ def _remove_excerpts_from_mscz_dir(mscz_dir: str) -> None:
     tree.write(container_path, encoding="UTF-8", xml_declaration=True)
 
 
+def _measures_equivalent(
+    head_measure: ET.Element | None, user_measure: ET.Element | None
+) -> bool:
+    """True when both measures exist and have the same canonical content hash."""
+    if head_measure is None or user_measure is None:
+        return False
+    head_hash = _hash_measure(_sanitize_measure(head_measure))
+    user_hash = _hash_measure(_sanitize_measure(user_measure))
+    return head_hash == user_hash
+
+
 def find_merge_conflicts(
-    base_to_head: dict[int, dict[int, State]],
-    base_to_user: dict[int, dict[int, State]],
+    base_to_head: dict[int, list[State]],
+    base_to_user: dict[int, list[State]],
+    *,
+    head_staves: dict[int, ET.Element] | None = None,
+    user_staves: dict[int, ET.Element] | None = None,
 ) -> dict[int, dict[int, State]]:
-    """Measures where head and user both changed the same index relative to base."""
+    """Alignment steps where head and user both changed relative to base incompatibly."""
     res: dict[int, dict[int, State]] = {}
     for staff_id in base_to_head:
-        head_states = base_to_head[staff_id]
-        user_states = base_to_user[staff_id]
-        measures = set(head_states) | set(user_states)
+        head_ops = base_to_head[staff_id]
+        user_ops = base_to_user[staff_id]
         conflicts: dict[int, State] = {}
-        for measure_num in measures:
-            head_state = head_states.get(measure_num, State.UNCHANGED)
-            user_state = user_states.get(measure_num, State.UNCHANGED)
+        head_staff = (head_staves or {}).get(staff_id)
+        user_staff = (user_staves or {}).get(staff_id)
+        measures1 = (
+            list(head_staff.findall("Measure")) if head_staff is not None else None
+        )
+        measures2 = (
+            list(user_staff.findall("Measure")) if user_staff is not None else None
+        )
+        for step, (head_state, user_state) in enumerate(
+            zip(head_ops, user_ops), start=1
+        ):
+            m1 = measures1.pop(0) if measures1 else None
+            m2 = measures2.pop(0) if measures2 else None
             if head_state == State.UNCHANGED or user_state == State.UNCHANGED:
                 continue
             if head_state == State.MODIFIED and user_state == State.MODIFIED:
-                conflicts[measure_num] = head_state
+                if not _measures_equivalent(m1, m2):
+                    conflicts[step] = head_state
             elif head_state != user_state:
-                conflicts[measure_num] = head_state
+                conflicts[step] = head_state
         if conflicts:
             res[staff_id] = conflicts
     return res
@@ -229,17 +317,21 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                     user_mscx,
                     output_mscx,
                     write_conflict_diff=False,
+                    mscx_path=user_arc,
                 )
             except MergeConflictException as exc:
-                merge_error = exc
+                merge_error = MergeConflictException(
+                    exc.conflicts, source_mscx=user_arc
+                )
             except ComplicatedMergeException as exc:
                 if not isinstance(merge_error, MergeConflictException):
                     merge_error = exc
 
         if isinstance(merge_error, MergeConflictException):
-            _write_merge_conflict_diff_mscz(
-                head_mscz_path, user_mscz_path, output_mscz_path
-            )
+            compare_mscz_files(user_mscz_path, head_mscz_path, output_mscz_path, unified_diff=True)
+            # _write_merge_conflict_diff_mscz(
+            #     head_mscz_path, user_mscz_path, output_mscz_path
+            # )
         else:
             _write_mscz_from_dir(output_dir, output_mscz_path)
 
@@ -254,6 +346,7 @@ def three_way_merge_musescore(
     output_mscx_path,
     *,
     write_conflict_diff: bool = True,
+    mscx_path: str | None = None,
 ) -> None:
     """
     INTERNAL
@@ -275,142 +368,161 @@ def three_way_merge_musescore(
         print("ERROR: Cannot currently merge musescore files with different num staves (yet)")
         raise ComplicatedMergeException
     
-    
-    conflicts = find_merge_conflicts(base_2_head, base_2_user)
-    if conflicts:
-        if write_conflict_diff:
-            compare_musescore_files(
-                head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
-            )
-        raise MergeConflictException(conflicts)
-
     try:
         auto_merge_musescore_files(
-            head_mscx_path, user_mscx_path, output_mscx_path, base_2_head, base_2_user
+            head_mscx_path,
+            user_mscx_path,
+            output_mscx_path,
+            base_2_head,
+            base_2_user,
+            mscx_path=mscx_path or os.path.basename(head_mscx_path),
         )
-    except MergeConflictException:
+    except MergeConflictException as exc:
         if write_conflict_diff:
             compare_musescore_files(
                 head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
             )
-        raise MergeConflictException
+        raise MergeConflictException(exc.conflicts, source_mscx=mscx_path) from exc
 
 
 
-def merge_staff_pair(head_staff, user_staff, head_measures_to_mark, user_measures_to_mark):
-    from .utils import make_highlight_end_empty_measure, _make_empty_measure, highlight_measure, State
+def merge_staff_pair(
+    head_staff,
+    user_staff,
+    head_ops: list[State],
+    user_ops: list[State],
+    *,
+    staff_id: int,
+    staff_name: str | None = None,
+    mscx_path: str | None = None,
+) -> None:
     measures1 = list(head_staff.findall("Measure"))
     measures2 = list(user_staff.findall("Measure"))
+    head_measure_total = len(measures1)
+    user_measure_total = len(measures2)
+    m_processed: list[ET.Element] = []
+    max_steps = max(len(head_ops), len(user_ops))
 
-    #1 is head, 2 is user
+    for step in range(max_steps):
+        head_state = head_ops[step] if step < len(head_ops) else State.UNCHANGED
+        user_state = user_ops[step] if step < len(user_ops) else State.UNCHANGED
+        if not measures1 and not measures2:
+            break
 
-    # We do the merging in the user score -- assume that their formatting is intended
-    m_processed = [] #m_processed == m2_processed
-
-    m1_processed = []
-    m2_processed = []
-    # upper_bound = max(len(measures1), len(measures2))
-    prev_measure_highlighted = False
-    upper_bound = max(max(head_measures_to_mark), max(user_measures_to_mark)) + 1
-
-    # If a measure is inserted / deleted in one and not the other,
-    # will be out of sync.
-    # in this case, increase the offset to keep them in check
-    head_offset = 0
-    user_offset = 0
-
-    for i in range(1, upper_bound):
-        #pop from m1 and m2, and add to m1/m2 pocessed
-        m1 = measures1.pop(0)
-        m2 = measures2.pop(0)
-
-        m1_next = measures1[0] if measures1 else None
-        m2_next = measures2[0] if measures2 else None
-
-        head_state = head_measures_to_mark[i + head_offset]
-        user_state = user_measures_to_mark[i + user_offset]
+        head_measure_no = (
+            head_measure_total - len(measures1) + 1 if measures1 else None
+        )
+        user_measure_no = (
+            user_measure_total - len(measures2) + 1 if measures2 else None
+        )
+        m1 = measures1.pop(0) if measures1 else None
+        m2 = measures2.pop(0) if measures2 else None
+        alignment_step = step + 1
 
         match (head_state, user_state):
             case (State.UNCHANGED, State.UNCHANGED):
-                #take from head
-                m_processed.append(m1)
+                if m1 is not None:
+                    m_processed.append(m1)
             case (State.MODIFIED, State.MODIFIED):
-                # Merge conflict - should have been caught but i guess not ...
-                raise MergeConflictException
+                if _measures_equivalent(m1, m2):
+                    if m2 is not None:
+                        m_processed.append(m2)
+                else:
+                    raise MergeConflictException.single(
+                        MergeConflictDetail(
+                            staff_id=staff_id,
+                            alignment_step=alignment_step,
+                            head_state=head_state,
+                            user_state=user_state,
+                            staff_name=staff_name,
+                            head_measure_no=head_measure_no,
+                            user_measure_no=user_measure_no,
+                            mscx_path=mscx_path,
+                        )
+                    )
             case (State.INSERTED, State.INSERTED):
-                # Potential merge conflict
-                # IN this case, we should be taking all the inserted measures from one score and then all the inserted measures form the other
-                print("WARNING: Potential merge conflict, resolved by taking User's inserted measure")
-                m_processed.append(m2)
+                print(
+                    "WARNING: Potential merge conflict, resolved by taking user's inserted measure"
+                )
+                if m2 is not None:
+                    m_processed.append(m2)
             case (State.REMOVED, State.REMOVED):
-                # Not a merge onflict if they both indepenently did this... don't add either
                 pass
             case (a, b) if (a == State.INSERTED) != (b == State.INSERTED):
-                # Only one of them is added, so add both measure
                 if head_state == State.INSERTED:
-                    m_processed.append(m1)
-                    user_offset -= 1
-                    measures2.insert(0, m2)
+                    if m1 is not None:
+                        m_processed.append(m1)
+                    if m2 is not None:
+                        measures2.insert(0, m2)
                 else:
-                    m_processed.append(m2)
-                    head_offset -= 1
-                    measures1.insert(0, m1)
-            
+                    if m2 is not None:
+                        m_processed.append(m2)
+                    if m1 is not None:
+                        measures1.insert(0, m1)
             case (State.UNCHANGED, State.MODIFIED):
-                # take from user
-                m_processed.append(m2)
+                if m2 is not None:
+                    m_processed.append(m2)
             case (State.MODIFIED, State.UNCHANGED):
-                #take from head
-                m_processed.append(m1)
-
+                if m1 is not None:
+                    m_processed.append(m1)
             case (State.UNCHANGED, State.REMOVED):
-                #don't do anything
-                measures2.insert(0, m2)
-                pass
+                if m2 is not None:
+                    measures2.insert(0, m2)
             case (State.REMOVED, State.UNCHANGED):
-                # do nothing
-                measures1.insert(0, m1)
-                pass
+                if m1 is not None:
+                    measures1.insert(0, m1)
             case _:
                 raise AssertionError(
-                    f"Unknown case encountered !!! This is very bad\nHead State: {head_state} User State: {user_state}"
+                    f"Unknown merge case: head={head_state} user={user_state}"
                 )
-        
-    
-    
-    #remove the old measures set
+
     for m2 in user_staff.findall("Measure"):
         user_staff.remove(m2)
-    
-    #add in all the new measures
     for m2 in m_processed:
         user_staff.append(m2)
 
 
-def auto_merge_musescore_files(head_mscx_path: str, user_mscx_path: str, output_mscx_path: str, base_2_head, base_2_user):
-    #Head staff
-    parser = ET.XMLParser()
-    head_tree = ET.parse(head_mscx_path, parser)
+def _staff_names_in_pair_order(score: ET.Element) -> list[str]:
+    names: list[str] = []
+    for part_name, staves in get_parts_staff_elements(score):
+        names.extend([part_name] * len(staves))
+    return names
+
+
+def auto_merge_musescore_files(
+    head_mscx_path: str,
+    user_mscx_path: str,
+    output_mscx_path: str,
+    base_2_head,
+    base_2_user,
+    *,
+    mscx_path: str | None = None,
+):
+    head_tree = ET.parse(head_mscx_path)
     root = head_tree.getroot()
     score = root.find("Score")
     if score is None:
         raise ValueError("No <Score> tag found in the XML.")
 
-    head_staves = score.findall("Staff")
-
-    #User staff
-    parser = ET.XMLParser()
-    user_tree = ET.parse(user_mscx_path, parser)
-    root = user_tree.getroot()
-    score = root.find("Score")
-    if score is None:
+    user_tree = ET.parse(user_mscx_path)
+    user_root = user_tree.getroot()
+    user_score = user_root.find("Score")
+    if user_score is None:
         raise ValueError("No <Score> tag found in the XML.")
 
-    user_staves =  score.findall("Staff")
-
-    for i, (head_staff, user_staff) in enumerate(zip(head_staves, user_staves)):
-        staff_id = i + 1
-        merge_staff_pair(head_staff, user_staff, base_2_head[staff_id], base_2_user[staff_id])
+    staff_names = _staff_names_in_pair_order(score)
+    pairs = _pair_staves(score, user_score)
+    for staff_id, (head_staff, user_staff) in enumerate(pairs, start=1):
+        staff_name = staff_names[staff_id - 1] if staff_id <= len(staff_names) else None
+        merge_staff_pair(
+            head_staff,
+            user_staff,
+            base_2_head[staff_id],
+            base_2_user[staff_id],
+            staff_id=staff_id,
+            staff_name=staff_name,
+            mscx_path=mscx_path,
+        )
 
     # Output user tree to new path
     user_tree.write(output_mscx_path, encoding="UTF-8", xml_declaration=True)
