@@ -67,9 +67,8 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         user = request.user
         arr = self.get_object()
 
-        try:
-            head_commit = Commit.latest_for_arrangement(arr)
-        except Commit.DoesNotExist:
+        head_commit = Commit.latest_for_arrangement(arr)
+        if head_commit is None:
             LOGGER.warning(
                 "Tried to check score version on an arrangement without any commits. Returning OK"
             )
