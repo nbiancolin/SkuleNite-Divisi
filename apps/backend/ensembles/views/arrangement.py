@@ -112,6 +112,9 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
 
         if r.get("merge_error"):
             return Response(r, status=409)
+        
+        if r.get("client_error"):
+            return Response(r, status=400)
 
         s = ArrangementSerializer(self.get_object())
         return Response(s.data)

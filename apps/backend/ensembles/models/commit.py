@@ -26,6 +26,7 @@ class Commit(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
     is_merge_commit = models.BooleanField(default=False)
+    is_merge_conflict = models.BooleanField(default=False)
 
     version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")
 
