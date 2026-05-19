@@ -46,3 +46,16 @@ class UserScoreVersion(models.Model):
             defaults={"commit": commit},
         )
         return usv
+    
+    @classmethod
+    def user_is_up_to_date(cls, user, arrangement) -> bool:
+        try:
+            usv = cls.objects.get(user=user, arrangement=arrangement)
+            uc = usv.commit
+            hc = Commit.latest_for_arrangement(arrangement)
+
+            return uc.id == hc.id
+
+        except cls.DoesNotExist:
+            # Shoud never be in this case...
+            return True
