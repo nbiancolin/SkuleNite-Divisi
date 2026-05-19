@@ -178,9 +178,57 @@ class CommitAdmin(admin.ModelAdmin):
     readonly_fields = ("mscz_file_key", "mscz_file_url", "is_initial_commit", "is_latest_commit")
 
 
+class UserScoreVersionEnsembleFilter(admin.SimpleListFilter):
+    title = "ensemble"
+    parameter_name = "ensemble"
+
+    def lookups(self, request, model_admin):
+        return [
+            (e.pk, e.name)
+            for e in Ensemble.objects.order_by("name").only("pk", "name")
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(arrangement__ensemble_id=self.value())
+        return queryset
+
+
+class UserScoreVersionArrangementFilter(admin.SimpleListFilter):
+    title = "arrangement"
+    parameter_name = "arrangement"
+
+    def lookups(self, request, model_admin):
+        ensemble_id = request.GET.get(UserScoreVersionEnsembleFilter.parameter_name)
+        if not ensemble_id:
+            return []
+        return [
+            (a.pk, a.title)
+            for a in Arrangement.objects.filter(ensemble_id=ensemble_id)
+            .order_by("title")
+            .only("pk", "title")
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(arrangement_id=self.value())
+        return queryset
+
+
 class UserScoreVersionAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "arrangement", "commit", "updated_at")
-    list_filter = ("arrangement__ensemble", "updated_at")
+    list_display = (
+        "id",
+        "user",
+        "ensemble_name",
+        "arrangement",
+        "commit_summary",
+        "updated_at",
+    )
+    list_filter = (
+        UserScoreVersionEnsembleFilter,
+        UserScoreVersionArrangementFilter,
+        "updated_at",
+    )
     search_fields = (
         "user__username",
         "user__email",
@@ -190,6 +238,20 @@ class UserScoreVersionAdmin(admin.ModelAdmin):
     )
     readonly_fields = ("updated_at",)
     raw_id_fields = ("user", "arrangement", "commit")
+    list_select_related = ("user", "arrangement__ensemble", "commit")
+
+    @admin.display(description="Ensemble", ordering="arrangement__ensemble__name")
+    def ensemble_name(self, obj):
+        return obj.arrangement.ensemble.name
+
+    @admin.display(description="Commit")
+    def commit_summary(self, obj):
+        if obj.commit_id is None:
+            return "—"
+        message = (obj.commit.message or "").strip()
+        if len(message) > 60:
+            message = f"{message[:57]}..."
+        return f"#{obj.commit_id} {message}" if message else f"#{obj.commit_id}"
 
 
 admin.site.register(ExportFailureLog, ExportFailureLogAdmin)
