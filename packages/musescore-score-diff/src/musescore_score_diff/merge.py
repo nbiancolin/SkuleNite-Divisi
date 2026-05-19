@@ -16,6 +16,124 @@ class MergeConflictException(Exception):
     pass
 
 
+def _is_excerpt_mscx_arc(arcname: str) -> bool:
+    normalized = arcname.replace("\\", "/")
+    return normalized.startswith("Excerpts/") or "/Excerpts/" in normalized
+
+
+def _partition_mscx_arcs(arcs: set[str]) -> tuple[str, set[str]]:
+    """Return the single main-score .mscx arc and any excerpt .mscx arcs."""
+    main_arcs = sorted(a for a in arcs if not _is_excerpt_mscx_arc(a))
+    excerpt_arcs = {a for a in arcs if _is_excerpt_mscx_arc(a)}
+    if len(main_arcs) != 1:
+        raise ComplicatedMergeException(
+            f"Expected exactly one main .mscx file, found {main_arcs!r}"
+        )
+    return main_arcs[0], excerpt_arcs
+
+
+def _build_mscx_merge_plan(
+    base_arcs: set[str],
+    head_arcs: set[str],
+    user_arcs: set[str],
+    *,
+    merge_excerpts: bool,
+) -> list[tuple[str, str, str]]:
+    """
+    Plan (base_arc, head_arc, user_arc) triples to three-way merge.
+
+    Always merges the main score. Optionally merges excerpts when all three
+    archives list the same excerpt .mscx paths.
+    """
+    base_main, base_excerpts = _partition_mscx_arcs(base_arcs)
+    head_main, head_excerpts = _partition_mscx_arcs(head_arcs)
+    user_main, user_excerpts = _partition_mscx_arcs(user_arcs)
+
+    plan: list[tuple[str, str, str]] = [(base_main, head_main, user_main)]
+
+    if merge_excerpts:
+        plan.extend((arc, arc, arc) for arc in sorted(base_excerpts))
+
+    return plan
+
+
+def _mscx_arcnames(mscz_path: str) -> set[str]:
+    with zipfile.ZipFile(mscz_path, "r") as zf:
+        return {name for name in zf.namelist() if name.endswith(".mscx")}
+
+
+def _write_mscz_from_dir(source_dir: str, output_path: str) -> None:
+    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for root, _, files in os.walk(source_dir):
+            for filename in files:
+                full_path = os.path.join(root, filename)
+                arcname = os.path.relpath(full_path, source_dir).replace(os.sep, "/")
+                zipf.write(full_path, arcname)
+
+
+def _write_merge_conflict_diff_mscz(
+    head_mscz_path: str, user_mscz_path: str, output_mscz_path: str
+) -> None:
+    """Build one unified diff MSCZ from the head and user archives."""
+    head_arcs = _mscx_arcnames(head_mscz_path)
+    user_arcs = _mscx_arcnames(user_mscz_path)
+    head_main, head_excerpts = _partition_mscx_arcs(head_arcs)
+    user_main, user_excerpts = _partition_mscx_arcs(user_arcs)
+
+    with tempfile.TemporaryDirectory() as work_dir:
+        head_dir = os.path.join(work_dir, "head")
+        user_dir = os.path.join(work_dir, "user")
+        output_dir = os.path.join(work_dir, "output")
+
+        for dest, mscz_path in ((head_dir, head_mscz_path), (user_dir, user_mscz_path)):
+            os.makedirs(dest, exist_ok=True)
+            with zipfile.ZipFile(mscz_path, "r") as zip_ref:
+                zip_ref.extractall(dest)
+
+        shutil.copytree(head_dir, output_dir)
+
+        head_mscx = os.path.join(head_dir, head_main)
+        user_mscx = os.path.join(user_dir, user_main)
+        output_mscx = os.path.join(output_dir, head_main)
+
+        if not os.path.isfile(head_mscx) or not os.path.isfile(user_mscx):
+            raise ComplicatedMergeException(
+                "Cannot generate merge conflict diff: missing main score file"
+            )
+
+        compare_musescore_files(
+            head_mscx, user_mscx, output_mscx, unified_diff=True
+        )
+
+        if head_excerpts != user_excerpts:
+            _remove_excerpts_from_mscz_dir(output_dir)
+
+        _write_mscz_from_dir(output_dir, output_mscz_path)
+
+
+def _remove_excerpts_from_mscz_dir(mscz_dir: str) -> None:
+    """Remove excerpt files and container references from an extracted MSCZ directory."""
+    excerpts_dir = os.path.join(mscz_dir, "Excerpts")
+    if os.path.isdir(excerpts_dir):
+        shutil.rmtree(excerpts_dir)
+
+    container_path = os.path.join(mscz_dir, "META-INF", "container.xml")
+    if not os.path.isfile(container_path):
+        return
+
+    tree = ET.parse(container_path)
+    rootfiles = tree.getroot().find("rootfiles")
+    if rootfiles is None:
+        return
+
+    for rootfile in list(rootfiles.findall("rootfile")):
+        full_path = rootfile.get("full-path", "").replace("\\", "/")
+        if full_path.startswith("Excerpts/"):
+            rootfiles.remove(rootfile)
+
+    tree.write(container_path, encoding="UTF-8", xml_declaration=True)
+
+
 def find_merge_conflicts(
     base_to_head: dict[int, dict[int, State]],
     base_to_user: dict[int, dict[int, State]],
@@ -49,33 +167,18 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     If a merge conflict is found, write the unified merge score (to be handled by the user) and raises MergeConflictException
     if a merge score cannot be generated, raises ComplicatedMergeException
     """
-    def _mscx_arcnames(mscz_path: str) -> set[str]:
-        with zipfile.ZipFile(mscz_path, "r") as zf:
-            return {name for name in zf.namelist() if name.endswith(".mscx")}
+    base_arcs = _mscx_arcnames(base_mscz_path)
+    head_arcs = _mscx_arcnames(head_mscz_path)
+    user_arcs = _mscx_arcnames(user_mscz_path)
 
-    def _write_mscz_from_dir(source_dir: str, output_path: str) -> None:
-        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for root, _, files in os.walk(source_dir):
-                for filename in files:
-                    full_path = os.path.join(root, filename)
-                    arcname = os.path.relpath(full_path, source_dir).replace(os.sep, "/")
-                    zipf.write(full_path, arcname)
+    _, base_excerpts = _partition_mscx_arcs(base_arcs)
+    _, head_excerpts = _partition_mscx_arcs(head_arcs)
+    _, user_excerpts = _partition_mscx_arcs(user_arcs)
 
-    base_arcs = sorted(_mscx_arcnames(base_mscz_path))
-    head_arcs = sorted(_mscx_arcnames(head_mscz_path))
-    user_arcs = sorted(_mscx_arcnames(user_mscz_path))
-
-    if base_arcs == head_arcs == user_arcs:
-        mscx_merge_plan = [(arc, arc, arc) for arc in base_arcs]
-    elif len(base_arcs) == len(head_arcs) == len(user_arcs) == 1:
-        mscx_merge_plan = [(base_arcs[0], head_arcs[0], user_arcs[0])]
-    else:
-        raise ComplicatedMergeException(f"MSCZ archives do not contain the same .mscx files\n base:{base_arcs}\n head: {head_arcs}\n user: {user_arcs} ")
-
-    # TODO: How this should behave
-    # - Always merge base mscx (Use the user's final mscz to write everything to)
-    # - If the excerpts match exactly, then merge them, otherwise ignore them (there should be no excerpts)
-
+    # Merge excerpts only when every archive has the same excerpt .mscx paths.
+    merge_excerpts = base_excerpts == head_excerpts == user_excerpts and bool(
+        base_excerpts
+    )
 
     merge_error: Exception | None = None
 
@@ -96,38 +199,62 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
             with zipfile.ZipFile(mscz_path, "r") as zip_ref:
                 zip_ref.extractall(extract_dirs[label])
 
-        shutil.copytree(extract_dirs["head"], output_dir)
+        shutil.copytree(extract_dirs["user"], output_dir)
+
+        mscx_merge_plan = _build_mscx_merge_plan(
+            base_arcs, head_arcs, user_arcs, merge_excerpts=merge_excerpts
+        )
+        if not merge_excerpts:
+            _remove_excerpts_from_mscz_dir(output_dir)
 
         for base_arc, head_arc, user_arc in mscx_merge_plan:
             base_mscx = os.path.join(extract_dirs["base"], base_arc)
             head_mscx = os.path.join(extract_dirs["head"], head_arc)
             user_mscx = os.path.join(extract_dirs["user"], user_arc)
-            output_mscx = os.path.join(output_dir, head_arc)
+            output_mscx = os.path.join(output_dir, user_arc)
 
             for path in (base_mscx, head_mscx, user_mscx):
                 if not os.path.isfile(path):
                     raise ComplicatedMergeException(
-                        f"Missing {head_arc} after extracting MSCZ archives"
+                        f"Missing {user_arc} after extracting MSCZ archives"
                     )
 
             out_parent = os.path.dirname(output_mscx)
             if out_parent:
                 os.makedirs(out_parent, exist_ok=True)
             try:
-                three_way_merge_musescore(base_mscx, head_mscx, user_mscx, output_mscx)
+                three_way_merge_musescore(
+                    base_mscx,
+                    head_mscx,
+                    user_mscx,
+                    output_mscx,
+                    write_conflict_diff=False,
+                )
             except MergeConflictException as exc:
                 merge_error = exc
             except ComplicatedMergeException as exc:
                 if not isinstance(merge_error, MergeConflictException):
                     merge_error = exc
 
-        _write_mscz_from_dir(output_dir, output_mscz_path)
+        if isinstance(merge_error, MergeConflictException):
+            _write_merge_conflict_diff_mscz(
+                head_mscz_path, user_mscz_path, output_mscz_path
+            )
+        else:
+            _write_mscz_from_dir(output_dir, output_mscz_path)
 
     if merge_error is not None:
         raise merge_error
 
 
-def three_way_merge_musescore(base_mscx_path, head_mscx_path, user_mscx_path, output_mscx_path) -> None:
+def three_way_merge_musescore(
+    base_mscx_path,
+    head_mscx_path,
+    user_mscx_path,
+    output_mscx_path,
+    *,
+    write_conflict_diff: bool = True,
+) -> None:
     """
     INTERNAL
     Perform a 3 way merge on mscx files. For Divisi
@@ -151,21 +278,22 @@ def three_way_merge_musescore(base_mscx_path, head_mscx_path, user_mscx_path, ou
     
     conflicts = find_merge_conflicts(base_2_head, base_2_user)
     if conflicts:
-        # Merge conflict!
-        compare_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
-        raise MergeConflictException
-    
-    else:
-        # auto merge musescore files
-        #TODO: this
-        try:
-            auto_merge_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, base_2_head, base_2_user)
-        except MergeConflictException:
-            # Generate merge conflicyt score and re-raise
-            compare_musescore_files(head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True)
-            raise MergeConflictException
+        if write_conflict_diff:
+            compare_musescore_files(
+                head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
+            )
+        raise MergeConflictException(conflicts)
 
-        pass
+    try:
+        auto_merge_musescore_files(
+            head_mscx_path, user_mscx_path, output_mscx_path, base_2_head, base_2_user
+        )
+    except MergeConflictException:
+        if write_conflict_diff:
+            compare_musescore_files(
+                head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
+            )
+        raise MergeConflictException
 
 
 
