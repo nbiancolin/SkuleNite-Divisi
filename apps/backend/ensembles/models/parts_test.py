@@ -533,14 +533,14 @@ def test_merge_and_reupload_uses_alias(mock_render):
     assert alias_for_a is not None, "Alias for arrangement A should exist after merge"
     
     # Step 4: Upload arrangement A again (version 2) with "Flute I" in the zip
+    version_a1.is_latest = False
+    version_a1.save(update_fields=["is_latest"])
+
     version_a2 = ArrangementVersionFactory(
         arrangement=arrangement_a,
         version_label="1.1.0",
         is_latest=True,
     )
-    # Mark old version as not latest
-    version_a1.is_latest = False
-    version_a1.save()
     
     zip_a2 = io.BytesIO()
     with zipfile.ZipFile(zip_a2, "w") as z:

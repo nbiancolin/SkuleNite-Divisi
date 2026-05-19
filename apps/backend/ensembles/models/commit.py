@@ -81,7 +81,8 @@ class Commit(models.Model):
     @classmethod
     def latest_for_arrangement(cls, arrangement: Arrangement) -> "Commit | None":
         """Tip commit for this arrangement (no child commits), or None if empty."""
-        res = cls.objects.filter(arrangement=arrangement, children__isnull=True).order_by("-id").first()
-        if res is None:
-            raise Commit.DoesNotExist
-        return res
+        return (
+            cls.objects.filter(arrangement=arrangement, children__isnull=True)
+            .order_by("-id")
+            .first()
+        )
