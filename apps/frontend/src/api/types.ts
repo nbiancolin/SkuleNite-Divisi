@@ -114,6 +114,7 @@ export interface VersionHistoryItem {
   version_label: string;
   timestamp: string;
   is_latest: boolean;
+  audio_state: "none" | "processing" | "complete" | "error";
 }
 
 export interface ArrangementVersionComment {

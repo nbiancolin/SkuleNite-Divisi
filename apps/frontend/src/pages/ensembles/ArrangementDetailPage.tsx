@@ -677,18 +677,21 @@ export default function ArrangementDisplay() {
                           <Text size="sm">{formatTimestamp(commit.timestamp)}</Text>
                         </Table.Td>
                         <Table.Td>
-                          {commit.has_version ? (
-                            <Badge color="green" variant="light">Version created</Badge>
-                          ) : (
+                          <Group gap="xs" wrap="nowrap">
+                            {commit.has_version ? (
+                              <Badge color="green" variant="light">
+                                Version created
+                              </Badge>
+                            ) : null}
                             <Button
                               component={Link}
                               to={`/app/arrangements/${arrangementId}/commits/${commit.id}/create-version`}
                               size="xs"
                               variant="light"
                             >
-                              Create Version
+                              {commit.has_version ? "Create another version" : "Create Version"}
                             </Button>
-                          )}
+                          </Group>
                         </Table.Td>
                       </Table.Tr>
                     ))}

@@ -148,7 +148,7 @@ export const arrangementApi = {
   },
 
   async getVersionDetails(versionId: number): Promise<ArrangementVersion> {
-    const response = await fetch(`${API_BASE_URL}/versions/${versionId}/`, {
+    const response = await fetch(`${API_BASE_URL}/arrangementversions/${versionId}/`, {
       credentials: "include",
     });
     if (!response.ok) {

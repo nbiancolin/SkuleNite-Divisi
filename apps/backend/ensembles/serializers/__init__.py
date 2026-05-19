@@ -420,6 +420,10 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
             default_storage.save(new_commit.mscz_file_key, io.BytesIO(file_content))
             logger.info(f"Saved file to storage: {new_commit.mscz_file_key}")
 
+            from ensembles.models.user_score_version import UserScoreVersion
+
+            UserScoreVersion.record_for_user(self.context["user"], arr, new_commit)
+
             return {"status": "ok", "commit": new_commit}
 
         except Exception as e:

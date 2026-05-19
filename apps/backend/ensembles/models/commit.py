@@ -22,7 +22,7 @@ class Commit(models.Model):
     )
 
     file_name = models.CharField(max_length=128)
-    message = models.CharField(max_length=128)
+    message = models.CharField(max_length=256)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")
@@ -81,8 +81,7 @@ class Commit(models.Model):
     @classmethod
     def latest_for_arrangement(cls, arrangement: Arrangement) -> "Commit | None":
         """Tip commit for this arrangement (no child commits), or None if empty."""
-        return (
-            cls.objects.filter(arrangement=arrangement, children__isnull=True)
-            .order_by("-id")
-            .first()
-        )
+        res = cls.objects.filter(arrangement=arrangement, children__isnull=True).order_by("-id").first()
+        if res is None:
+            raise Commit.DoesNotExist
+        return res
