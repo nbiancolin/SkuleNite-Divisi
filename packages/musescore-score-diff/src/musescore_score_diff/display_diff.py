@@ -7,382 +7,151 @@ from copy import deepcopy
 from typing import List, Tuple
 import tempfile
 
-# Assuming these are imported from your utils
-from .utils import extract_measures, State, _make_cutaway, _make_empty_measure, highlight_measure, make_highlight_end_empty_measure
+from .utils import (
+    State,
+    build_unified_diff_union,
+    install_union_layout_into_score,
+    highlight_measure,
+    make_highlight_end_empty_measure,
+    mscx_path_from_extract_dir,
+    pick_main_mscx_arc_from_namelist,
+    _make_empty_measure,
+    _effective_measure_duration,
+)
 from .compute_diff import compute_diff
 
-def _score_staff_id_to_index(score: ET.Element) -> dict[str, int]:
-    """Map score-level <Staff id> to its index in score.findall('Staff')."""
-    res: dict[str, int] = {}
-    for i, staff in enumerate(score.findall("Staff")):
-        staff_id = staff.attrib.get("id")
-        if staff_id is not None:
-            res[staff_id] = i
-    return res
 
-def _score_staff_id_to_elem(score: ET.Element) -> dict[str, ET.Element]:
-    """Map score-level <Staff id> to the staff element."""
-    res: dict[str, ET.Element] = {}
-    for staff in score.findall("Staff"):
-        staff_id = staff.attrib.get("id")
-        if staff_id is not None:
-            res[staff_id] = staff
-    return res
-
-def _part_name_to_end_staff_index(score: ET.Element) -> dict[str, int]:
-    """For each part name, return the end staff index (exclusive) of that part's block
-    in the score-level staff list.
-
-    Uses staff IDs to be robust for multi-staff instruments.
+def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.ElementTree, List[str]]:
     """
-    id_to_index = _score_staff_id_to_index(score)
-    result: dict[str, int] = {}
-    for part in score.findall("Part"):
-        name = part.find("trackName")
-        part_name = name.text if name is not None else ""
-        staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
-        indices = [id_to_index[sid] for sid in staff_ids if sid in id_to_index]
-        result[part_name] = (max(indices) + 1) if indices else 0
-    return result
+    Merge two MuseScore files for unified diff display.
 
-def _shift_end_indices(end_idx: dict[str, int], insert_at: int, delta: int) -> None:
-    """Shift all end indices at/after insert_at by delta (in-place)."""
-    for k, v in list(end_idx.items()):
-        if v >= insert_at:
-            end_idx[k] = v + delta
-
-def new_merge_musescore_files(f1_path, f2_path, output_path=None):
-    """
-    read in f1 and f2, create diff_score that is union of both scores
-
-    make list of all parts in f1
-    and all staves in f1
-        Note that their IDs line up!
-
-    make diff_score a deep_copy of score 1
-
-    then, copy over all parts and scores from staff 2 into diff_score
-    create list union_part_list and union_staff_list
-    when adding a part to the part list:
-        - simultaneously add the staff to the staff list
-        - Need to insert it in the correct position
-            - so, if the staff name exists in the list, name staff "<name>-1"
-            - set all IDs by their position in the list afterwards,
-
-    then, once lists are creatd
-    overwrite all parts in diff_score with the parts (in order) from part_list
-    and overwrite all staves in diff_score with the scores (in order) from score_list
+    Each part is followed by a duplicate part (``trackName`` + ``-1``) holding the
+    second score's staves, with score-level staves interleaved and IDs kept in sync.
     """
     tree1 = ET.parse(f1_path)
     tree2 = ET.parse(f2_path)
 
-    root1 = tree1.getroot()
-    root2 = tree2.getroot()
-
-    score1 = root1.find("Score")
-    score2 = root2.find("Score")
+    score1 = tree1.getroot().find("Score")
+    score2 = tree2.getroot().find("Score")
     if score1 is None or score2 is None:
         raise ValueError("Both files must contain a <Score> element.")
 
-    union_part_list = [part for part in score1.findall("Part")]
-    part_names = [part.find("trackName").text for part in score1.findall("Part")]
-    union_staff_list = [staff for staff in score1.findall("Staff")]
-
-    def _make_cutaway() -> ET.Element:
-        return ET.fromstring("<cutaway>1</cutaway>")
-
-    # End staff index (exclusive) per part so multi-staff instruments stay R1 L1 R2 L2
-    part_name_to_end_staff_index = _part_name_to_end_staff_index(score1)
-    score2_staff_by_id = _score_staff_id_to_elem(score2)
-
-    for part in score2.findall("Part"):
-        staff_name = part.find("trackName").text
-        assert staff_name is not None
-        part_staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
-        part_staves = [deepcopy(score2_staff_by_id[sid]) for sid in part_staff_ids if sid in score2_staff_by_id]
-
-        try:
-            part_index = part_names.index(staff_name)
-            p = deepcopy(part)
-            for s in p.findall("Staff"):
-                s.append(_make_cutaway())
-            union_part_list.insert(part_index + 1, p)
-            part_names.insert(part_index + 1, staff_name)
-            insert_at = part_name_to_end_staff_index[staff_name]
-            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
-            for s in part_staves:
-                s.append(_make_cutaway())
-                union_staff_list.insert(insert_at, s)
-                insert_at += 1
-            part_name_to_end_staff_index[staff_name] = insert_at
-        except ValueError:
-            print(f"ValueError: {staff_name}")
-            union_part_list.append(deepcopy(part))
-            part_names.append(staff_name)
-            insert_at = len(union_staff_list)
-            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
-            for s in part_staves:
-                s.append(_make_cutaway())
-                union_staff_list.append(s)
-            part_name_to_end_staff_index[staff_name] = len(union_staff_list)
-        
+    union_parts, union_staves, part_names = build_unified_diff_union(score1, score2)
 
     diff_score_tree = deepcopy(tree1)
+    diff_score = diff_score_tree.getroot().find("Score")
+    if diff_score is None:
+        raise ValueError("Both files must contain a <Score> element.")
 
-    # remove all parts, and add back all parts from union_part_list (update IDs as they are inserted)
+    install_union_layout_into_score(diff_score, union_parts, union_staves)
+    return (diff_score_tree, part_names)
 
-    diff_root = diff_score_tree.getroot()
-    diff_score = diff_root.find("Score")
 
-    list_score = list(diff_score)
-    part_first_index = -1
-    staff_first_index = -1
-    parts_to_delete = []
-    for i in range(len(list_score)):
-        elem = list_score[i]
-        if elem.tag == "Part":
-            if part_first_index == -1:
-                part_first_index = i
-            parts_to_delete.append(elem)
-        if elem.tag == "Staff":
-            if staff_first_index == -1:
-                staff_first_index = i
-            diff_score.remove(elem)
-        
-    assert part_first_index != -1, "Could not find any parts in diff-score..."
-    assert staff_first_index != -1, "Could not find any staves in diff-score..."
-
-    num_staves = len(union_staff_list)
-    num_parts = len(union_part_list)
-    # TODO: Something here is messing up -- drum staff not being copied correctly, eveyrhting works tho
-    # assert num_staves == num_parts, f"Num staves: {num_staves}, num parts: {num_parts}\n {[staff.attrib['id'] for staff in union_staff_list]}\n{[staff.attrib['id'] for staff in union_part_list]}"
-    #Why are there 11 staves? thats an odd umber ??
-
-    # all staves removed, add back new staves 
-    for staff in reversed(union_staff_list):
-        staff.attrib["id"] = f"{num_staves}"
-        num_staves -= 1
-        diff_score.insert(staff_first_index, staff)
-
-    #remove parts:
-    for part in parts_to_delete:
-        diff_score.remove(part)
-
-    
-    for part in reversed(union_part_list):
-        part.attrib["id"] = f"{num_parts}"
-        num_parts -= 1
-        diff_score.insert(part_first_index, part)
-
+def new_merge_musescore_files(f1_path, f2_path, output_path=None):
+    """Alias for unified diff merge (kept for compatibility)."""
+    diff_score_tree, part_names = merge_musescore_files_for_diff(f1_path, f2_path)
     if output_path:
         diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
     return (diff_score_tree, part_names)
 
 
-def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.ElementTree, List[str]]:
+def mark_diffs_in_staff_pair(staff1, staff2, ops: list[State], unified=True) -> None:
     """
-    Merge two MuseScore files for diff display (adapted from your new_merge_musescore_files).
-    Multi-staff instruments (e.g. piano) keep linked staves in order: R1 L1 R2 L2.
+    Apply an ordered edit script to a (staff, staff-1) pair in a unified diff score.
     """
-    tree1 = ET.parse(f1_path)
-    tree2 = ET.parse(f2_path)
-
-    root1 = tree1.getroot()
-    root2 = tree2.getroot()
-
-    score1 = root1.find("Score")
-    score2 = root2.find("Score")
-    if score1 is None or score2 is None:
-        raise ValueError("Both files must contain a <Score> element.")
-
-    # Get parts and create union lists
-    union_part_list = [part for part in score1.findall("Part")]
-    part_names = [part.find("trackName").text for part in score1.findall("Part")]
-    union_staff_list = [staff for staff in score1.findall("Staff")]
-
-    # End staff index (exclusive) for each part name so we insert after the full block (R1 L1 then R2 L2)
-    part_name_to_end_staff_index = _part_name_to_end_staff_index(score1)
-
-    score2_staff_by_id = _score_staff_id_to_elem(score2)
-
-    for part in score2.findall("Part"):
-        staff_name = part.find("trackName").text
-        assert staff_name is not None
-        part_staff_ids = [s.attrib.get("id") for s in part.findall("Staff")]
-        part_staves = [deepcopy(score2_staff_by_id[sid]) for sid in part_staff_ids if sid in score2_staff_by_id]
-
-        try:
-            part_index = part_names.index(staff_name)
-            # Insert one Part for this instrument (diff version with "-1")
-            p = deepcopy(part)
-            track_name_elem = p.find("trackName")
-            if track_name_elem is not None:
-                track_name_elem.text = f"{staff_name}-1"
-
-            union_part_list.insert(part_index + 1, p)
-            part_names.insert(part_index + 1, f"{staff_name}-1")
-
-            # Insert all staves of this part after the existing block (R1 L1 R2 L2)
-            insert_at = part_name_to_end_staff_index[staff_name]
-            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
-            for s in part_staves:
-                s.append(_make_cutaway())
-                union_staff_list.insert(insert_at, s)
-                insert_at += 1
-            part_name_to_end_staff_index[staff_name] = insert_at
-
-        except ValueError:
-            # Part doesn't exist in score1, append to end
-            print(f"New part found: {staff_name}")
-            p = deepcopy(part)
-            track_name_elem = p.find("trackName")
-            if track_name_elem is not None:
-                track_name_elem.text = f"{staff_name}-1"
-
-            union_part_list.append(p)
-            part_names.append(f"{staff_name}-1")
-            insert_at = len(union_staff_list)
-            _shift_end_indices(part_name_to_end_staff_index, insert_at, len(part_staves))
-            for s in part_staves:
-                union_staff_list.append(deepcopy(s))
-            part_name_to_end_staff_index[staff_name] = len(union_staff_list)
-
-    # Create diff score tree
-    diff_score_tree = deepcopy(tree1)
-    diff_root = diff_score_tree.getroot()
-    diff_score = diff_root.find("Score")
-
-    # Remove existing parts and staves
-    list_score = list(diff_score)
-    part_first_index = -1
-    staff_first_index = -1
-    parts_to_delete = []
-    
-    for i in range(len(list_score)):
-        elem = list_score[i]
-        if elem.tag == "Part":
-            if part_first_index == -1:
-                part_first_index = i
-            parts_to_delete.append(elem)
-        if elem.tag == "Staff":
-            if staff_first_index == -1:
-                staff_first_index = i
-            diff_score.remove(elem)
-
-    assert part_first_index != -1, "Could not find any parts in diff-score"
-    assert staff_first_index != -1, "Could not find any staves in diff-score"
-
-    # Add new staves with updated IDs
-    num_staves = len(union_staff_list)
-    for staff in reversed(union_staff_list):
-        staff.attrib["id"] = f"{num_staves}"
-        num_staves -= 1
-        diff_score.insert(staff_first_index, staff)
-
-    # Remove old parts
-    for part in parts_to_delete:
-        diff_score.remove(part)
-
-    # Add new parts with updated IDs
-    num_parts = len(union_part_list)
-    for part in reversed(union_part_list):
-        part.attrib["id"] = f"{num_parts}"
-        num_parts -= 1
-        diff_score.insert(part_first_index, part)
-
-    return (diff_score_tree, part_names)
-
-def mark_diffs_in_staff_pair(staff1, staff2, measures_to_mark) -> None:
-    """
-    Fn that goes through diff score, iterates over each staff.
-    for each (staff, staff-1) pairing, and applies the selected diff
-    if measure is unchanged, set the measure in staff-1 to be unchanged
-        (NOTE: Potentially both? so it only shows the different measures) (maybe a toggleable option)
-    if measure is modified, highlight staff red, and staff1 green
-    if measure is added, add a measure of rest to staff, and highlight it red, highlight staff1 green
-    if measure removed, add measue of rest to staff1, and highlight it in red, highlight staff red too
-
-    """
-
-    #process measures in a list so we can modify it, then add them all back afterwards
     measures1 = list(staff1.findall("Measure"))
     measures2 = list(staff2.findall("Measure"))
-
-    m1_processed = []
-    m2_processed = []
-    # upper_bound = max(len(measures1), len(measures2))
+    m1_processed: list[ET.Element] = []
+    m2_processed: list[ET.Element] = []
     prev_measure_highlighted = False
-    upper_bound = len(measures_to_mark.keys()) +1
-    for i in range(1, upper_bound):
-        #pop from m1 and m2, and add to m1/m2 pocessed
-        m1 = measures1.pop(0)
-        m2 = measures2.pop(0)
+    i1 = 0
+    i2 = 0
 
-        m1_next = measures1[0] if measures1 else None
-        m2_next = measures2[0] if measures2 else None
-        match measures_to_mark[i]:
+    for state in ops:
+        match state:
             case State.UNCHANGED:
-                #clear staff2 (remove old measure)
+                m1 = measures1[i1]
+                m2 = measures2[i2]
+                i1 += 1
+                i2 += 1
                 m1_processed.append(m1)
+                duration = _effective_measure_duration(staff1, i1)
                 if prev_measure_highlighted:
-                    m2_processed.append(make_highlight_end_empty_measure())
+                    m2_processed.append(make_highlight_end_empty_measure(duration))
                     prev_measure_highlighted = False
+                elif unified:
+                    m2_processed.append(_make_empty_measure(duration))
                 else:
-                    m2_processed.append(_make_empty_measure())
-                # m2_processed.append(m2)   # <-- For testing
+                    m2_processed.append(m2)
             case State.MODIFIED:
-                #highlight staff1 red and staff2 green
+                m1 = measures1[i1]
+                m2 = measures2[i2]
+                m1_next = measures1[i1 + 1] if i1 + 1 < len(measures1) else None
+                m2_next = measures2[i2 + 1] if i2 + 1 < len(measures2) else None
+                i1 += 1
+                i2 += 1
                 m1_processed.append(highlight_measure((200, 0, 0), m1, m1_next))
                 m2_processed.append(highlight_measure((0, 200, 0), m2, m2_next))
                 prev_measure_highlighted = True
-                continue
             case State.INSERTED:
-                #add measure of rest to staff1
+                m2 = measures2[i2]
+                m2_next = measures2[i2 + 1] if i2 + 1 < len(measures2) else None
+                i2 += 1
                 m1_processed.append(_make_empty_measure())
-                measures1.insert(0, m1)
-                #highlight staff green
                 m2_processed.append(highlight_measure((0, 200, 0), m2, m2_next))
-                continue
+                prev_measure_highlighted = True
             case State.REMOVED:
-                #add measure of rest to staff2, 
-                m2_processed.append(_make_empty_measure())
-                measures2.insert(0, m2)
-                # highlight staff1 red
+                m1 = measures1[i1]
+                m1_next = measures1[i1 + 1] if i1 + 1 < len(measures1) else None
+                i1 += 1
+                m2_processed.append(
+                    _make_empty_measure(_effective_measure_duration(staff1, i1))
+                )
                 m1_processed.append(highlight_measure((200, 0, 0), m1, m1_next))
-                continue
-        
-    
-    
-    #remove the old measures set
+                prev_measure_highlighted = True
+
+    if i1 != len(measures1) or i2 != len(measures2):
+        raise ValueError(
+            f"Edit script does not consume all measures "
+            f"({i1}/{len(measures1)} left, {i2}/{len(measures2)} right)"
+        )
+
     for m1 in staff1.findall("Measure"):
         staff1.remove(m1)
-
     for m2 in staff2.findall("Measure"):
         staff2.remove(m2)
-    
-    #add in all the new measures
+
     assert len(m1_processed) == len(m2_processed)
     for m1, m2 in zip(m1_processed, m2_processed):
         staff1.append(m1)
         staff2.append(m2)
 
-def mark_diffs(diff_score, diffs) -> None:
-    """
-    Create staff pairs to be sent to `mark_diffs_in_staff_pair`
-    
-    """
+
+def mark_diffs_separate(lhs_score: ET.Element, rhs_score: ET.Element, diffs) -> None:
+    """Apply diffs to two parallel scores (non-unified display)."""
+    lhs_staves, rhs_staves = lhs_score.findall("Staff"), rhs_score.findall("Staff")
+
+    assert len(lhs_staves) == len(rhs_staves)
+
+    j = 1
+    for lhs_staff, rhs_staff in zip(lhs_staves, rhs_staves):
+        mark_diffs_in_staff_pair(lhs_staff, rhs_staff, diffs[j], unified=False)
+        j += 1
+
+
+def mark_diffs_unified(diff_score, diffs) -> None:
+    """Pair consecutive staves (LHS/RHS) and apply per-staff edit scripts."""
     staves = diff_score.findall("Staff")
     i = 0
     j = 1
-    while i < len(staves):
-        if (i +1) >= len(staves):
-            break
-        mark_diffs_in_staff_pair(staves[i], staves[i +1], diffs[j])
+    while i + 1 < len(staves):
+        if j in diffs:
+            mark_diffs_in_staff_pair(staves[i], staves[i + 1], diffs[j])
         i += 2
         j += 1
 
 
-def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None) -> str:
+def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs: dict | None = None) -> str:
     """
     Main function to compare two MuseScore files and create a diff score.
     
@@ -390,75 +159,108 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         file1_path: Path to the old version (score1)
         file2_path: Path to the new version (score2)
         output_path: Optional output path for the diff file
+        unified_diff: Optional: a method for displaying large diffs as 2 separate files instead of one unified
+        diffs: DO NOT USE: for divisi, for overriding with custom diffs to mark / display
     
     Returns:
         Path to the generated diff file
     """
-    # Generate output filename if not provided
     if output_path is None:
         base_name = os.path.splitext(os.path.basename(file1_path))[0]
         output_path = f"diff-{base_name}.mscx"
 
     print(f"Comparing {file1_path} and {file2_path}")
     
-    # Create merged score with both versions
-    diff_score_tree, part_names = new_merge_musescore_files(file1_path, file2_path)
-    
-    # Get the score element
-    diff_root = diff_score_tree.getroot()
-    diff_score = diff_root.find("Score")
-    
-    diffs = compute_diff(file1_path, file2_path)
+    if unified_diff is True:
+        diff_score_tree, _part_names = merge_musescore_files_for_diff(file1_path, file2_path)
+        
+        diff_root = diff_score_tree.getroot()
+        diff_score = diff_root.find("Score")
+        
+        if not diffs:
+            diffs = compute_diff(file1_path, file2_path)
 
-    mark_diffs(diff_score, diffs)
+        mark_diffs_unified(diff_score, diffs)
 
+        diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
+        
+        print(f"Diff score saved as: {output_path}")
+        return output_path
     
-    # Save the diff score
-    diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
-    
-    print(f"Diff score saved as: {output_path}")
-    return output_path
+    else:
+        tree1 = ET.parse(file1_path)
+        tree2 = ET.parse(file2_path)
 
-def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None) -> str:
+        root1 = tree1.getroot()
+        root2 = tree2.getroot()
+
+        score1 = root1.find("Score")
+        score2 = root2.find("Score")
+
+        if not diffs:
+            diffs = compute_diff(file1_path, file2_path)
+        mark_diffs_separate(score1, score2, diffs)
+
+        lhs_output = f"{output_path}-lhs.mscx"
+        tree1.write(lhs_output, encoding="UTF-8", xml_declaration=True)
+        
+        rhs_output = f"{output_path}-rhs.mscx"
+        tree2.write(rhs_output, encoding="UTF-8", xml_declaration=True)
+
+
+def _extract_mscz_main_mscx(mscz_path: str, extract_dir: str) -> tuple[str, str]:
+    """Extract one .mscz into ``extract_dir`` and return (main arc, path on disk)."""
+    with zipfile.ZipFile(mscz_path, "r") as zip_ref:
+        namelist = zip_ref.namelist()
+        main_arc = pick_main_mscx_arc_from_namelist(namelist)
+        zip_ref.extractall(extract_dir)
+    return main_arc, mscx_path_from_extract_dir(extract_dir, main_arc)
+
+
+def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs = None) -> str:
     """
-    Compare two .mscz files by extracting and processing their .mscx contents.
-
-    Should only process the main mscx file, no parts
+    Compare two .mscz files by extracting and diffing each archive's main score .mscx.
     """
-    both_mscx_files = []
+    if output_path is None:
+        base_name = os.path.splitext(os.path.basename(file1_path))[0]
+        output_path = f"diff-{base_name}.mscz"
 
-    with tempfile.TemporaryDirectory() as work_dir: 
-        # Extract .mscx files from both .mscz files
-        for input_path in [file1_path, file2_path]:
-            
-            with zipfile.ZipFile(input_path, "r") as zip_ref:
-                zip_ref.extractall(work_dir)
-                mscx_files = [
-                    os.path.join(work_dir, f) for f in zip_ref.namelist() 
-                    if f.endswith(".mscx")
-                ]
-            both_mscx_files.append(mscx_files)
+    with tempfile.TemporaryDirectory() as work_dir:
+        left_dir = os.path.join(work_dir, "left")
+        right_dir = os.path.join(work_dir, "right")
+        out_dir = os.path.join(work_dir, "out")
+        os.makedirs(left_dir)
+        os.makedirs(right_dir)
+        os.makedirs(out_dir)
 
-        # Generate output path if not provided
-        if output_path is None:
-            base_name = os.path.splitext(os.path.basename(file1_path))[0]
-            output_path = f"diff-{base_name}.mscz"
+        left_arc, left_mscx = _extract_mscz_main_mscx(file1_path, left_dir)
+        right_arc, right_mscx = _extract_mscz_main_mscx(file2_path, right_dir)
 
-        # Process each .mscx file pair
-        output_files = []
-        for file1, file2 in zip(both_mscx_files[0], both_mscx_files[1]):
-            mscx_output = file1.replace(os.path.basename(file1), f"diff-{os.path.basename(file1)}")
-            compare_musescore_files(file1, file2, mscx_output)
-            output_files.append(mscx_output)
-            print(f"Processed: {os.path.basename(file1)}")
+        if left_arc != right_arc:
+            print(
+                f"Warning: main score paths differ ({left_arc!r} vs {right_arc!r}); "
+                f"writing diff to {left_arc!r}"
+            )
 
-        # Create output .mscz file
-        with zipfile.ZipFile(output_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for output_file in output_files:
-                arcname = os.path.relpath(output_file, os.path.dirname(output_file))
-                zipf.write(output_file, arcname)
+        shutil.copytree(left_dir, out_dir, dirs_exist_ok=True)
+        out_mscx = mscx_path_from_extract_dir(out_dir, left_arc)
 
-    
+        compare_musescore_files(
+            left_mscx,
+            right_mscx,
+            out_mscx,
+            unified_diff=unified_diff,
+            diffs=diffs,
+        )
+        print(f"Processed main score: {left_arc}")
+
+        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for root, _, files in os.walk(out_dir):
+                for filename in files:
+                    full_path = os.path.join(root, filename)
+                    arcname = os.path.relpath(full_path, out_dir).replace(os.sep, "/")
+                    zipf.write(full_path, arcname)
+
     print(f"Diff .mscz file created: {output_path}")
     return output_path
 
@@ -482,7 +284,6 @@ def main():
         sys.exit(1)
 
     try:
-        # Determine file type and process accordingly
         if file1_path.endswith('.mscz') and file2_path.endswith('.mscz'):
             diff_file = compare_mscz_files(file1_path, file2_path, output_path)
         elif file1_path.endswith('.mscx') and file2_path.endswith('.mscx'):

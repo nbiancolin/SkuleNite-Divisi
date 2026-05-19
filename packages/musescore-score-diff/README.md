@@ -7,6 +7,11 @@ Inspired by Greg Chapman and Francesco Fortino's "Music-score-diff" -- specializ
 NOTE: This project is not actively being maintained. I took this MVP and applied it to my main project, Divisi App. The more up to date code exists there. 
 (It was too much work to have these all be microservices, so they are all existing as one big monolith)
 
+
+Has 2 modes for displaying diffs
+for individual staves we hvae side-by-side mode, which generates one pdf 
+for large scores we have "github style" which generates 2 pdfs (one left and one right)
+
 # General Flow
 
 Compute Diff of 2 scores (ie. which measures are different) using the same algorithm (backtracing and lfs) that git uses when computing diffs

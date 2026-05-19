@@ -95,12 +95,12 @@
         </Instrument>
       </Part>
     <Part id="2">
-      <Staff id="1">
+      <Staff id="2">
         <StaffType group="pitched">
           <name>stdNormal</name>
           </StaffType>
-        <cutaway>1</cutaway></Staff>
-      <trackName>Piano</trackName>
+        </Staff>
+      <trackName>Piano-1</trackName>
       <Instrument id="piano">
         <longName>Piano</longName>
         <shortName>Pno.</shortName>
@@ -513,7 +513,29 @@
             </Chord>
           </voice>
         </Measure>
-      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
+      <Measure><voice><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure><Measure>
+        <eid>e5KFxNa33RL_De3g3TTvqtP</eid>
+        <voice>
+          <Chord>
+            <eid>L/j+9jRCoME_sVjbFb9IkwF</eid>
+            <durationType>quarter</durationType>
+            <Note>
+              <eid>wC5DjeUUuYP_RW1aBdxky3P</eid>
+              <pitch>60</pitch>
+              <tpc>14</tpc>
+              </Note>
+            </Chord>
+          <Rest>
+            <eid>Oj115UbxQZH_FfTY9rfQJtF</eid>
+            <durationType>quarter</durationType>
+            </Rest>
+          <Rest>
+            <eid>ccRShcd0egG_YOcDN+7BNrC</eid>
+            <durationType>half</durationType>
+            </Rest>
+          </voice>
+        </Measure>
+      </Staff>
     <Staff id="2">
       <VBox>
         <height>10</height>
@@ -606,6 +628,6 @@
             </Rest>
           </voice>
         </Measure>
-      </Staff>
+      <Measure><voice><Spanner type="TextLine"><prev><location><measures>-1</measures></location></prev></Spanner><Rest><durationType>measure</durationType><duration>4/4</duration></Rest></voice></Measure></Staff>
     </Score>
   </museScore>
