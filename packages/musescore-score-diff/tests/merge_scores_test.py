@@ -60,3 +60,24 @@ def test_merge_conflict_single_measure_raises():
         "Merge conflict was raised as expected. Open in MuseScore and verify the "
         f"unified conflict score looks correct: {output_path}"
     )
+
+
+def test_big_testcase():
+    output_path = _run_merge("big-testcase")
+    warnings.warn(f"Open in MuseScore and verify the measure-added merge looks correct: {output_path}")    
+
+
+@pytest.mark.xfail
+def test_merge_conflict_measure_added_raises():
+    # This test fails when generating a merge score ...
+    base_path, head_path, user_path, merged_path = _merge_paths("merge-conflict-measure-added")
+    output_path = f"{MERGE_OUTPUT_DIR}/merge-conflict-single-measure/merged.mscz"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with pytest.raises(MergeConflictException):
+        three_way_merge_mscz(base_path, head_path, user_path, output_path)
+
+    warnings.warn(
+        "Merge conflict was raised as expected. Open in MuseScore and verify the "
+        f"unified conflict score looks correct: {output_path}"
+    )

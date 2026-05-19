@@ -70,7 +70,12 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     elif len(base_arcs) == len(head_arcs) == len(user_arcs) == 1:
         mscx_merge_plan = [(base_arcs[0], head_arcs[0], user_arcs[0])]
     else:
-        raise ComplicatedMergeException("MSCZ archives do not contain the same .mscx files")
+        raise ComplicatedMergeException(f"MSCZ archives do not contain the same .mscx files\n base:{base_arcs}\n head: {head_arcs}\n user: {user_arcs} ")
+
+    # TODO: How this should behave
+    # - Always merge base mscx (Use the user's final mscz to write everything to)
+    # - If the excerpts match exactly, then merge them, otherwise ignore them (there should be no excerpts)
+
 
     merge_error: Exception | None = None
 
