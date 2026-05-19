@@ -36,3 +36,13 @@ class UserScoreVersion(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} @ arrangement {self.arrangement_id} -> commit {self.commit_id}"
+
+    @classmethod
+    def record_for_user(cls, user, arrangement: Arrangement, commit: Commit) -> "UserScoreVersion":
+        """Record which commit the user last downloaded or uploaded for this arrangement."""
+        usv, _ = cls.objects.update_or_create(
+            user=user,
+            arrangement=arrangement,
+            defaults={"commit": commit},
+        )
+        return usv

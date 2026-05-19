@@ -1,10 +1,11 @@
 import pytest
+from io import BytesIO
 from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from ensembles.models import ArrangementVersion, Commit, EnsembleUsership
+from ensembles.models import ArrangementVersion, Commit, EnsembleUsership, UserScoreVersion
 from ensembles.factories import ArrangementFactory, ArrangementVersionFactory, EnsembleUsershipFactory
 
 
@@ -35,6 +36,128 @@ def test_upload_new_commit_sets_created_by_on_second_upload(mock_save, arrangeme
     assert len(commits) == 2
     assert commits[0].created_by_id == user.id
     assert commits[1].created_by_id == user.id
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == commits[1].id
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.save")
+@patch("ensembles.views.arrangement.default_storage.exists", return_value=True)
+@patch("ensembles.views.arrangement.default_storage.open")
+def test_download_latest_commit_mscz_sets_user_score_version(
+    mock_open, mock_exists, mock_save, arrangement, user, client
+):
+    upload_url = reverse(
+        "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
+    )
+    client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+    commit = Commit.latest_for_arrangement(arrangement)
+    UserScoreVersion.objects.filter(user=user, arrangement=arrangement).delete()
+
+    download_url = reverse(
+        "ensembles:arrangement-by-id-download-latest-commit-mscz",
+        kwargs={"id": arrangement.id},
+    )
+    mock_open.return_value = BytesIO(b"x")
+
+    r = client.get(download_url)
+    assert r.status_code == 200, r.content
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == commit.id
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.save")
+def test_check_score_version_ok_when_user_has_latest(mock_save, arrangement, user, client):
+    upload_url = reverse(
+        "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
+    )
+    client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+
+    check_url = reverse(
+        "ensembles:arrangement-by-id-check-score-version", kwargs={"id": arrangement.id}
+    )
+    r = client.get(check_url)
+    assert r.status_code == 200
+    assert r.json()["status"] == "ok"
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.save")
+def test_check_score_version_error_when_never_downloaded(mock_save, arrangement, user, client):
+    upload_url = reverse(
+        "ensembles:arrangement-upload-new-commit", kwargs={"slug": arrangement.slug}
+    )
+    client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+    UserScoreVersion.objects.filter(user=user, arrangement=arrangement).delete()
+
+    check_url = reverse(
+        "ensembles:arrangement-by-id-check-score-version", kwargs={"id": arrangement.id}
+    )
+    r = client.get(check_url)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "error"
+    assert data["user_download_commit"] is None
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.save")
+def test_check_score_version_error_when_stale(mock_save, arrangement, user, client):
+    upload_url = reverse(
+        "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
+    )
+    client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile("first.mscz", b"x", content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+    first_commit = Commit.latest_for_arrangement(arrangement)
+
+    client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile("second.mscz", b"y", content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+    head_commit = Commit.latest_for_arrangement(arrangement)
+    assert head_commit.id != first_commit.id
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    usv.commit = first_commit
+    usv.save()
+
+    check_url = reverse(
+        "ensembles:arrangement-by-id-check-score-version", kwargs={"id": arrangement.id}
+    )
+    r = client.get(check_url)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "error"
+    assert data["head_commit"] == head_commit.id
+    assert data["user_download_commit"] == first_commit.id
 
 
 @pytest.mark.django_db

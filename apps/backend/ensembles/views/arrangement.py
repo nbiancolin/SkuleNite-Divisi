@@ -69,33 +69,35 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
 
         try:
             head_commit = Commit.latest_for_arrangement(arr)
-            user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
-
-            if head_commit.id != user_download_commit.id:
-                return Response(
-                    {
-                        "status": "error",
-                        "head_commit": head_commit.id,
-                        "user_download_commit": user_download_commit.id,
-                    }
-                )
         except Commit.DoesNotExist:
-            # arrangement with no commits
-            LOGGER.warning("Tried to check score version on an arrangement without any commits. Returning OK")
+            LOGGER.warning(
+                "Tried to check score version on an arrangement without any commits. Returning OK"
+            )
             return Response({"status": "ok"})
+
+        try:
+            user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
         except UserScoreVersion.DoesNotExist:
             return Response(
-                    {
-                        "status": "error",
-                        "head_commit": head_commit.id,
-                        "user_download_commit": user_download_commit.id,
-                    }
-                )
+                {
+                    "status": "error",
+                    "head_commit": head_commit.id,
+                    "user_download_commit": None,
+                }
+            )
 
-        except Exception as e:
-            LOGGER.warning(f"Error in Check Score Version:\n {e}")
-        finally:
-            return Response({"status": "ok"})
+        if user_download_commit is None or head_commit.id != user_download_commit.id:
+            return Response(
+                {
+                    "status": "error",
+                    "head_commit": head_commit.id,
+                    "user_download_commit": (
+                        user_download_commit.id if user_download_commit else None
+                    ),
+                }
+            )
+
+        return Response({"status": "ok"})
 
     @action(detail=True, methods=["post"], url_path="new-commit")
     def upload_new_commit(self, request, *args, **kwargs):
@@ -108,14 +110,6 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         r = serializer.save()
         if error := r.get("error"):
             return Response(error, status=500)
-
-        try:
-            usv = UserScoreVersion.objects.get(user=request.user, arrangement=arr)
-            usv.commit = r["commit"]
-            usv.save()
-
-        except UserScoreVersion.DoesNotExist:
-            UserScoreVersion.objects.create(user=request.user, arrangement=arr, commit=r["commit"])
 
         s = ArrangementSerializer(self.get_object())
         return Response(s.data)
@@ -135,11 +129,7 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
                 {"detail": "MSCZ file not found in storage."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        UserScoreVersion.objects.update_or_create(
-            user=request.user,
-            arrangement=arr,
-            defaults={"commit": latest},
-        )
+        UserScoreVersion.record_for_user(request.user, arr, latest)
         file_handle = default_storage.open(key, "rb")
         return FileResponse(
             file_handle,
