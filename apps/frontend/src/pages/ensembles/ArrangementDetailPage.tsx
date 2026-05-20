@@ -40,6 +40,7 @@ import {
   IconChevronUp,
   IconGitCommit,
   IconMessageCircle,
+  IconTrash,
 } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 
@@ -95,7 +96,15 @@ export default function ArrangementDisplay() {
     latestCommitMsczDownloadUrl,
     canDownloadLatestCommitMscz,
     arrangementId,
+    latestCommitHasMergeConflict,
+    getCommitMsczDownloadUrl,
+    handleDeleteCommit,
+    deletingCommitId,
+    commitActionError,
+    setCommitActionError,
   } = useArrangementDetailPage();
+
+  const latestCommitId = commits[0]?.id;
 
   if (loading) {
     return (
@@ -250,6 +259,41 @@ export default function ArrangementDisplay() {
         </Group>
 
         <Divider my="lg" />
+
+        {latestCommitHasMergeConflict && (
+          <Alert
+            icon={<IconAlertCircle size={16} />}
+            title="Merge conflict needs resolution"
+            color="red"
+            mb="lg"
+          >
+            The latest commit has an unresolved merge conflict. Download the score, fix it in
+            MuseScore, then upload a corrected file with force upload enabled.
+            <Group mt="sm">
+              <Button
+                component="a"
+                href={canDownloadLatestCommitMscz ? latestCommitMsczDownloadUrl : undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="white"
+                color="red"
+                size="compact-sm"
+                disabled={!canDownloadLatestCommitMscz}
+              >
+                Download conflict score
+              </Button>
+              <Button
+                component={Link}
+                to={`/app/arrangements/${arrangement.id}/new-commit`}
+                variant="white"
+                color="red"
+                size="compact-sm"
+              >
+                Upload fix (force)
+              </Button>
+            </Group>
+          </Alert>
+        )}
 
         <Grid>
           <Grid.Col span={{ base: 12, md: 6 }}>
@@ -647,6 +691,17 @@ export default function ArrangementDisplay() {
           </Group>
 
           <Collapse in={showCommitHistory}>
+            {commitActionError && (
+              <Alert
+                color="red"
+                title="Commit action failed"
+                mb="md"
+                withCloseButton
+                onClose={() => setCommitActionError(null)}
+              >
+                {commitActionError}
+              </Alert>
+            )}
             {commits.length > 0 ? (
               <ScrollArea>
                 <Table striped highlightOnHover>
@@ -656,6 +711,7 @@ export default function ArrangementDisplay() {
                       <Table.Th>Message</Table.Th>
                       <Table.Th>Created By</Table.Th>
                       <Table.Th>Date</Table.Th>
+                      <Table.Th>Status</Table.Th>
                       <Table.Th>Action</Table.Th>
                     </Table.Tr>
                   </Table.Thead>
@@ -677,12 +733,47 @@ export default function ArrangementDisplay() {
                           <Text size="sm">{formatTimestamp(commit.timestamp)}</Text>
                         </Table.Td>
                         <Table.Td>
-                          <Group gap="xs" wrap="nowrap">
+                          <Group gap="xs">
+                            {commit.is_merge_conflict && (
+                              <Badge color="red" variant="light">
+                                Merge conflict
+                              </Badge>
+                            )}
                             {commit.has_version ? (
                               <Badge color="green" variant="light">
                                 Version created
                               </Badge>
                             ) : null}
+                          </Group>
+                        </Table.Td>
+                        <Table.Td>
+                          <Group gap="xs" wrap="nowrap">
+                            <Tooltip label="Download this commit MSCZ">
+                              <ActionIcon
+                                component="a"
+                                href={getCommitMsczDownloadUrl(commit.id)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="light"
+                                color="blue"
+                                size="sm"
+                              >
+                                <IconDownload size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                            {commit.id === latestCommitId && !commit.has_version && (
+                              <Tooltip label="Delete latest commit">
+                                <ActionIcon
+                                  variant="light"
+                                  color="red"
+                                  size="sm"
+                                  loading={deletingCommitId === commit.id}
+                                  onClick={() => handleDeleteCommit(commit.id)}
+                                >
+                                  <IconTrash size={16} />
+                                </ActionIcon>
+                              </Tooltip>
+                            )}
                             <Button
                               component={Link}
                               to={`/app/arrangements/${arrangementId}/commits/${commit.id}/create-version`}

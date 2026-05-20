@@ -383,9 +383,12 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
         arr = self.context["arrangement"]
 
         user_is_up_to_date = UserScoreVersion.user_is_up_to_date(user=self.context["user"], arrangement=arr)
+        # Need to get head commit early so the head isnt the new commit ...
+        head_commit = Commit.latest_for_arrangement(arr)
 
         latest = Commit.latest_for_arrangement(arr)
-        if latest.is_merge_conflict and not self.validated_data["force"]:
+        force = self.validated_data.get("force", False)
+        if latest and latest.is_merge_conflict and not force:
             return {"client_error": "Must use force when resolving a merge conflict"}
 
         new_commit = Commit.create_new_commit(
@@ -410,22 +413,22 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
             default_storage.save(new_commit.mscz_file_key, io.BytesIO(file_content))
             logger.info(f"Saved file to storage: {new_commit.mscz_file_key}")
 
-            UserScoreVersion.record_for_user(self.context["user"], arr, new_commit)
-
         except Exception as e:
             logger.error(f"Failed to save file to storage: {e}")
             # Clean up the version if file save failed
             new_commit.delete()
             return {"error": "Failed to save file to storage"}
 
-        if user_is_up_to_date or self.validated_data["force"]:
-            # Done, no merging needed
+        user = self.context["user"]
+
+        if user_is_up_to_date or force:
+            # Direct tip commit (no auto-merge); user is aligned with their upload.
+            UserScoreVersion.record_for_user(user, arr, new_commit)
             return {"status": "ok", "commit": new_commit}
 
         else:
             # Need to 3 way merge scores and create merge conflict
             base_commit = UserScoreVersion.objects.get(user=self.context["user"], arrangement=arr).commit
-            head_commit = Commit.latest_for_arrangement(arr)
             user_commit = new_commit
 
             MERGE_FILE_NAME = new_commit.file_name[:-4] + "merge.mscz"
@@ -450,47 +453,56 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
                 return temp_input
 
 
-            from musescore_score_diff.merge import three_way_merge_mscz, MergeConflictException, ComplicatedMergeException
+            from musescore_score_diff.merge import three_way_merge_mscz, MergeConflictException
             import tempfile
             import os
             from django.core.files.base import ContentFile
 
-            with tempfile.TemporaryDirectory() as temp_dir:
-                # read in files
-                base_path = download_file(base_commit.mscz_file_key, "base.mscz", temp_dir)
-                head_path = download_file(head_commit.mscz_file_key, "head.mscz", temp_dir)
-                user_path = download_file(user_commit.mscz_file_key, "user.mscz", temp_dir)
+            merge_error_response = {
+                "merge_error": "Unable to merge scores. Use a force commit",
+            }
 
-                output_path = os.path.join(temp_dir, "output.mscz")
-
-                #run merge
-                try:
-                    # TODO run this in celery bc this can take a long time (find a way to update user on that case)
-                    three_way_merge_mscz(base_path, head_path, user_path, output_path)
-
-                    #if no exception then merge worked as expected.
-                    #Store final file in new commit then call it a day.
-                    final_commit.file_name = user_commit.file_name
-                    with open(output_path, "rb") as  f:
-                        default_storage.save(final_commit.mscz_file_key, ContentFile(f.read()))
-                    final_commit.save()
-                except MergeConflictException:
-                    # Output was a merge conflict
-                    final_commit.is_merge_conflict = True
-                    #Store final file in new commit then call it a day.
-                    with open(output_path, "rb") as  f:
-                        default_storage.save(final_commit.mscz_file_key, ContentFile(f.read()))
-                    final_commit.save()
-
-                except ComplicatedMergeException:
-                    # No merge score generated, reject commits and inform user
+            def fail_complicated_merge(exc: BaseException | None = None):
+                if exc is not None:
+                    logger.exception("Score merge failed: %s", exc)
+                if final_commit.pk:
                     final_commit.delete()
+                if default_storage.exists(user_commit.mscz_file_key):
                     default_storage.delete(user_commit.mscz_file_key)
-                    user_commit.delete()
-                    # 
-                    return {"merge_error": "Unable to merge scores. Use a force commit"}
+                user_commit.delete()
+                return merge_error_response
 
-                
+            def save_merged_output_to_final_commit():
+                final_commit.file_name = user_commit.file_name
+                with open(output_path, "rb") as f:
+                    default_storage.save(final_commit.mscz_file_key, ContentFile(f.read()))
+                final_commit.save()
+
+            try:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    base_path = download_file(base_commit.mscz_file_key, "base.mscz", temp_dir)
+                    head_path = download_file(head_commit.mscz_file_key, "head.mscz", temp_dir)
+                    user_path = download_file(user_commit.mscz_file_key, "user.mscz", temp_dir)
+                    output_path = os.path.join(temp_dir, "output.mscz")
+
+                    try:
+                        # TODO run this in celery bc this can take a long time
+                        three_way_merge_mscz(base_path, head_path, user_path, output_path)
+                        save_merged_output_to_final_commit()
+                    except MergeConflictException:
+                        try:
+                            final_commit.is_merge_conflict = True
+                            save_merged_output_to_final_commit()
+                        except Exception as exc:
+                            return fail_complicated_merge(exc)
+                    except Exception as exc:
+                        return fail_complicated_merge(exc)
+            except Exception as exc:
+                return fail_complicated_merge(exc)
+
+            # Merge commit or conflict: user must download and resolve before USV advances.
+            return {"status": "ok", "commit": final_commit}
+
 
 class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
     default_error_messages = {

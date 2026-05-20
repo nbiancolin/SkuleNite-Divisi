@@ -8,10 +8,16 @@ import type {
   StaffSpacingStrategy,
   VersionHistoryItem,
 } from "./types";
+import { CreateCommitError } from "./types";
 
 export const arrangementApi = {
   getLatestCommitMsczDownloadUrl(arrangementId: number): string {
     return `${API_BASE_URL}/arrangements-by-id/${arrangementId}/download-latest-commit-mscz/`;
+  },
+
+  getCommitMsczDownloadUrl(arrangementId: number, commitId: number, recordDownload = true): string {
+    const params = recordDownload ? "" : "?record_download=false";
+    return `${API_BASE_URL}/arrangements-by-id/${arrangementId}/commits/${commitId}/download-mscz/${params}`;
   },
 
   async getArrangement(slug: string) {
@@ -167,13 +173,17 @@ export const arrangementApi = {
   async createArrangementCommit(
     arrangementId: number,
     file: File,
-    message?: string
-  ): Promise<{ arrangement: Arrangement }> {
+    message?: string,
+    force = false
+  ): Promise<Arrangement> {
     const formData = new FormData();
     const csrfToken = getCsrfToken();
     formData.append("file", file);
     if (message && message.trim()) {
       formData.append("message", message.trim());
+    }
+    if (force) {
+      formData.append("force", "true");
     }
 
     const response = await fetch(`${API_BASE_URL}/arrangements-by-id/${arrangementId}/new-commit/`, {
@@ -187,6 +197,55 @@ export const arrangementApi = {
     });
 
     if (!response.ok) {
+      let errorData: Record<string, unknown> = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        const text = await response.text();
+        throw new CreateCommitError(
+          `Failed to create commit (status: ${response.status}) - ${text}`,
+          response.status
+        );
+      }
+
+      if (response.status === 409 && typeof errorData.merge_error === "string") {
+        throw new CreateCommitError(errorData.merge_error, response.status, {
+          kind: "merge_error",
+          mergeError: errorData.merge_error,
+        });
+      }
+
+      if (typeof errorData.client_error === "string") {
+        throw new CreateCommitError(errorData.client_error, response.status, {
+          kind: "client_error",
+          clientError: errorData.client_error,
+        });
+      }
+
+      const errorDetails =
+        (typeof errorData.detail === "string" ? errorData.detail : null) ||
+        JSON.stringify(errorData);
+      throw new CreateCommitError(
+        `Failed to create commit (status: ${response.status}) - ${errorDetails}`,
+        response.status,
+        { kind: "validation" }
+      );
+    }
+
+    return response.json();
+  },
+
+  async deleteArrangementCommit(arrangementId: number, commitId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/arrangements-by-id/${arrangementId}/commits/${commitId}/`,
+      {
+        method: "DELETE",
+        headers: getHeadersWithCsrf(),
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
       let errorDetails = "";
       try {
         const errorData = await response.json();
@@ -194,10 +253,10 @@ export const arrangementApi = {
       } catch {
         errorDetails = await response.text();
       }
-      throw new Error(`Failed to create commit (status: ${response.status}) - ${errorDetails}`);
+      throw new Error(
+        `Failed to delete commit (status: ${response.status}) - ${errorDetails}`
+      );
     }
-
-    return response.json();
   },
 
   async createArrangementVersionFromCommit(

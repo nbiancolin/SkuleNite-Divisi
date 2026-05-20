@@ -6,7 +6,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from ensembles.models import ArrangementVersion, Commit, EnsembleUsership, UserScoreVersion
-from ensembles.factories import ArrangementFactory, ArrangementVersionFactory, EnsembleUsershipFactory
+from ensembles.factories import (
+    ArrangementFactory,
+    ArrangementVersionFactory,
+    EnsembleUsershipFactory,
+    UserFactory,
+)
+from musescore_score_diff.merge import MergeConflictException
 
 
 @pytest.mark.django_db
@@ -118,6 +124,125 @@ def test_check_score_version_error_when_never_downloaded(mock_save, arrangement,
     data = r.json()
     assert data["status"] == "error"
     assert data["user_download_commit"] is None
+
+
+def _post_commit(client, arrangement, name: str, b: bytes = b"x"):
+    upload_url = reverse(
+        "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
+    )
+    return client.post(
+        upload_url,
+        data={
+            "file": SimpleUploadedFile(name, b, content_type="application/octet-stream"),
+        },
+        format="multipart",
+    )
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.open")
+@patch("ensembles.serializers.default_storage.save")
+@patch("musescore_score_diff.merge.three_way_merge_mscz")
+def test_upload_stale_merge_commit_does_not_update_user_score_version(
+    mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
+):
+    """Auto-merge tip is a merge commit; uploader's USV stays at their last-known commit."""
+    mock_open.return_value = BytesIO(b"x")
+
+    def write_merged_output(_base, _head, _user, output):
+        with open(output, "wb") as out:
+            out.write(b"merged")
+
+    mock_merge.side_effect = write_merged_output
+
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    base_commit = Commit.latest_for_arrangement(arrangement)
+
+    other_user = UserFactory()
+    EnsembleUsershipFactory(ensemble=ensemble, user=other_user)
+    other_client = client.__class__()
+    other_client.force_authenticate(user=other_user)
+    assert _post_commit(other_client, arrangement, "head.mscz", b"y").status_code == 200
+
+    usv_before = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv_before.commit_id == base_commit.id
+
+    r = _post_commit(client, arrangement, "user.mscz", b"z")
+    assert r.status_code == 200, r.content
+
+    usv_after = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv_after.commit_id == base_commit.id
+
+    tip = Commit.latest_for_arrangement(arrangement)
+    assert tip.is_merge_commit is True
+    assert tip.is_merge_conflict is False
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.open")
+@patch("ensembles.serializers.default_storage.save")
+@patch("musescore_score_diff.merge.three_way_merge_mscz")
+def test_upload_stale_merge_conflict_does_not_update_user_score_version(
+    mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
+):
+    mock_open.return_value = BytesIO(b"x")
+
+    def merge_conflict(_base, _head, _user, output):
+        with open(output, "wb") as out:
+            out.write(b"conflict")
+        raise MergeConflictException()
+
+    mock_merge.side_effect = merge_conflict
+
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    base_commit = Commit.latest_for_arrangement(arrangement)
+
+    other_user = UserFactory()
+    EnsembleUsershipFactory(ensemble=ensemble, user=other_user)
+    other_client = client.__class__()
+    other_client.force_authenticate(user=other_user)
+    assert _post_commit(other_client, arrangement, "head.mscz", b"y").status_code == 200
+
+    r = _post_commit(client, arrangement, "user.mscz", b"z")
+    assert r.status_code == 200, r.content
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == base_commit.id
+
+    tip = Commit.latest_for_arrangement(arrangement)
+    assert tip.is_merge_conflict is True
+
+
+@pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.open")
+@patch("ensembles.serializers.default_storage.save")
+@patch("ensembles.serializers.default_storage.delete")
+@patch("musescore_score_diff.merge.three_way_merge_mscz")
+def test_upload_stale_unexpected_merge_error_returns_complicated_merge(
+    mock_merge, mock_delete, mock_save, mock_open, arrangement, ensemble, user, client
+):
+    mock_open.return_value = BytesIO(b"x")
+    mock_merge.side_effect = RuntimeError("merge blew up")
+
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    base_commit = Commit.latest_for_arrangement(arrangement)
+
+    other_user = UserFactory()
+    EnsembleUsershipFactory(ensemble=ensemble, user=other_user)
+    other_client = client.__class__()
+    other_client.force_authenticate(user=other_user)
+    assert _post_commit(other_client, arrangement, "head.mscz", b"y").status_code == 200
+
+    r = _post_commit(client, arrangement, "user.mscz", b"z")
+    assert r.status_code == 409, r.content
+    assert r.json()["merge_error"] == "Unable to merge scores. Use a force commit"
+
+    head_commit = Commit.latest_for_arrangement(arrangement)
+    assert head_commit.id != base_commit.id
+    assert Commit.objects.filter(arrangement=arrangement).count() == 2
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == base_commit.id
 
 
 @pytest.mark.django_db

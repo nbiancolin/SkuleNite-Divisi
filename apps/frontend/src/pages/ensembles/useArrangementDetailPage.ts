@@ -71,6 +71,8 @@ export function useArrangementDetailPage() {
   const [commits, setCommits] = useState<Commit[]>([]);
   const [commitsLoading, setCommitsLoading] = useState(false);
   const [showCommitHistory, setShowCommitHistory] = useState(false);
+  const [commitActionError, setCommitActionError] = useState<string | null>(null);
+  const [deletingCommitId, setDeletingCommitId] = useState<number | null>(null);
 
   const audioState = arrangement?.latest_version?.audio_state ?? "none";
 
@@ -299,10 +301,43 @@ export function useArrangementDetailPage() {
     });
   };
 
+  const latestCommit = commits[0] ?? null;
+  const latestCommitHasMergeConflict = latestCommit?.is_merge_conflict ?? false;
+
   const latestCommitMsczDownloadUrl = arrangement
     ? apiService.getLatestCommitMsczDownloadUrl(arrangement.id)
     : "";
   const canDownloadLatestCommitMscz = commits.length > 0;
+
+  const getCommitMsczDownloadUrl = (commitId: number) =>
+    arrangement ? apiService.getCommitMsczDownloadUrl(arrangement.id, commitId) : "";
+
+  const handleDeleteCommit = async (commitId: number) => {
+    if (!arrangement) return;
+    const commit = commits.find((c) => c.id === commitId);
+    if (!commit) return;
+
+    if (commit.has_version) {
+      setCommitActionError("Cannot delete a commit that already has an arrangement version.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete commit #${commitId}? This cannot be undone. Only the latest commit can be removed.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setCommitActionError(null);
+      setDeletingCommitId(commitId);
+      await apiService.deleteArrangementCommit(arrangement.id, commitId);
+      await fetchCommits(arrangement.id);
+    } catch (err) {
+      setCommitActionError(err instanceof Error ? err.message : "Failed to delete commit");
+    } finally {
+      setDeletingCommitId(null);
+    }
+  };
 
   return {
     arrangementId,
@@ -354,5 +389,12 @@ export function useArrangementDetailPage() {
     formatTimestamp,
     latestCommitMsczDownloadUrl,
     canDownloadLatestCommitMscz,
+    latestCommit,
+    latestCommitHasMergeConflict,
+    getCommitMsczDownloadUrl,
+    handleDeleteCommit,
+    deletingCommitId,
+    commitActionError,
+    setCommitActionError,
   };
 }
