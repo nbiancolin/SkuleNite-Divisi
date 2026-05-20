@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import xml.etree.ElementTree as ET
 
 from .alignment import RowKind, StaffAlignment, align_staves
@@ -70,6 +72,47 @@ def _ops_for_row(row) -> list[State]:
     raise ValueError(f"Unknown alignment row kind: {row.kind}")
 
 
+def _synchronize_ops_across_part_staves(
+    alignment: StaffAlignment, diffs: dict[int, list[State]]
+) -> None:
+    """
+    Align INSERTED/REMOVED steps across staves in the same part.
+
+    Per-staff LCS can place insert/delete at different indices; bar lines must line
+    up in the score. MODIFIED vs UNCHANGED stays per staff (bass may be unchanged
+    while treble differs).
+    """
+    groups: dict[int, list[tuple[int, AlignmentRow]]] = defaultdict(list)
+    for pair_id, row in enumerate(alignment.rows, start=1):
+        if row.kind not in (RowKind.MATCHED, RowKind.RENAMED):
+            continue
+        if row.part_index_left is None:
+            continue
+        groups[row.part_index_left].append((pair_id, row))
+
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        ref_pid, ref_row = members[0]
+        assert ref_row.staff_left is not None and ref_row.staff_right is not None
+        structural = _measure_diff_ops(ref_row.staff_left, ref_row.staff_right)
+
+        for pair_id, row in members:
+            own = diffs[pair_id]
+            synced: list[State] = []
+            for step, struct in enumerate(structural):
+                if struct in (State.INSERTED, State.REMOVED):
+                    synced.append(struct)
+                elif step < len(own) and own[step] in (State.INSERTED, State.REMOVED):
+                    # Per-staff LCS mis-placed insert/delete; keep bar alignment only.
+                    synced.append(State.UNCHANGED)
+                elif step < len(own):
+                    synced.append(own[step])
+                else:
+                    synced.append(State.UNCHANGED)
+            diffs[pair_id] = synced
+
+
 def _load_score(path: str) -> ET.Element:
     tree = ET.parse(path)
     score = tree.getroot().find("Score")
@@ -94,6 +137,7 @@ def compute_diff_with_alignment(
     res: dict[int, list[State]] = {}
     for pair_id, row in enumerate(alignment.rows, start=1):
         res[pair_id] = _ops_for_row(row)
+    _synchronize_ops_across_part_staves(alignment, res)
     return res, alignment
 
 

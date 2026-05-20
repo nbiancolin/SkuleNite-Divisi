@@ -136,8 +136,9 @@ def mark_diffs_in_staff_pair(staff1, staff2, ops: list[State], unified=True) -> 
             case State.INSERTED:
                 m2 = measures2[i2]
                 m2_next = measures2[i2 + 1] if i2 + 1 < len(measures2) else None
+                duration = _effective_measure_duration(staff2, i2)
                 i2 += 1
-                m1_processed.append(_make_empty_measure())
+                m1_processed.append(_make_empty_measure(duration))
                 m2_processed.append(highlight_measure((0, 200, 0), m2, m2_next))
                 prev_measure_highlighted = True
             case State.REMOVED:

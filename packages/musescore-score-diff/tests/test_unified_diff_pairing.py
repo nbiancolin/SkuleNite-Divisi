@@ -16,6 +16,7 @@ from musescore_score_diff.utils import State
 
 
 def _extract_main_mscx(mscz_path: str, dest_dir: str) -> str:
+    os.makedirs(dest_dir, exist_ok=True)
     with zipfile.ZipFile(mscz_path, "r") as zf:
         zf.extractall(dest_dir)
     for root, _, files in os.walk(dest_dir):
@@ -64,6 +65,37 @@ def test_unified_pairing_two_staff_piano():
         bass_rhs = staves[3]
         assert _measure_has_highlight(treble_rhs.findall("Measure")[1])
         assert not _measure_has_highlight(bass_rhs.findall("Measure")[1])
+
+
+def _is_empty_rest_measure(measure: ET.Element) -> bool:
+    voice = measure.find("voice")
+    if voice is None:
+        return False
+    children = [c for c in voice if c.tag not in ("eid", "linkedMain")]
+    return len(children) == 1 and children[0].tag == "Rest"
+
+
+def test_measure_added_syncs_insert_index_across_piano_staves():
+    """Inserted bar must pad every staff in the part at the same measure index."""
+    fixture = "tests/fixtures/merge-scores/measure-added"
+    with tempfile.TemporaryDirectory() as work:
+        head_mscx = _extract_main_mscx(f"{fixture}/head.mscz", os.path.join(work, "head"))
+        user_mscx = _extract_main_mscx(f"{fixture}/user.mscz", os.path.join(work, "user"))
+
+        diffs, alignment = compute_diff_with_alignment(head_mscx, user_mscx)
+        assert len(alignment.rows) == 2
+        insert1 = [i for i, s in enumerate(diffs[1]) if s == State.INSERTED]
+        insert2 = [i for i, s in enumerate(diffs[2]) if s == State.INSERTED]
+        assert insert1 == insert2 and len(insert1) == 1
+        insert_at = insert1
+
+        out = os.path.join(work, "diff.mscx")
+        compare_musescore_files(head_mscx, user_mscx, out)
+        staves = ET.parse(out).getroot().find("Score").findall("Staff")
+        assert all(len(s.findall("Measure")) == 5 for s in staves)
+        idx = insert_at[0]
+        for staff in (staves[0], staves[1]):
+            assert _is_empty_rest_measure(staff.findall("Measure")[idx])
 
 
 def test_compare_musescore_piano_conflict_output(tmp_path):
