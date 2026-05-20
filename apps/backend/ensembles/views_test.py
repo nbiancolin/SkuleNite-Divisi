@@ -147,7 +147,7 @@ def test_upload_stale_merge_commit_does_not_update_user_score_version(
     mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
 ):
     """Auto-merge tip is a merge commit; uploader's USV stays at their last-known commit."""
-    mock_open.return_value = BytesIO(b"x")
+    mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
 
     def write_merged_output(_base, _head, _user, output):
         with open(output, "wb") as out:
@@ -185,7 +185,7 @@ def test_upload_stale_merge_commit_does_not_update_user_score_version(
 def test_upload_stale_merge_conflict_does_not_update_user_score_version(
     mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
 ):
-    mock_open.return_value = BytesIO(b"x")
+    mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
 
     def merge_conflict(_base, _head, _user, output):
         with open(output, "wb") as out:
@@ -221,7 +221,7 @@ def test_upload_stale_merge_conflict_does_not_update_user_score_version(
 def test_upload_stale_unexpected_merge_error_returns_complicated_merge(
     mock_merge, mock_delete, mock_save, mock_open, arrangement, ensemble, user, client
 ):
-    mock_open.return_value = BytesIO(b"x")
+    mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
     mock_merge.side_effect = RuntimeError("merge blew up")
 
     assert _post_commit(client, arrangement, "first.mscz").status_code == 200
