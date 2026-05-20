@@ -1,9 +1,12 @@
+import logging
 import xml.etree.ElementTree as ET
 import hashlib
 import os
 from collections import deque
 from copy import deepcopy
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 ALPHA_VALUE = 100
 
@@ -217,7 +220,9 @@ def pair_staves_by_part_order(
                 f"Part {name1!r} / {name2!r}: {len(elems1)} vs {len(elems2)} staves"
             )
         if name1 != name2:
-            print(f"Warning: pairing parts with different names: {name1!r} vs {name2!r}")
+            logger.warning(
+                "Pairing parts with different names: %r vs %r", name1, name2
+            )
         pairs.extend(zip(elems1, elems2))
     return pairs
 
@@ -280,17 +285,10 @@ def pair_staves_by_track_name(score1: ET.Element, score2: ET.Element) -> list[tu
 
 
 def extract_measures(staff: ET.Element) -> list[tuple[int, str, ET.Element]]:
-    """Parse uncompressed mcsx and return list of (number, hash, element)."""
-    
-
-    measures = []
-    score_measures = staff.findall("Measure")
-    for i in range(len(score_measures)):
-        m = _sanitize_measure(score_measures[i])
-        num = i+1
-        
-        h = _hash_measure(m)
-        measures.append((num, h, m))
+    """Return ``(1-based index, content hash, measure element)`` without mutating the staff."""
+    measures: list[tuple[int, str, ET.Element]] = []
+    for i, measure in enumerate(staff.findall("Measure"), start=1):
+        measures.append((i, _hash_measure(measure), measure))
     return measures
 
 

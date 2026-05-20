@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -5,15 +6,16 @@ import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, replace
 
+from musescore_score_diff.compute_diff import _pair_staves, compute_diff
 from musescore_score_diff.display_diff import compare_musescore_files, compare_mscz_files
-from musescore_score_diff.compute_diff import compute_diff
 from musescore_score_diff.utils import (
     State,
     _hash_measure,
     _sanitize_measure,
     get_parts_staff_elements,
 )
-from musescore_score_diff.compute_diff import _pair_staves
+
+logger = logging.getLogger(__name__)
 
 
 class ComplicatedMergeException(Exception):
@@ -259,6 +261,8 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     head_arcs = _mscx_arcnames(head_mscz_path)
     user_arcs = _mscx_arcnames(user_mscz_path)
 
+    head_main, _ = _partition_mscx_arcs(head_arcs)
+    user_main, _ = _partition_mscx_arcs(user_arcs)
     _, base_excerpts = _partition_mscx_arcs(base_arcs)
     _, head_excerpts = _partition_mscx_arcs(head_arcs)
     _, user_excerpts = _partition_mscx_arcs(user_arcs)
@@ -328,10 +332,16 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                     merge_error = exc
 
         if isinstance(merge_error, MergeConflictException):
-            compare_mscz_files(user_mscz_path, head_mscz_path, output_mscz_path, unified_diff=True)
-            # _write_merge_conflict_diff_mscz(
-            #     head_mscz_path, user_mscz_path, output_mscz_path
-            # )
+            head_mscx = os.path.join(extract_dirs["head"], head_main)
+            user_mscx = os.path.join(extract_dirs["user"], user_main)
+            head_user_diffs = compute_diff(head_mscx, user_mscx)
+            compare_mscz_files(
+                head_mscz_path,
+                user_mscz_path,
+                output_mscz_path,
+                unified_diff=True,
+                diffs=head_user_diffs,
+            )
         else:
             _write_mscz_from_dir(output_dir, output_mscz_path)
 
@@ -363,11 +373,12 @@ def three_way_merge_musescore(
     try:
         base_2_head = compute_diff(base_mscx_path, head_mscx_path)
         base_2_user = compute_diff(base_mscx_path, user_mscx_path)
-    except AssertionError:
-        # Once I figure this out, can use this to handle these cases, but for now :(
-        print("ERROR: Cannot currently merge musescore files with different num staves (yet)")
-        raise ComplicatedMergeException
-    
+    except ValueError as exc:
+        logger.error(
+            "Cannot merge scores with mismatched staves/parts: %s", exc, exc_info=True
+        )
+        raise ComplicatedMergeException(str(exc)) from exc
+
     try:
         auto_merge_musescore_files(
             head_mscx_path,
@@ -379,8 +390,13 @@ def three_way_merge_musescore(
         )
     except MergeConflictException as exc:
         if write_conflict_diff:
+            head_user_diffs = compute_diff(head_mscx_path, user_mscx_path)
             compare_musescore_files(
-                head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
+                head_mscx_path,
+                user_mscx_path,
+                output_mscx_path,
+                unified_diff=True,
+                diffs=head_user_diffs,
             )
         raise MergeConflictException(exc.conflicts, source_mscx=mscx_path) from exc
 
@@ -441,11 +457,19 @@ def merge_staff_pair(
                         )
                     )
             case (State.INSERTED, State.INSERTED):
-                print(
-                    "WARNING: Potential merge conflict, resolved by taking user's inserted measure"
-                )
-                if m2 is not None:
+                if _measures_equivalent(m1, m2):
+                    if m2 is not None:
+                        m_processed.append(m2)
+                elif m2 is not None:
+                    logger.warning(
+                        "Staff %s alignment step %s: both sides inserted different "
+                        "measures; keeping user's measure",
+                        staff_id,
+                        alignment_step,
+                    )
                     m_processed.append(m2)
+                elif m1 is not None:
+                    m_processed.append(m1)
             case (State.REMOVED, State.REMOVED):
                 pass
             case (a, b) if (a == State.INSERTED) != (b == State.INSERTED):
