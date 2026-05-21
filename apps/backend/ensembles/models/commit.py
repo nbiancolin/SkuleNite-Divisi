@@ -2,15 +2,17 @@ from django.db import models
 from django.core.files.storage import default_storage
 
 from ensembles.models import Arrangement, ArrangementVersion
+from ensembles.models.utils import DeleteFilesMixin
 from django.conf import settings
 
-
-class Commit(models.Model):
+class Commit(models.Model, DeleteFilesMixin):
     """
     A commit is a working copy of an arrangement
 
     Whereas a Version would be considered a "release", commits are just working copies
     """
+
+    keys_to_delete = ["mscz_file_key"]
 
     arrangement = models.ForeignKey(
         Arrangement, related_name="commits", on_delete=models.CASCADE

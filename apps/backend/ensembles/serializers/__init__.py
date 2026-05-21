@@ -467,8 +467,6 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
                     logger.exception("Score merge failed: %s", exc)
                 if final_commit.pk:
                     final_commit.delete()
-                if default_storage.exists(user_commit.mscz_file_key):
-                    default_storage.delete(user_commit.mscz_file_key)
                 user_commit.delete()
                 return merge_error_response
 
