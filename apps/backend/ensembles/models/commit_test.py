@@ -80,7 +80,7 @@ def test_latest_for_arrangement_empty(arrangement):
 def test_delete_commit_deletes_file(mock_exists, mock_delete, arrangement):
     mock_exists.return_value = True
 
-    c = Commit.objects.create(arangement=arrangement, file_name="test.mscz", message="test delete")\
+    c = Commit.objects.create(arrangement=arrangement, file_name="test.mscz", message="test delete")\
     
     c.delete()
 
