@@ -1,3 +1,4 @@
+import logging
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
@@ -6,6 +7,8 @@ import shutil
 from copy import deepcopy
 from typing import List, Tuple
 import tempfile
+
+logger = logging.getLogger(__name__)
 
 from .utils import (
     State,
@@ -18,7 +21,8 @@ from .utils import (
     _make_empty_measure,
     _effective_measure_duration,
 )
-from .compute_diff import compute_diff
+from .alignment import RowKind, align_staves
+from .compute_diff import compute_diff, compute_diff_with_alignment
 
 
 def merge_musescore_files_for_diff(f1_path: str, f2_path: str) -> Tuple[ET.ElementTree, List[str]]:
@@ -53,6 +57,42 @@ def new_merge_musescore_files(f1_path, f2_path, output_path=None):
     if output_path:
         diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
     return (diff_score_tree, part_names)
+
+
+def _mark_staff_only_removed(staff: ET.Element, ops: list[State]) -> None:
+    """Highlight a staff that exists only on the left (all REMOVED ops)."""
+    measures = list(staff.findall("Measure"))
+    processed: list[ET.Element] = []
+    i = 0
+    for state in ops:
+        if state != State.REMOVED:
+            raise ValueError(f"Expected REMOVED for staff-only row, got {state}")
+        m = measures[i]
+        m_next = measures[i + 1] if i + 1 < len(measures) else None
+        i += 1
+        processed.append(highlight_measure((200, 0, 0), m, m_next))
+    for m in staff.findall("Measure"):
+        staff.remove(m)
+    for m in processed:
+        staff.append(m)
+
+
+def _mark_staff_only_inserted(staff: ET.Element, ops: list[State]) -> None:
+    """Highlight a staff that exists only on the right (all INSERTED ops)."""
+    measures = list(staff.findall("Measure"))
+    processed: list[ET.Element] = []
+    i = 0
+    for state in ops:
+        if state != State.INSERTED:
+            raise ValueError(f"Expected INSERTED for staff-only row, got {state}")
+        m = measures[i]
+        m_next = measures[i + 1] if i + 1 < len(measures) else None
+        i += 1
+        processed.append(highlight_measure((0, 200, 0), m, m_next))
+    for m in staff.findall("Measure"):
+        staff.remove(m)
+    for m in processed:
+        staff.append(m)
 
 
 def mark_diffs_in_staff_pair(staff1, staff2, ops: list[State], unified=True) -> None:
@@ -96,8 +136,9 @@ def mark_diffs_in_staff_pair(staff1, staff2, ops: list[State], unified=True) -> 
             case State.INSERTED:
                 m2 = measures2[i2]
                 m2_next = measures2[i2 + 1] if i2 + 1 < len(measures2) else None
+                duration = _effective_measure_duration(staff2, i2)
                 i2 += 1
-                m1_processed.append(_make_empty_measure())
+                m1_processed.append(_make_empty_measure(duration))
                 m2_processed.append(highlight_measure((0, 200, 0), m2, m2_next))
                 prev_measure_highlighted = True
             case State.REMOVED:
@@ -129,26 +170,42 @@ def mark_diffs_in_staff_pair(staff1, staff2, ops: list[State], unified=True) -> 
 
 def mark_diffs_separate(lhs_score: ET.Element, rhs_score: ET.Element, diffs) -> None:
     """Apply diffs to two parallel scores (non-unified display)."""
-    lhs_staves, rhs_staves = lhs_score.findall("Staff"), rhs_score.findall("Staff")
-
-    assert len(lhs_staves) == len(rhs_staves)
-
+    alignment = align_staves(lhs_score, rhs_score)
     j = 1
-    for lhs_staff, rhs_staff in zip(lhs_staves, rhs_staves):
-        mark_diffs_in_staff_pair(lhs_staff, rhs_staff, diffs[j], unified=False)
+    for row in alignment.rows:
+        if row.kind in (RowKind.MATCHED, RowKind.RENAMED):
+            mark_diffs_in_staff_pair(
+                row.staff_left, row.staff_right, diffs[j], unified=False
+            )
+        elif row.kind == RowKind.LEFT_ONLY:
+            _mark_staff_only_removed(row.staff_left, diffs[j])
+        elif row.kind == RowKind.RIGHT_ONLY:
+            _mark_staff_only_inserted(row.staff_right, diffs[j])
         j += 1
+
+
+def _unified_lhs_rhs_staff_pairs(staves: list) -> list[tuple]:
+    """
+    Map logical staff index to (LHS, RHS) score-level staves.
+
+    Unified diff scores lay out staves as all LHS column staves first, then all
+    RHS (``-1`` part) staves — for a 2-staff piano: treble_L, bass_L, treble_R, bass_R.
+    """
+    n = len(staves) // 2
+    if n * 2 != len(staves):
+        raise ValueError(
+            f"Unified diff score must have an even number of staves, got {len(staves)}"
+        )
+    return [(staves[i], staves[i + n]) for i in range(n)]
 
 
 def mark_diffs_unified(diff_score, diffs) -> None:
-    """Pair consecutive staves (LHS/RHS) and apply per-staff edit scripts."""
-    staves = diff_score.findall("Staff")
-    i = 0
-    j = 1
-    while i + 1 < len(staves):
+    """Pair LHS/RHS staves per logical staff and apply per-staff edit scripts."""
+    for j, (lhs_staff, rhs_staff) in enumerate(
+        _unified_lhs_rhs_staff_pairs(diff_score.findall("Staff")), start=1
+    ):
         if j in diffs:
-            mark_diffs_in_staff_pair(staves[i], staves[i + 1], diffs[j])
-        i += 2
-        j += 1
+            mark_diffs_in_staff_pair(lhs_staff, rhs_staff, diffs[j])
 
 
 def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs: dict | None = None) -> str:
@@ -169,8 +226,8 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         base_name = os.path.splitext(os.path.basename(file1_path))[0]
         output_path = f"diff-{base_name}.mscx"
 
-    print(f"Comparing {file1_path} and {file2_path}")
-    
+    logger.info("Comparing %s and %s", file1_path, file2_path)
+
     if unified_diff is True:
         diff_score_tree, _part_names = merge_musescore_files_for_diff(file1_path, file2_path)
         
@@ -178,13 +235,13 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         diff_score = diff_root.find("Score")
         
         if not diffs:
-            diffs = compute_diff(file1_path, file2_path)
+            diffs, _ = compute_diff_with_alignment(file1_path, file2_path)
 
         mark_diffs_unified(diff_score, diffs)
 
         diff_score_tree.write(output_path, encoding="UTF-8", xml_declaration=True)
         
-        print(f"Diff score saved as: {output_path}")
+        logger.info("Diff score saved as: %s", output_path)
         return output_path
     
     else:
@@ -198,7 +255,7 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         score2 = root2.find("Score")
 
         if not diffs:
-            diffs = compute_diff(file1_path, file2_path)
+            diffs, _ = compute_diff_with_alignment(file1_path, file2_path)
         mark_diffs_separate(score1, score2, diffs)
 
         lhs_output = f"{output_path}-lhs.mscx"
@@ -237,9 +294,11 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
         right_arc, right_mscx = _extract_mscz_main_mscx(file2_path, right_dir)
 
         if left_arc != right_arc:
-            print(
-                f"Warning: main score paths differ ({left_arc!r} vs {right_arc!r}); "
-                f"writing diff to {left_arc!r}"
+            logger.warning(
+                "Main score paths differ (%r vs %r); writing diff to %r",
+                left_arc,
+                right_arc,
+                left_arc,
             )
 
         shutil.copytree(left_dir, out_dir, dirs_exist_ok=True)
@@ -252,7 +311,7 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
             unified_diff=unified_diff,
             diffs=diffs,
         )
-        print(f"Processed main score: {left_arc}")
+        logger.debug("Processed main score: %s", left_arc)
 
         with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for root, _, files in os.walk(out_dir):
@@ -261,7 +320,7 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
                     arcname = os.path.relpath(full_path, out_dir).replace(os.sep, "/")
                     zipf.write(full_path, arcname)
 
-    print(f"Diff .mscz file created: {output_path}")
+    logger.info("Diff .mscz file created: %s", output_path)
     return output_path
 
 def main():

@@ -1,9 +1,12 @@
+import logging
 import xml.etree.ElementTree as ET
 import hashlib
 import os
 from collections import deque
 from copy import deepcopy
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 ALPHA_VALUE = 100
 
@@ -217,7 +220,9 @@ def pair_staves_by_part_order(
                 f"Part {name1!r} / {name2!r}: {len(elems1)} vs {len(elems2)} staves"
             )
         if name1 != name2:
-            print(f"Warning: pairing parts with different names: {name1!r} vs {name2!r}")
+            logger.warning(
+                "Pairing parts with different names: %r vs %r", name1, name2
+            )
         pairs.extend(zip(elems1, elems2))
     return pairs
 
@@ -280,17 +285,10 @@ def pair_staves_by_track_name(score1: ET.Element, score2: ET.Element) -> list[tu
 
 
 def extract_measures(staff: ET.Element) -> list[tuple[int, str, ET.Element]]:
-    """Parse uncompressed mcsx and return list of (number, hash, element)."""
-    
-
-    measures = []
-    score_measures = staff.findall("Measure")
-    for i in range(len(score_measures)):
-        m = _sanitize_measure(score_measures[i])
-        num = i+1
-        
-        h = _hash_measure(m)
-        measures.append((num, h, m))
+    """Return ``(1-based index, content hash, measure element)`` without mutating the staff."""
+    measures: list[tuple[int, str, ET.Element]] = []
+    for i, measure in enumerate(staff.findall("Measure"), start=1):
+        measures.append((i, _hash_measure(measure), measure))
     return measures
 
 
@@ -371,72 +369,14 @@ def build_unified_diff_union(
     """
     Build interleaved <Part> and score-level <Staff> lists for a unified diff score.
 
-    For each part index: LHS staves from score1, then RHS staves from score2 (with cutaway).
-    Part track names on the RHS get ``rhs_label_suffix`` so labels are distinct in MuseScore.
-    Score-level staves are ordered to match <Part> stub order for ID assignment.
+    Uses staff alignment (track name + fingerprint rename heuristic), not raw part index.
     """
-    parts1 = get_parts_staff_elements(score1)
-    parts2 = get_parts_staff_elements(score2)
-    part_elems1 = score1.findall("Part")
-    part_elems2 = score2.findall("Part")
+    from .alignment import align_staves, build_union_from_alignment
 
-    union_parts: list[ET.Element] = []
-    union_staves: list[ET.Element] = []
-    part_names: list[str] = []
-
-    def _set_track_name(part: ET.Element, name: str) -> None:
-        track = part.find("trackName")
-        if track is not None:
-            track.text = name
-
-    n_parts = max(len(parts1), len(parts2))
-    for idx in range(n_parts):
-        has1 = idx < len(parts1)
-        has2 = idx < len(parts2)
-        name1, staves1 = parts1[idx] if has1 else ("", [])
-        name2, staves2 = parts2[idx] if has2 else ("", [])
-
-        if not has1 and has2:
-            p_left = deepcopy(part_elems2[idx])
-            _set_track_name(p_left, name2)
-            union_parts.append(p_left)
-            part_names.append(name2)
-            for s in staves2:
-                union_staves.append(_make_placeholder_staff(s))
-
-        if has1:
-            union_parts.append(deepcopy(part_elems1[idx]))
-            part_names.append(name1)
-            for s in staves1:
-                union_staves.append(deepcopy(s))
-
-        if has1 and not has2:
-            p_rhs = deepcopy(part_elems1[idx])
-            rhs_name = f"{name1}{rhs_label_suffix}"
-            _set_track_name(p_rhs, rhs_name)
-            union_parts.append(p_rhs)
-            part_names.append(rhs_name)
-            for s in staves1:
-                union_staves.append(_make_placeholder_staff(s))
-
-        if has2:
-            p_rhs = deepcopy(part_elems2[idx])
-            label_base = name1 if has1 else name2
-            rhs_name = f"{label_base}{rhs_label_suffix}"
-            _set_track_name(p_rhs, rhs_name)
-            union_parts.append(p_rhs)
-            part_names.append(rhs_name)
-            for s in staves2:
-                sc = deepcopy(s)
-                sc.append(_make_cutaway())
-                union_staves.append(sc)
-
-    stub_count = sum(len(p.findall("Staff")) for p in union_parts)
-    if stub_count != len(union_staves):
-        raise ValueError(
-            f"Union layout mismatch: {stub_count} part stubs vs {len(union_staves)} staves"
-        )
-    return union_parts, union_staves, part_names
+    alignment = align_staves(score1, score2)
+    return build_union_from_alignment(
+        score1, score2, alignment, rhs_label_suffix=rhs_label_suffix
+    )
 
 
 def install_union_layout_into_score(

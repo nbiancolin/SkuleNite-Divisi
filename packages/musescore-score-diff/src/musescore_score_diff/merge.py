@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -5,15 +6,16 @@ import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass, replace
 
+from musescore_score_diff.alignment import RowKind, StaffKey, align_staves
+from musescore_score_diff.compute_diff import compute_diff, _ops_for_row
 from musescore_score_diff.display_diff import compare_musescore_files, compare_mscz_files
-from musescore_score_diff.compute_diff import compute_diff
 from musescore_score_diff.utils import (
     State,
     _hash_measure,
     _sanitize_measure,
-    get_parts_staff_elements,
 )
-from musescore_score_diff.compute_diff import _pair_staves
+
+logger = logging.getLogger(__name__)
 
 
 class ComplicatedMergeException(Exception):
@@ -209,21 +211,48 @@ def _measures_equivalent(
     return head_hash == user_hash
 
 
+def _load_score_element(mscx_path: str) -> ET.Element:
+    tree = ET.parse(mscx_path)
+    score = tree.getroot().find("Score")
+    if score is None:
+        raise ValueError(f"No <Score> in {mscx_path}")
+    return score
+
+
+def base_diffs_by_staff_key(
+    base_mscx_path: str, other_mscx_path: str
+) -> dict[StaffKey, list[State]]:
+    """Measure edit scripts from base to other, keyed by base staff identity."""
+    base = _load_score_element(base_mscx_path)
+    other = _load_score_element(other_mscx_path)
+    alignment = align_staves(base, other)
+    by_key: dict[StaffKey, list[State]] = {}
+    for row in alignment.rows:
+        key = row.key_left if row.key_left is not None else row.key_right
+        if key is not None:
+            by_key[key] = _ops_for_row(row)
+    return by_key
+
+
+def _unchanged_ops_for_staff(staff: ET.Element) -> list[State]:
+    return [State.UNCHANGED] * len(staff.findall("Measure"))
+
+
 def find_merge_conflicts(
-    base_to_head: dict[int, list[State]],
-    base_to_user: dict[int, list[State]],
+    base_to_head: dict[StaffKey, list[State]],
+    base_to_user: dict[StaffKey, list[State]],
     *,
-    head_staves: dict[int, ET.Element] | None = None,
-    user_staves: dict[int, ET.Element] | None = None,
-) -> dict[int, dict[int, State]]:
+    head_staves: dict[StaffKey, ET.Element] | None = None,
+    user_staves: dict[StaffKey, ET.Element] | None = None,
+) -> dict[StaffKey, dict[int, State]]:
     """Alignment steps where head and user both changed relative to base incompatibly."""
-    res: dict[int, dict[int, State]] = {}
-    for staff_id in base_to_head:
-        head_ops = base_to_head[staff_id]
-        user_ops = base_to_user[staff_id]
+    res: dict[StaffKey, dict[int, State]] = {}
+    for key in set(base_to_head) | set(base_to_user):
+        head_ops = base_to_head.get(key, [])
+        user_ops = base_to_user.get(key, [])
         conflicts: dict[int, State] = {}
-        head_staff = (head_staves or {}).get(staff_id)
-        user_staff = (user_staves or {}).get(staff_id)
+        head_staff = (head_staves or {}).get(key)
+        user_staff = (user_staves or {}).get(key)
         measures1 = (
             list(head_staff.findall("Measure")) if head_staff is not None else None
         )
@@ -243,7 +272,7 @@ def find_merge_conflicts(
             elif head_state != user_state:
                 conflicts[step] = head_state
         if conflicts:
-            res[staff_id] = conflicts
+            res[key] = conflicts
     return res
 
 
@@ -259,6 +288,8 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     head_arcs = _mscx_arcnames(head_mscz_path)
     user_arcs = _mscx_arcnames(user_mscz_path)
 
+    head_main, _ = _partition_mscx_arcs(head_arcs)
+    user_main, _ = _partition_mscx_arcs(user_arcs)
     _, base_excerpts = _partition_mscx_arcs(base_arcs)
     _, head_excerpts = _partition_mscx_arcs(head_arcs)
     _, user_excerpts = _partition_mscx_arcs(user_arcs)
@@ -328,10 +359,16 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                     merge_error = exc
 
         if isinstance(merge_error, MergeConflictException):
-            compare_mscz_files(user_mscz_path, head_mscz_path, output_mscz_path, unified_diff=True)
-            # _write_merge_conflict_diff_mscz(
-            #     head_mscz_path, user_mscz_path, output_mscz_path
-            # )
+            head_mscx = os.path.join(extract_dirs["head"], head_main)
+            user_mscx = os.path.join(extract_dirs["user"], user_main)
+            head_user_diffs = compute_diff(head_mscx, user_mscx)
+            compare_mscz_files(
+                head_mscz_path,
+                user_mscz_path,
+                output_mscz_path,
+                unified_diff=True,
+                diffs=head_user_diffs,
+            )
         else:
             _write_mscz_from_dir(output_dir, output_mscz_path)
 
@@ -361,13 +398,12 @@ def three_way_merge_musescore(
     # Check if there are merge conflicts
 
     try:
-        base_2_head = compute_diff(base_mscx_path, head_mscx_path)
-        base_2_user = compute_diff(base_mscx_path, user_mscx_path)
-    except AssertionError:
-        # Once I figure this out, can use this to handle these cases, but for now :(
-        print("ERROR: Cannot currently merge musescore files with different num staves (yet)")
-        raise ComplicatedMergeException
-    
+        base_2_head = base_diffs_by_staff_key(base_mscx_path, head_mscx_path)
+        base_2_user = base_diffs_by_staff_key(base_mscx_path, user_mscx_path)
+    except ValueError as exc:
+        logger.error("Cannot merge scores: %s", exc, exc_info=True)
+        raise ComplicatedMergeException(str(exc)) from exc
+
     try:
         auto_merge_musescore_files(
             head_mscx_path,
@@ -379,8 +415,13 @@ def three_way_merge_musescore(
         )
     except MergeConflictException as exc:
         if write_conflict_diff:
+            head_user_diffs = compute_diff(head_mscx_path, user_mscx_path)
             compare_musescore_files(
-                head_mscx_path, user_mscx_path, output_mscx_path, unified_diff=True
+                head_mscx_path,
+                user_mscx_path,
+                output_mscx_path,
+                unified_diff=True,
+                diffs=head_user_diffs,
             )
         raise MergeConflictException(exc.conflicts, source_mscx=mscx_path) from exc
 
@@ -441,11 +482,19 @@ def merge_staff_pair(
                         )
                     )
             case (State.INSERTED, State.INSERTED):
-                print(
-                    "WARNING: Potential merge conflict, resolved by taking user's inserted measure"
-                )
-                if m2 is not None:
+                if _measures_equivalent(m1, m2):
+                    if m2 is not None:
+                        m_processed.append(m2)
+                elif m2 is not None:
+                    logger.warning(
+                        "Staff %s alignment step %s: both sides inserted different "
+                        "measures; keeping user's measure",
+                        staff_id,
+                        alignment_step,
+                    )
                     m_processed.append(m2)
+                elif m1 is not None:
+                    m_processed.append(m1)
             case (State.REMOVED, State.REMOVED):
                 pass
             case (a, b) if (a == State.INSERTED) != (b == State.INSERTED):
@@ -482,19 +531,12 @@ def merge_staff_pair(
         user_staff.append(m2)
 
 
-def _staff_names_in_pair_order(score: ET.Element) -> list[str]:
-    names: list[str] = []
-    for part_name, staves in get_parts_staff_elements(score):
-        names.extend([part_name] * len(staves))
-    return names
-
-
 def auto_merge_musescore_files(
     head_mscx_path: str,
     user_mscx_path: str,
     output_mscx_path: str,
-    base_2_head,
-    base_2_user,
+    base_2_head: dict[StaffKey, list[State]],
+    base_2_user: dict[StaffKey, list[State]],
     *,
     mscx_path: str | None = None,
 ):
@@ -510,21 +552,33 @@ def auto_merge_musescore_files(
     if user_score is None:
         raise ValueError("No <Score> tag found in the XML.")
 
-    staff_names = _staff_names_in_pair_order(score)
-    pairs = _pair_staves(score, user_score)
-    for staff_id, (head_staff, user_staff) in enumerate(pairs, start=1):
-        staff_name = staff_names[staff_id - 1] if staff_id <= len(staff_names) else None
+    align_hu = align_staves(score, user_score)
+    staff_id = 0
+    for row in align_hu.rows:
+        if row.kind not in (RowKind.MATCHED, RowKind.RENAMED):
+            continue
+        if row.staff_left is None or row.staff_right is None:
+            continue
+        key = row.key_left
+        if key is None:
+            continue
+        staff_id += 1
+        head_ops = base_2_head.get(key)
+        user_ops = base_2_user.get(key)
+        if head_ops is None:
+            head_ops = _unchanged_ops_for_staff(row.staff_left)
+        if user_ops is None:
+            user_ops = _unchanged_ops_for_staff(row.staff_right)
         merge_staff_pair(
-            head_staff,
-            user_staff,
-            base_2_head[staff_id],
-            base_2_user[staff_id],
+            row.staff_left,
+            row.staff_right,
+            head_ops,
+            user_ops,
             staff_id=staff_id,
-            staff_name=staff_name,
+            staff_name=key.part_name,
             mscx_path=mscx_path,
         )
 
-    # Output user tree to new path
     user_tree.write(output_mscx_path, encoding="UTF-8", xml_declaration=True)
 
 
