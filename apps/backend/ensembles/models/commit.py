@@ -5,7 +5,7 @@ from ensembles.models import Arrangement, ArrangementVersion
 from ensembles.models.utils import DeleteFilesMixin
 from django.conf import settings
 
-class Commit(models.Model, DeleteFilesMixin):
+class Commit(DeleteFilesMixin, models.Model):
     """
     A commit is a working copy of an arrangement
 
