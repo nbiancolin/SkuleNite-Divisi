@@ -2,15 +2,17 @@ from django.db import models
 from django.core.files.storage import default_storage
 
 from ensembles.models import Arrangement, ArrangementVersion
+from ensembles.models.utils import DeleteFilesMixin
 from django.conf import settings
 
-
-class Commit(models.Model):
+class Commit(DeleteFilesMixin, models.Model):
     """
     A commit is a working copy of an arrangement
 
     Whereas a Version would be considered a "release", commits are just working copies
     """
+
+    keys_to_delete = ["mscz_file_key"]
 
     arrangement = models.ForeignKey(
         Arrangement, related_name="commits", on_delete=models.CASCADE
@@ -24,6 +26,9 @@ class Commit(models.Model):
     file_name = models.CharField(max_length=128)
     message = models.CharField(max_length=256)
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    is_merge_commit = models.BooleanField(default=False)
+    is_merge_conflict = models.BooleanField(default=False)
 
     version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")
 
@@ -57,7 +62,7 @@ class Commit(models.Model):
 
     @classmethod
     def create_new_commit(
-        cls, arrangement: Arrangement, created_by_user, create_kwargs: dict[str, str] | None = None
+        cls, arrangement: Arrangement, created_by_user, create_kwargs: dict[str, str | bool] | None = None
     ) -> "Commit":
         if create_kwargs is None:
             create_kwargs = {}

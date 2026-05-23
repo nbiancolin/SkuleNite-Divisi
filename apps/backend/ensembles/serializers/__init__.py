@@ -17,6 +17,7 @@ from ensembles.models import (
     PartAsset,
     PartName,
     Commit,
+    UserScoreVersion,
 )
 from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
 
@@ -45,16 +46,12 @@ def coerce_formatting_steps(raw) -> dict[str, bool]:
         raise serializers.ValidationError("formatting_steps must be a JSON object.")
     unknown = set(raw) - set(FORMATTING_STEP_KEYS)
     if unknown:
-        raise serializers.ValidationError(
-            f"Unknown formatting_steps keys: {sorted(unknown)}"
-        )
+        raise serializers.ValidationError(f"Unknown formatting_steps keys: {sorted(unknown)}")
     for k in FORMATTING_STEP_KEYS:
         if k in raw:
             v = raw[k]
             if not isinstance(v, bool):
-                raise serializers.ValidationError(
-                    {k: "Each formatting_steps value must be a boolean."}
-                )
+                raise serializers.ValidationError({k: "Each formatting_steps value must be a boolean."})
             base[k] = v
     merge_formatting_step_defaults(base)
     return base
@@ -81,11 +78,10 @@ class FormattingStepsField(serializers.Field):
             try:
                 parsed = json.loads(data)
             except json.JSONDecodeError as e:
-                raise serializers.ValidationError(
-                    "formatting_steps must be valid JSON."
-                ) from e
+                raise serializers.ValidationError("formatting_steps must be valid JSON.") from e
             return coerce_formatting_steps(parsed)
         raise serializers.ValidationError("formatting_steps must be an object or JSON string.")
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -94,9 +90,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ArrangementVersionSerializer(serializers.ModelSerializer):
-    audio_state = serializers.CharField(
-        source="get_audio_state_display", read_only=True
-    )
+    audio_state = serializers.CharField(source="get_audio_state_display", read_only=True)
 
     class Meta:
         model = ArrangementVersion
@@ -108,7 +102,8 @@ class CommitSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Commit
-        fields = ["id", "arrangement_id", "timestamp", "message", "has_version", "created_by"]
+        fields = ["id", "arrangement_id", "timestamp", "message", "has_version", "created_by", "is_merge_conflict"]
+
 
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
@@ -194,18 +189,14 @@ class EnsembleSerializer(serializers.ModelSerializer):
             # Check if user is owner
             if obj.owner == request.user:
                 token = obj.get_or_create_invite_token()
-                frontend_url = getattr(
-                    settings, "FRONTEND_URL", "http://localhost:5173"
-                )
+                frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
                 return f"{frontend_url.rstrip('/')}/join/{token}"
 
             # Check if user has admin role
             ship = self._get_request_user_usership(obj)
             if ship is not None and ship.role == EnsembleUsership.Role.ADMIN:
                 token = obj.get_or_create_invite_token()
-                frontend_url = getattr(
-                    settings, "FRONTEND_URL", "http://localhost:5173"
-                )
+                frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
                 return f"{frontend_url.rstrip('/')}/join/{token}"
 
             return None
@@ -239,9 +230,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             from django.db.models.functions import Coalesce
 
             # Use Coalesce to put nulls at the end (treat null as a very large number)
-            parts = obj.part_names.all().order_by(
-                Coalesce("order", Value(999999, output_field=IntegerField())), "id"
-            )
+            parts = obj.part_names.all().order_by(Coalesce("order", Value(999999, output_field=IntegerField())), "id")
             part_name_ids = [part.id for part in parts]
 
             arrangement_titles_by_part_name_id = defaultdict(list)
@@ -294,9 +283,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 "part_display_name": book.part_name.display_name,
                 "revision": book.revision,
                 "created_at": book.created_at.isoformat() if book.created_at else None,
-                "finalized_at": book.finalized_at.isoformat()
-                if book.finalized_at
-                else None,
+                "finalized_at": book.finalized_at.isoformat() if book.finalized_at else None,
                 "is_rendered": book.is_rendered,
                 "download_url": None,
             }
@@ -349,9 +336,7 @@ class EnsembleListSerializer(serializers.ModelSerializer):
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):
-    default_error_messages = {
-        "invalid_part_id": "One or both of these part ids is incorrect."
-    }
+    default_error_messages = {"invalid_part_id": "One or both of these part ids is incorrect."}
     first_id = serializers.IntegerField(required=True)
     second_id = serializers.IntegerField(required=True)
 
@@ -385,11 +370,9 @@ class EnsemblePartNameMergeSerializer(serializers.Serializer):
         return attrs
 
 
-
 class CreateArrangementCommitSerializer(serializers.Serializer):
     file = serializers.FileField(allow_empty_file=False)
     message = serializers.CharField(required=False)
-    #TODO: Hook up this "force" functionality
     force = serializers.BooleanField(required=False)
 
     def save(self, **kwargs):
@@ -398,6 +381,16 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
         from ensembles.models.commit import Commit
 
         arr = self.context["arrangement"]
+
+        user_is_up_to_date = UserScoreVersion.user_is_up_to_date(user=self.context["user"], arrangement=arr)
+        # Need to get head commit early so the head isnt the new commit ...
+        head_commit = Commit.latest_for_arrangement(arr)
+
+        latest = Commit.latest_for_arrangement(arr)
+        force = self.validated_data.get("force", False)
+        if latest and latest.is_merge_conflict and not force:
+            return {"client_error": "Must use force when resolving a merge conflict"}
+
         new_commit = Commit.create_new_commit(
             arrangement=arr,
             created_by_user=self.context["user"],
@@ -420,17 +413,93 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
             default_storage.save(new_commit.mscz_file_key, io.BytesIO(file_content))
             logger.info(f"Saved file to storage: {new_commit.mscz_file_key}")
 
-            from ensembles.models.user_score_version import UserScoreVersion
-
-            UserScoreVersion.record_for_user(self.context["user"], arr, new_commit)
-
-            return {"status": "ok", "commit": new_commit}
-
         except Exception as e:
             logger.error(f"Failed to save file to storage: {e}")
             # Clean up the version if file save failed
             new_commit.delete()
             return {"error": "Failed to save file to storage"}
+
+        user = self.context["user"]
+
+        if user_is_up_to_date or force:
+            # Direct tip commit (no auto-merge); user is aligned with their upload.
+            UserScoreVersion.record_for_user(user, arr, new_commit)
+            return {"status": "ok", "commit": new_commit}
+
+        else:
+            # Need to 3 way merge scores and create merge conflict
+            base_commit = UserScoreVersion.objects.get(user=self.context["user"], arrangement=arr).commit
+            user_commit = new_commit
+
+            MERGE_FILE_NAME = new_commit.file_name[:-4] + "merge.mscz"
+
+            final_commit = Commit.create_new_commit(
+                arr,
+                self.context["user"],
+                create_kwargs={
+                    "is_merge_commit": True,
+                    "file_name": MERGE_FILE_NAME,
+                    "message": f"Merge commit generated by Divisi btwn commits b:{base_commit.id}, h:{head_commit.id}, u:{user_commit.id}",
+                },
+            )
+
+            def download_file(in_key, output_file_name, temp_dir) -> str:
+                temp_input = os.path.join(temp_dir, output_file_name)
+                with (
+                    default_storage.open(in_key, "rb") as src,
+                    open(temp_input, "wb") as dst,
+                ):
+                    dst.write(src.read())
+                return temp_input
+
+
+            from musescore_score_diff.merge import three_way_merge_mscz, MergeConflictException
+            import tempfile
+            import os
+            from django.core.files.base import ContentFile
+
+            merge_error_response = {
+                "merge_error": "Unable to merge scores. Use a force commit",
+            }
+
+            def fail_complicated_merge(exc: BaseException | None = None):
+                if exc is not None:
+                    logger.exception("Score merge failed: %s", exc)
+                if final_commit.pk:
+                    final_commit.delete()
+                user_commit.delete()
+                return merge_error_response
+
+            def save_merged_output_to_final_commit():
+                final_commit.file_name = user_commit.file_name
+                with open(output_path, "rb") as f:
+                    default_storage.save(final_commit.mscz_file_key, ContentFile(f.read()))
+                final_commit.save()
+
+            try:
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    base_path = download_file(base_commit.mscz_file_key, "base.mscz", temp_dir)
+                    head_path = download_file(head_commit.mscz_file_key, "head.mscz", temp_dir)
+                    user_path = download_file(user_commit.mscz_file_key, "user.mscz", temp_dir)
+                    output_path = os.path.join(temp_dir, "output.mscz")
+
+                    try:
+                        # TODO run this in celery bc this can take a long time
+                        three_way_merge_mscz(base_path, head_path, user_path, output_path)
+                        save_merged_output_to_final_commit()
+                    except MergeConflictException:
+                        try:
+                            final_commit.is_merge_conflict = True
+                            save_merged_output_to_final_commit()
+                        except Exception as exc:
+                            return fail_complicated_merge(exc)
+                    except Exception as exc:
+                        return fail_complicated_merge(exc)
+            except Exception as exc:
+                return fail_complicated_merge(exc)
+
+            # Merge commit or conflict: user must download and resolve before USV advances.
+            return {"status": "ok", "commit": final_commit}
 
 
 class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
@@ -465,7 +534,7 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
         if value not in [t[0] for t in VERSION_TYPES]:
             self.fail("invalid_version_type")
         return value
-    
+
     def validate_commit_id(self, value):
         if not Commit.objects.filter(id=value).exists():
             self.fail("invalid_commit_id", value)
@@ -478,9 +547,7 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
             attrs["staff_spacing_value"] = None
         elif val is None:
             raise serializers.ValidationError(
-                {
-                    "staff_spacing_value": "Required when staff_spacing_strategy is override."
-                }
+                {"staff_spacing_value": "Required when staff_spacing_strategy is override."}
             )
         return attrs
 
@@ -492,22 +559,14 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
         with transaction.atomic():
             fs = self.validated_data.get("formatting_steps")
             version = ArrangementVersion.objects.create(
-                arrangement=Arrangement.objects.get(
-                    id=commit.arrangement_id
-                ),
+                arrangement=Arrangement.objects.get(id=commit.arrangement_id),
                 file_name=commit.file_name,
-                num_measures_per_line_score=self.validated_data[
-                    "num_measures_per_line_score"
-                ],
-                num_measures_per_line_part=self.validated_data[
-                    "num_measures_per_line_part"
-                ],
+                num_measures_per_line_score=self.validated_data["num_measures_per_line_score"],
+                num_measures_per_line_part=self.validated_data["num_measures_per_line_part"],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
                 staff_spacing_strategy=self.validated_data["staff_spacing_strategy"],
                 staff_spacing_value=self.validated_data["staff_spacing_value"],
-                formatting_steps=(
-                    fs if fs is not None else default_formatting_steps()
-                ),
+                formatting_steps=(fs if fs is not None else default_formatting_steps()),
             )
 
             version.save(
@@ -517,12 +576,9 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
             commit.version_id = version.id
             commit.save(update_fields=["version_id"])
 
-
-        #copy file from commit to version
+        # copy file from commit to version
         with default_storage.open(commit.mscz_file_key) as f:
             default_storage.save(version.mscz_file_key, f)
-
-        
 
         # Format mscz if selected by FE
         if self.validated_data.get("format_parts", None):
@@ -535,9 +591,6 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
         # export_arrangement_version(version.pk, action="mxl")
 
         return {"success": True, "version_id": version.id}
-
-
-
 
 
 class CreateArrangementVersionMsczSerializer(serializers.Serializer):
@@ -585,9 +638,7 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
             attrs["staff_spacing_value"] = None
         elif val is None:
             raise serializers.ValidationError(
-                {
-                    "staff_spacing_value": "Required when staff_spacing_strategy is override."
-                }
+                {"staff_spacing_value": "Required when staff_spacing_strategy is override."}
             )
         return attrs
 
@@ -596,22 +647,14 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
         with transaction.atomic():
             fs = self.validated_data.get("formatting_steps")
             version = ArrangementVersion.objects.create(
-                arrangement=Arrangement.objects.get(
-                    id=self.validated_data["arrangement_id"]
-                ),
+                arrangement=Arrangement.objects.get(id=self.validated_data["arrangement_id"]),
                 file_name=self.validated_data["file"].name,
-                num_measures_per_line_score=self.validated_data[
-                    "num_measures_per_line_score"
-                ],
-                num_measures_per_line_part=self.validated_data[
-                    "num_measures_per_line_part"
-                ],
+                num_measures_per_line_score=self.validated_data["num_measures_per_line_score"],
+                num_measures_per_line_part=self.validated_data["num_measures_per_line_part"],
                 num_lines_per_page=self.validated_data["num_lines_per_page"],
                 staff_spacing_strategy=self.validated_data["staff_spacing_strategy"],
                 staff_spacing_value=self.validated_data["staff_spacing_value"],
-                formatting_steps=(
-                    fs if fs is not None else default_formatting_steps()
-                ),
+                formatting_steps=(fs if fs is not None else default_formatting_steps()),
             )
 
             version.save(

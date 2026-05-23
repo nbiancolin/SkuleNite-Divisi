@@ -110,8 +110,36 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         if error := r.get("error"):
             return Response(error, status=500)
 
+        if r.get("merge_error"):
+            return Response(r, status=409)
+        
+        if r.get("client_error"):
+            return Response(r, status=400)
+
         s = ArrangementSerializer(self.get_object())
         return Response(s.data)
+
+    def _commit_mscz_file_response(self, commit: Commit, arrangement: Arrangement, record_download: bool):
+        if commit.arrangement_id != arrangement.id:
+            return Response(
+                {"detail": "Commit does not belong to this arrangement."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        key = commit.mscz_file_key
+        if not default_storage.exists(key):
+            return Response(
+                {"detail": "MSCZ file not found in storage."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        if record_download:
+            UserScoreVersion.record_for_user(self.request.user, arrangement, commit)
+        file_handle = default_storage.open(key, "rb")
+        return FileResponse(
+            file_handle,
+            as_attachment=True,
+            filename=commit.file_name,
+            content_type="application/zip",
+        )
 
     @action(detail=True, methods=["get"], url_path="download-latest-commit-mscz")
     def download_latest_commit_mscz(self, request, *args, **kwargs):
@@ -122,20 +150,58 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
                 {"detail": "No commits for this arrangement."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        key = latest.mscz_file_key
-        if not default_storage.exists(key):
+        return self._commit_mscz_file_response(latest, arr, record_download=True)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"commits/(?P<commit_id>[^/.]+)/download-mscz",
+    )
+    def download_commit_mscz(self, request, commit_id=None, *args, **kwargs):
+        arr = self.get_object()
+        try:
+            commit = Commit.objects.get(pk=commit_id, arrangement=arr)
+        except (Commit.DoesNotExist, ValueError, TypeError):
             return Response(
-                {"detail": "MSCZ file not found in storage."},
+                {"detail": "Commit not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        UserScoreVersion.record_for_user(request.user, arr, latest)
-        file_handle = default_storage.open(key, "rb")
-        return FileResponse(
-            file_handle,
-            as_attachment=True,
-            filename=latest.file_name,
-            content_type="application/zip",
-        )
+        record_download = request.query_params.get("record_download", "true").lower() != "false"
+        return self._commit_mscz_file_response(commit, arr, record_download=record_download)
+
+    @action(
+        detail=True,
+        methods=["delete"],
+        url_path=r"commits/(?P<commit_id>[^/.]+)",
+    )
+    def delete_commit(self, request, commit_id=None, *args, **kwargs):
+        arr = self.get_object()
+        try:
+            commit = Commit.objects.get(pk=commit_id, arrangement=arr)
+        except (Commit.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"detail": "Commit not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not commit.is_latest_commit:
+            return Response(
+                {"detail": "Only the latest commit can be deleted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if commit.has_version:
+            return Response(
+                {"detail": "Cannot delete a commit that has an arrangement version."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        key = commit.mscz_file_key
+        if default_storage.exists(key):
+            default_storage.delete(key)
+
+        commit.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ArrangementViewSet(BaseArrangementViewSet):

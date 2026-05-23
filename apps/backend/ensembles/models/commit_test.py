@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 
 
 from ensembles.models.commit import Commit
@@ -72,3 +73,15 @@ def test_latest_for_arrangement_returns_tip(arrangement, user):
 @pytest.mark.django_db
 def test_latest_for_arrangement_empty(arrangement):
     assert Commit.latest_for_arrangement(arrangement) is None
+
+@pytest.mark.django_db
+@patch("ensembles.models.utils.default_storage.delete")
+@patch("ensembles.models.utils.default_storage.exists")
+def test_delete_commit_deletes_file(mock_exists, mock_delete, arrangement):
+    mock_exists.return_value = True
+
+    c = Commit.objects.create(arrangement=arrangement, file_name="test.mscz", message="test delete")\
+    
+    c.delete()
+
+    mock_delete.assert_called_once()

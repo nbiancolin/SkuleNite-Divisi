@@ -19,11 +19,38 @@ export interface AuthResponse {
 
 export interface Commit {
   id: number;
-  arrangementId: number;
+  arrangement_id: number;
   message: string;
   timestamp: string;
   has_version: boolean;
   created_by?: UserObj | null;
+  is_merge_conflict: boolean;
+}
+
+export type CreateCommitErrorKind =
+  | "merge_error"
+  | "client_error"
+  | "validation"
+  | "unknown";
+
+export class CreateCommitError extends Error {
+  kind: CreateCommitErrorKind;
+  status: number;
+  mergeError?: string;
+  clientError?: string;
+
+  constructor(
+    message: string,
+    status: number,
+    options?: { kind?: CreateCommitErrorKind; mergeError?: string; clientError?: string }
+  ) {
+    super(message);
+    this.name = "CreateCommitError";
+    this.status = status;
+    this.kind = options?.kind ?? "unknown";
+    this.mergeError = options?.mergeError;
+    this.clientError = options?.clientError;
+  }
 }
 
 /** MuseScore spatium handling; matches backend ArrangementVersion.staff_spacing_strategy. */
