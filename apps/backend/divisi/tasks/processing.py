@@ -97,7 +97,7 @@ def format_arrangement_version(version_id: int) -> dict[str, str]:
         "selected_style": version.arrangement.style,
         "show_title": version.ensemble_name,
         "show_number": version.arrangement.mvt_no,
-        "version_num": version.version_label,
+        "version_num": f"v{version.version_label}",
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
         "num_lines_per_page": version.num_lines_per_page,
