@@ -45,8 +45,6 @@ export function formatArrangementTitle(arrangement: {
 }
 
 type PageTitleContextValue = {
-  pageTitle: string | null;
-  headerTitle: string;
   setPageTitle: (title: string | null) => void;
 };
 
@@ -62,20 +60,17 @@ export function PageTitleProvider({ children }: { children: ReactNode }) {
 
   const routeTitle = getStaticRouteTitle(pathname);
   const pageTitle = overrideTitle ?? routeTitle;
-  const headerTitle = pageTitle ? `${pageTitle} - ${APP_NAME}` : APP_NAME;
+  const documentTitle = pageTitle ? `${pageTitle} - ${APP_NAME}` : APP_NAME;
 
   useEffect(() => {
-    document.title = headerTitle;
-  }, [headerTitle]);
+    document.title = documentTitle;
+  }, [documentTitle]);
 
   const setPageTitle = useCallback((title: string | null) => {
     setOverrideTitle(title);
   }, []);
 
-  const value = useMemo(
-    () => ({ pageTitle, headerTitle, setPageTitle }),
-    [pageTitle, headerTitle, setPageTitle],
-  );
+  const value = useMemo(() => ({ setPageTitle }), [setPageTitle]);
 
   return <PageTitleContext.Provider value={value}>{children}</PageTitleContext.Provider>;
 }
@@ -88,7 +83,7 @@ export function usePageTitleContext() {
   return context;
 }
 
-/** Set the header/document title for the current page. Clears when unmounted or route changes. */
+/** Set the browser tab title for the current page. Resets when the route changes. */
 export function usePageTitle(title: string | null) {
   const { setPageTitle } = usePageTitleContext();
 

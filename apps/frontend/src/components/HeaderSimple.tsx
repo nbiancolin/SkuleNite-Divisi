@@ -4,7 +4,6 @@ import { useDisclosure } from '@mantine/hooks';
 import classes from './HeaderSimple.module.css';
 import { Link } from 'react-router-dom';
 import { apiService, type User } from '../services/apiService';
-import { usePageTitleContext } from '../context/PageTitleContext';
 
 const links = [
   { link: '/app/ensembles', label: 'Ensemble Score Management' },
@@ -13,7 +12,6 @@ const links = [
 ];
 
 export function HeaderSimple() {
-  const { headerTitle } = usePageTitleContext();
   const [opened, { toggle }] = useDisclosure(false);
   const [active, setActive] = useState(() => window.location.pathname);
   const [warnings, setWarnings] = useState([]);
@@ -86,7 +84,7 @@ return (
       <header className={classes.header}>
         <Container size="md" className={classes.inner}>
           <Link to="/" className={classes.titleLink}>
-            <Title order={2} className={classes.headerTitle}>{headerTitle}</Title>
+            <Title order={2}>Divisi App</Title>
           </Link>
           <Group gap={5} visibleFrom="xs">
             {items}

@@ -41,12 +41,4 @@
   /* Optional: ensure it doesn't look like a button on hover */
   background: none;
   box-shadow: none;
-  min-width: 0;
-  flex-shrink: 1;
-}
-
-.headerTitle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }

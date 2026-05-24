@@ -14,19 +14,19 @@ export default function Layout() {
   }, []);
 
   return (
-    <PageTitleProvider>
-      <AppShell
-        header={{height: 60}}
-        padding="md"
-      >
-        <AppShell.Header>
-          <HeaderSimple />
-        </AppShell.Header>
-        {/* Ensure the main content area is the scroll container */}
-        <AppShell.Main style={{ height: 'calc(100dvh - 60px)', overflowY: 'auto' }}>
+    <AppShell
+      header={{height: 60}}
+      padding="md"
+    >
+      <AppShell.Header>
+        <HeaderSimple />
+      </AppShell.Header>
+      {/* Ensure the main content area is the scroll container */}
+      <AppShell.Main style={{ height: 'calc(100dvh - 60px)', overflowY: 'auto' }}>
+        <PageTitleProvider>
           <Outlet />
-        </AppShell.Main>
-      </AppShell>
-    </PageTitleProvider>
+        </PageTitleProvider>
+      </AppShell.Main>
+    </AppShell>
   );
 }
