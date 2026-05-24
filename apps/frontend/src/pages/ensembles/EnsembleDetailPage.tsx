@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
+import { usePageTitle } from '../../context/PageTitleContext';
 
 import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
 import { ScoreTitlePreview, type PreviewStyleName } from '../../components/ScoreTitlePreview';
@@ -52,6 +53,7 @@ export default function EnsembleDisplay() {
   const [error, setError] = useState<string | null>(null);
 
   const [ensemble, setEnsemble] = useState<Ensemble | null>(null);
+  usePageTitle(ensemble?.name ?? null);
 
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');

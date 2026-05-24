@@ -23,11 +23,13 @@ import {
 } from '@mantine/core';
 import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { apiService, type Ensemble, type EnsemblePartBook, type PartName, type Arrangement } from '../../services/apiService';
+import { usePageTitle } from '../../context/PageTitleContext';
 
 const ArrangementsPage = () => {
   const { slug = "NA" } = useParams(); // Get ensemble slug from URL
   const navigate = useNavigate();
   const [ensemble, setEnsemble] = useState<Ensemble | null>(null);
+  usePageTitle(ensemble ? `${ensemble.name} - Arrangements` : null);
   const [arrangements, setArrangements] = useState<Arrangement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

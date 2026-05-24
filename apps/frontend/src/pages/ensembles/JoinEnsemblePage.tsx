@@ -13,6 +13,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconX, IconMusic } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
+import { usePageTitle } from '../../context/PageTitleContext';
 
 const JoinEnsemblePage = () => {
   const { token } = useParams<{ token: string }>();
@@ -30,6 +31,7 @@ const JoinEnsemblePage = () => {
     already_member: boolean;
   } | null>(null);
   const [joinSuccess, setJoinSuccess] = useState(false);
+  usePageTitle(ensembleInfo?.ensemble.name ?? null);
 
   useEffect(() => {
     const fetchEnsembleInfo = async () => {

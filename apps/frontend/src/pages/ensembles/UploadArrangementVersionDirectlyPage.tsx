@@ -26,12 +26,16 @@ import {
   normalizedFormattingSteps,
   type FormattingStepsState,
 } from "./formattingSteps";
+import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 export default function UploadArrangementVersionPage() {
   const { arrangementId = "0"} = useParams();
   const [arrangement, setArrangement] = useState<Arrangement |undefined>(undefined)
+  usePageTitle(
+    arrangement ? `${formatArrangementTitle(arrangement)} - Upload Version` : null,
+  );
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [versionType, setVersionType] = useState<string>("major");

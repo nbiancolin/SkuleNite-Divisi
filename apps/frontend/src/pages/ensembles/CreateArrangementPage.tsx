@@ -17,6 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import '../../fonts.css'
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
+import { usePageTitle } from "../../context/PageTitleContext";
 
 export default function CreateArrangementPage() {
 
@@ -58,6 +59,7 @@ const emptyEnsemble = (): Ensemble => ({
   const [selectedStyle, setSelectedStyle] = useState<PreviewStyleName>("broadway")
 
   const [ensemble, setEnsemble] = useState<Ensemble>(emptyEnsemble());
+  usePageTitle(ensemble.id ? `${ensemble.name} - Create Arrangement` : null);
   const { slug = "NA" } = useParams();
 
   const [loading, setLoading] = useState(true);

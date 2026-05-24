@@ -22,6 +22,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { apiService } from "../../services/apiService";
 import type { ArrangementVersionCommentThread, VersionHistoryItem } from "../../services/apiService";
 import { parseVersionIdParam } from "./scoreReviewUtils";
+import { usePageTitle } from "../../context/PageTitleContext";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -32,6 +33,7 @@ export default function ScoreReviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [arrangementTitle, setArrangementTitle] = useState<string>("");
+  usePageTitle(arrangementTitle || null);
   const [versionHistory, setVersionHistory] = useState<VersionHistoryItem[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<number | null>(null);
   const [scoreUrl, setScoreUrl] = useState<string>("");

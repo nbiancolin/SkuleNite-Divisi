@@ -26,12 +26,16 @@ import {
   normalizedFormattingSteps,
   type FormattingStepsState,
 } from "./formattingSteps";
+import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
 
 export default function CreateVersionFromCommitPage() {
   const { arrangementId = "0", commitId = "" } = useParams();
   const navigate = useNavigate();
 
   const [arrangement, setArrangement] = useState<Arrangement | undefined>(undefined);
+  usePageTitle(
+    arrangement ? `${formatArrangementTitle(arrangement)} - Create Version` : null,
+  );
   const [commits, setCommits] = useState<Commit[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);

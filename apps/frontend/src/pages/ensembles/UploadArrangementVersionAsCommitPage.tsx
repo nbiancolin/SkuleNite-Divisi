@@ -19,12 +19,16 @@ import { X, UploadCloud } from "lucide-react";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit } from "../../services/apiService";
 import { CreateCommitError } from "../../services/apiService";
+import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
 
 type UploadErrorKind = "generic" | "complicated_merge" | "merge_conflict_tip";
 
 export default function UploadArrangementVersionFromCommitPage() {
   const { arrangementId = "0" } = useParams();
   const [arrangement, setArrangement] = useState<Arrangement | undefined>(undefined);
+  usePageTitle(
+    arrangement ? `${formatArrangementTitle(arrangement)} - Upload Commit` : null,
+  );
   const [latestCommit, setLatestCommit] = useState<Commit | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);

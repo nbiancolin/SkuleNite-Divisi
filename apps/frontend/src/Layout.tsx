@@ -4,6 +4,7 @@ import { HeaderSimple } from './components/HeaderSimple';
 import { Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { apiService } from './services/apiService';
+import { PageTitleProvider } from './context/PageTitleContext';
 
 export default function Layout() {
   // Fetch CSRF token on app initialization to ensure cookie is set
@@ -13,17 +14,19 @@ export default function Layout() {
   }, []);
 
   return (
-    <AppShell
-      header={{height: 60}}
-      padding="md"
-    >
-      <AppShell.Header>
-        <HeaderSimple />
-      </AppShell.Header>
-      {/* Ensure the main content area is the scroll container */}
-      <AppShell.Main style={{ height: 'calc(100dvh - 60px)', overflowY: 'auto' }}>
-        <Outlet />
-      </AppShell.Main>
-    </AppShell>
+    <PageTitleProvider>
+      <AppShell
+        header={{height: 60}}
+        padding="md"
+      >
+        <AppShell.Header>
+          <HeaderSimple />
+        </AppShell.Header>
+        {/* Ensure the main content area is the scroll container */}
+        <AppShell.Main style={{ height: 'calc(100dvh - 60px)', overflowY: 'auto' }}>
+          <Outlet />
+        </AppShell.Main>
+      </AppShell>
+    </PageTitleProvider>
   );
 }

@@ -3,11 +3,13 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit, EditableArrangementData, VersionHistoryItem } from "../../services/apiService";
 import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
+import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
 
 export function useArrangementDetailPage() {
   const { arrangementId: arrangementIdParam = "1" } = useParams();
   const arrangementId = arrangementIdParam;
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
+  usePageTitle(arrangement ? formatArrangementTitle(arrangement) : null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mvtNo, setMvtNo] = useState<string>("");
