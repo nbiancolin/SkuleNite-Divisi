@@ -25,5 +25,4 @@ sentry-sdk[django]
 -e file:../../packages/mscx_utils
 -e file:../../packages/musescore-part-formatter
 -e file:../../packages/musescore-score-diff
-# -e ../../packages/scoreforge
 weasyprint
