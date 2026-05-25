@@ -200,6 +200,7 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         if default_storage.exists(key):
             default_storage.delete(key)
 
+        UserScoreVersion.clear_commit_references(commit)
         commit.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

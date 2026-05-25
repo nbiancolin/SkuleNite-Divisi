@@ -126,25 +126,29 @@ def test_check_score_version_error_when_never_downloaded(mock_save, arrangement,
     assert data["user_download_commit"] is None
 
 
-def _post_commit(client, arrangement, name: str, b: bytes = b"x"):
+def _post_commit(client, arrangement, name: str, b: bytes = b"x", *, force: bool = False):
     upload_url = reverse(
         "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
     )
+    data = {
+        "file": SimpleUploadedFile(name, b, content_type="application/octet-stream"),
+    }
+    if force:
+        data["force"] = True
     return client.post(
         upload_url,
-        data={
-            "file": SimpleUploadedFile(name, b, content_type="application/octet-stream"),
-        },
+        data=data,
         format="multipart",
     )
 
 
 @pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.exists", return_value=True)
 @patch("ensembles.serializers.default_storage.open")
 @patch("ensembles.serializers.default_storage.save")
 @patch("musescore_score_diff.merge.three_way_merge_mscz")
 def test_upload_stale_merge_commit_does_not_update_user_score_version(
-    mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
+    mock_merge, mock_save, mock_open, mock_exists, arrangement, ensemble, user, client
 ):
     """Auto-merge tip is a merge commit; uploader's USV stays at their last-known commit."""
     mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
@@ -179,11 +183,12 @@ def test_upload_stale_merge_commit_does_not_update_user_score_version(
 
 
 @pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.exists", return_value=True)
 @patch("ensembles.serializers.default_storage.open")
 @patch("ensembles.serializers.default_storage.save")
 @patch("musescore_score_diff.merge.three_way_merge_mscz")
 def test_upload_stale_merge_conflict_does_not_update_user_score_version(
-    mock_merge, mock_save, mock_open, arrangement, ensemble, user, client
+    mock_merge, mock_save, mock_open, mock_exists, arrangement, ensemble, user, client
 ):
     mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
 
@@ -214,12 +219,13 @@ def test_upload_stale_merge_conflict_does_not_update_user_score_version(
 
 
 @pytest.mark.django_db
+@patch("ensembles.serializers.default_storage.exists", return_value=True)
 @patch("ensembles.serializers.default_storage.open")
 @patch("ensembles.serializers.default_storage.save")
 @patch("ensembles.serializers.default_storage.delete")
 @patch("musescore_score_diff.merge.three_way_merge_mscz")
 def test_upload_stale_unexpected_merge_error_returns_complicated_merge(
-    mock_merge, mock_delete, mock_save, mock_open, arrangement, ensemble, user, client
+    mock_merge, mock_delete, mock_save, mock_open, mock_exists, arrangement, ensemble, user, client
 ):
     mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
     mock_merge.side_effect = RuntimeError("merge blew up")
@@ -283,6 +289,132 @@ def test_check_score_version_error_when_stale(mock_save, arrangement, user, clie
     assert data["status"] == "error"
     assert data["head_commit"] == head_commit.id
     assert data["user_download_commit"] == first_commit.id
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.arrangement.default_storage.delete")
+@patch("ensembles.views.arrangement.default_storage.exists", return_value=True)
+@patch("ensembles.serializers.default_storage.save")
+def test_delete_latest_commit_clears_user_score_version_for_that_commit(
+    mock_save, mock_exists, mock_delete, arrangement, user, client
+):
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    parent_commit = Commit.latest_for_arrangement(arrangement)
+
+    assert _post_commit(client, arrangement, "second.mscz", b"y").status_code == 200
+    tip = Commit.latest_for_arrangement(arrangement)
+    assert tip.id != parent_commit.id
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == tip.id
+
+    delete_url = reverse(
+        "ensembles:arrangement-by-id-delete-commit",
+        kwargs={"id": arrangement.id, "commit_id": tip.id},
+    )
+    r = client.delete(delete_url)
+    assert r.status_code == 204
+
+    usv.refresh_from_db()
+    assert usv.commit_id is None
+    assert Commit.latest_for_arrangement(arrangement).id == parent_commit.id
+
+    check_url = reverse(
+        "ensembles:arrangement-by-id-check-score-version", kwargs={"id": arrangement.id}
+    )
+    check = client.get(check_url)
+    assert check.status_code == 200
+    data = check.json()
+    assert data["status"] == "error"
+    assert data["head_commit"] == parent_commit.id
+    assert data["user_download_commit"] is None
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.arrangement.default_storage.delete")
+@patch("ensembles.views.arrangement.default_storage.exists", return_value=True)
+@patch("ensembles.serializers.default_storage.save")
+def test_delete_latest_commit_leaves_user_score_version_on_parent_unchanged(
+    mock_save, mock_exists, mock_delete, arrangement, ensemble, user, client
+):
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    parent_commit = Commit.latest_for_arrangement(arrangement)
+
+    other_user = UserFactory()
+    EnsembleUsershipFactory(ensemble=ensemble, user=other_user)
+    other_client = client.__class__()
+    other_client.force_authenticate(user=other_user)
+    assert _post_commit(other_client, arrangement, "second.mscz", b"y").status_code == 200
+    tip = Commit.latest_for_arrangement(arrangement)
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == parent_commit.id
+
+    delete_url = reverse(
+        "ensembles:arrangement-by-id-delete-commit",
+        kwargs={"id": arrangement.id, "commit_id": tip.id},
+    )
+    assert client.delete(delete_url).status_code == 204
+
+    usv.refresh_from_db()
+    assert usv.commit_id == parent_commit.id
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.arrangement.default_storage.delete")
+@patch("ensembles.views.arrangement.default_storage.exists", return_value=True)
+@patch("ensembles.serializers.default_storage.save")
+def test_upload_after_deleted_tip_requires_download_before_merge(
+    mock_save, mock_exists, mock_delete, arrangement, user, client
+):
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    parent_commit = Commit.latest_for_arrangement(arrangement)
+
+    assert _post_commit(client, arrangement, "second.mscz", b"y").status_code == 200
+    tip = Commit.latest_for_arrangement(arrangement)
+
+    delete_url = reverse(
+        "ensembles:arrangement-by-id-delete-commit",
+        kwargs={"id": arrangement.id, "commit_id": tip.id},
+    )
+    assert client.delete(delete_url).status_code == 204
+
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id is None
+    assert Commit.objects.filter(arrangement=arrangement).count() == 1
+
+    r = _post_commit(client, arrangement, "third.mscz", b"z")
+    assert r.status_code == 400
+    assert r.json()["client_error"] == "Download the latest score before uploading your changes."
+    assert Commit.objects.filter(arrangement=arrangement).count() == 1
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.arrangement.default_storage.delete")
+@patch("ensembles.views.arrangement.default_storage.exists", return_value=True)
+@patch("ensembles.serializers.default_storage.save")
+def test_upload_after_deleted_tip_allows_force_commit(
+    mock_save, mock_exists, mock_delete, arrangement, user, client
+):
+    assert _post_commit(client, arrangement, "first.mscz").status_code == 200
+    parent_commit = Commit.latest_for_arrangement(arrangement)
+
+    assert _post_commit(client, arrangement, "second.mscz", b"y").status_code == 200
+    tip = Commit.latest_for_arrangement(arrangement)
+
+    delete_url = reverse(
+        "ensembles:arrangement-by-id-delete-commit",
+        kwargs={"id": arrangement.id, "commit_id": tip.id},
+    )
+    assert client.delete(delete_url).status_code == 204
+
+    r = _post_commit(client, arrangement, "third.mscz", b"z", force=True)
+    assert r.status_code == 200, r.content
+
+    new_tip = Commit.latest_for_arrangement(arrangement)
+    assert new_tip.id != parent_commit.id
+    usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
+    assert usv.commit_id == new_tip.id
 
 
 @pytest.mark.django_db

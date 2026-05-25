@@ -381,8 +381,9 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
         from ensembles.models.commit import Commit
 
         arr = self.context["arrangement"]
+        user = self.context["user"]
 
-        user_is_up_to_date = UserScoreVersion.user_is_up_to_date(user=self.context["user"], arrangement=arr)
+        user_is_up_to_date = UserScoreVersion.user_is_up_to_date(user=user, arrangement=arr)
         # Need to get head commit early so the head isnt the new commit ...
         head_commit = Commit.latest_for_arrangement(arr)
 
@@ -390,6 +391,16 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
         force = self.validated_data.get("force", False)
         if latest and latest.is_merge_conflict and not force:
             return {"client_error": "Must use force when resolving a merge conflict"}
+
+        if not user_is_up_to_date and not force:
+            try:
+                base_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
+            except UserScoreVersion.DoesNotExist:
+                base_commit = None
+            if base_commit is None or not default_storage.exists(base_commit.mscz_file_key):
+                return {
+                    "client_error": "Download the latest score before uploading your changes.",
+                }
 
         new_commit = Commit.create_new_commit(
             arrangement=arr,
@@ -418,8 +429,6 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
             # Clean up the version if file save failed
             new_commit.delete()
             return {"error": "Failed to save file to storage"}
-
-        user = self.context["user"]
 
         if user_is_up_to_date or force:
             # Direct tip commit (no auto-merge); user is aligned with their upload.

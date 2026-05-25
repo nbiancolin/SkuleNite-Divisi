@@ -46,16 +46,32 @@ class UserScoreVersion(models.Model):
             defaults={"commit": commit},
         )
         return usv
-    
+
+    @classmethod
+    def clear_commit_references(cls, commit: Commit) -> int:
+        """
+        Drop a deleted commit from all user working-score records.
+
+        Users may still have that commit's MSCZ locally, but it is no longer on the
+        server; clearing the FK makes check_score_version and uploads treat them as
+        needing to sync with the current head.
+        """
+        return cls.objects.filter(commit=commit).update(commit=None)
+
     @classmethod
     def user_is_up_to_date(cls, user, arrangement) -> bool:
         try:
             usv = cls.objects.get(user=user, arrangement=arrangement)
-            uc = usv.commit
-            hc = Commit.latest_for_arrangement(arrangement)
-
-            return uc.id == hc.id
-
         except cls.DoesNotExist:
             # Shoud never be in this case...
             return True
+
+        uc = usv.commit
+        if uc is None:
+            return False
+
+        hc = Commit.latest_for_arrangement(arrangement)
+        if hc is None:
+            return True
+
+        return uc.id == hc.id
