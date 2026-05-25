@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+src/mscx_utils/__init__.py
+src/mscx_utils/archive.py
+src/mscx_utils/score_xml.py
+src/mscx_utils.egg-info/PKG-INFO
+src/mscx_utils.egg-info/SOURCES.txt
+src/mscx_utils.egg-info/dependency_links.txt
+src/mscx_utils.egg-info/top_level.txt

@@ -11,6 +11,7 @@ src/musescore_part_formatter/utils.py
 src/musescore_part_formatter.egg-info/PKG-INFO
 src/musescore_part_formatter.egg-info/SOURCES.txt
 src/musescore_part_formatter.egg-info/dependency_links.txt
+src/musescore_part_formatter.egg-info/requires.txt
 src/musescore_part_formatter.egg-info/top_level.txt
 src/musescore_part_formatter/resources/broadway_part.mss
 src/musescore_part_formatter/resources/broadway_score.mss

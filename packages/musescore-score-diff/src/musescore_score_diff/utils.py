@@ -1,7 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET
 import hashlib
-import os
 from collections import deque
 from copy import deepcopy
 from enum import Enum
@@ -147,31 +146,6 @@ def get_staves(filename: str) -> list[ET.Element]:
         raise ValueError("No <Score> tag found in the XML.")
 
     return score.findall("Staff")
-
-
-def _is_excerpt_mscx_arc(arcname: str) -> bool:
-    normalized = arcname.replace("\\", "/")
-    return normalized.startswith("Excerpts/") or "/Excerpts/" in normalized
-
-
-def pick_main_mscx_arc_from_namelist(namelist: list[str]) -> str:
-    """
-    Choose the main score .mscx inside an archive (not excerpt/part scores).
-
-    Prefers non-excerpt paths, then the shallowest path (typical MuseScore layout).
-    """
-    mscx = sorted(n for n in namelist if n.lower().endswith(".mscx"))
-    if not mscx:
-        raise ValueError("No .mscx members found in archive")
-    main_candidates = [n.replace("\\", "/") for n in mscx if not _is_excerpt_mscx_arc(n)]
-    if not main_candidates:
-        main_candidates = [n.replace("\\", "/") for n in mscx]
-    main_candidates.sort(key=lambda p: (p.count("/") + p.count("\\"), len(p)))
-    return main_candidates[0]
-
-
-def mscx_path_from_extract_dir(extract_dir: str, arc: str) -> str:
-    return os.path.normpath(os.path.join(extract_dir, *arc.replace("\\", "/").split("/")))
 
 
 def get_parts_staff_elements(score: ET.Element) -> list[tuple[str, list[ET.Element]]]:
