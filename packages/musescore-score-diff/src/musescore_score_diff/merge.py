@@ -3,8 +3,17 @@ import os
 import shutil
 import tempfile
 import xml.etree.ElementTree as ET
-import zipfile
 from dataclasses import dataclass, replace
+
+from mscx_utils import (
+    extract_mscz,
+    load_score_element,
+    mscx_arcnames,
+    mscx_path_from_extract_dir,
+    partition_mscx_arcs,
+    remove_excerpts_from_mscz_dir,
+    write_mscz_from_dir,
+)
 
 from musescore_score_diff.alignment import RowKind, StaffKey, align_staves
 from musescore_score_diff.compute_diff import compute_diff, _ops_for_row
@@ -82,20 +91,11 @@ class MergeConflictException(Exception):
         return "\n".join(lines)
 
 
-def _is_excerpt_mscx_arc(arcname: str) -> bool:
-    normalized = arcname.replace("\\", "/")
-    return normalized.startswith("Excerpts/") or "/Excerpts/" in normalized
-
-
 def _partition_mscx_arcs(arcs: set[str]) -> tuple[str, set[str]]:
-    """Return the single main-score .mscx arc and any excerpt .mscx arcs."""
-    main_arcs = sorted(a for a in arcs if not _is_excerpt_mscx_arc(a))
-    excerpt_arcs = {a for a in arcs if _is_excerpt_mscx_arc(a)}
-    if len(main_arcs) != 1:
-        raise ComplicatedMergeException(
-            f"Expected exactly one main .mscx file, found {main_arcs!r}"
-        )
-    return main_arcs[0], excerpt_arcs
+    try:
+        return partition_mscx_arcs(arcs)
+    except ValueError as exc:
+        raise ComplicatedMergeException(str(exc)) from exc
 
 
 def _build_mscx_merge_plan(
@@ -123,26 +123,12 @@ def _build_mscx_merge_plan(
     return plan
 
 
-def _mscx_arcnames(mscz_path: str) -> set[str]:
-    with zipfile.ZipFile(mscz_path, "r") as zf:
-        return {name for name in zf.namelist() if name.endswith(".mscx")}
-
-
-def _write_mscz_from_dir(source_dir: str, output_path: str) -> None:
-    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(source_dir):
-            for filename in files:
-                full_path = os.path.join(root, filename)
-                arcname = os.path.relpath(full_path, source_dir).replace(os.sep, "/")
-                zipf.write(full_path, arcname)
-
-
 def _write_merge_conflict_diff_mscz(
     head_mscz_path: str, user_mscz_path: str, output_mscz_path: str
 ) -> None:
     """Build one unified diff MSCZ from the head and user archives."""
-    head_arcs = _mscx_arcnames(head_mscz_path)
-    user_arcs = _mscx_arcnames(user_mscz_path)
+    head_arcs = mscx_arcnames(head_mscz_path)
+    user_arcs = mscx_arcnames(user_mscz_path)
     head_main, head_excerpts = _partition_mscx_arcs(head_arcs)
     user_main, user_excerpts = _partition_mscx_arcs(user_arcs)
 
@@ -152,15 +138,13 @@ def _write_merge_conflict_diff_mscz(
         output_dir = os.path.join(work_dir, "output")
 
         for dest, mscz_path in ((head_dir, head_mscz_path), (user_dir, user_mscz_path)):
-            os.makedirs(dest, exist_ok=True)
-            with zipfile.ZipFile(mscz_path, "r") as zip_ref:
-                zip_ref.extractall(dest)
+            extract_mscz(mscz_path, dest)
 
         shutil.copytree(head_dir, output_dir)
 
-        head_mscx = os.path.join(head_dir, head_main)
-        user_mscx = os.path.join(user_dir, user_main)
-        output_mscx = os.path.join(output_dir, head_main)
+        head_mscx = mscx_path_from_extract_dir(head_dir, head_main)
+        user_mscx = mscx_path_from_extract_dir(user_dir, user_main)
+        output_mscx = mscx_path_from_extract_dir(output_dir, head_main)
 
         if not os.path.isfile(head_mscx) or not os.path.isfile(user_mscx):
             raise ComplicatedMergeException(
@@ -172,32 +156,9 @@ def _write_merge_conflict_diff_mscz(
         )
 
         if head_excerpts != user_excerpts:
-            _remove_excerpts_from_mscz_dir(output_dir)
+            remove_excerpts_from_mscz_dir(output_dir)
 
-        _write_mscz_from_dir(output_dir, output_mscz_path)
-
-
-def _remove_excerpts_from_mscz_dir(mscz_dir: str) -> None:
-    """Remove excerpt files and container references from an extracted MSCZ directory."""
-    excerpts_dir = os.path.join(mscz_dir, "Excerpts")
-    if os.path.isdir(excerpts_dir):
-        shutil.rmtree(excerpts_dir)
-
-    container_path = os.path.join(mscz_dir, "META-INF", "container.xml")
-    if not os.path.isfile(container_path):
-        return
-
-    tree = ET.parse(container_path)
-    rootfiles = tree.getroot().find("rootfiles")
-    if rootfiles is None:
-        return
-
-    for rootfile in list(rootfiles.findall("rootfile")):
-        full_path = rootfile.get("full-path", "").replace("\\", "/")
-        if full_path.startswith("Excerpts/"):
-            rootfiles.remove(rootfile)
-
-    tree.write(container_path, encoding="UTF-8", xml_declaration=True)
+        write_mscz_from_dir(output_dir, output_mscz_path)
 
 
 def _measures_equivalent(
@@ -211,20 +172,12 @@ def _measures_equivalent(
     return head_hash == user_hash
 
 
-def _load_score_element(mscx_path: str) -> ET.Element:
-    tree = ET.parse(mscx_path)
-    score = tree.getroot().find("Score")
-    if score is None:
-        raise ValueError(f"No <Score> in {mscx_path}")
-    return score
-
-
 def base_diffs_by_staff_key(
     base_mscx_path: str, other_mscx_path: str
 ) -> dict[StaffKey, list[State]]:
     """Measure edit scripts from base to other, keyed by base staff identity."""
-    base = _load_score_element(base_mscx_path)
-    other = _load_score_element(other_mscx_path)
+    base = load_score_element(base_mscx_path)
+    other = load_score_element(other_mscx_path)
     alignment = align_staves(base, other)
     by_key: dict[StaffKey, list[State]] = {}
     for row in alignment.rows:
@@ -284,9 +237,9 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
     If a merge conflict is found, write the unified merge score (to be handled by the user) and raises MergeConflictException
     if a merge score cannot be generated, raises ComplicatedMergeException
     """
-    base_arcs = _mscx_arcnames(base_mscz_path)
-    head_arcs = _mscx_arcnames(head_mscz_path)
-    user_arcs = _mscx_arcnames(user_mscz_path)
+    base_arcs = mscx_arcnames(base_mscz_path)
+    head_arcs = mscx_arcnames(head_mscz_path)
+    user_arcs = mscx_arcnames(user_mscz_path)
 
     head_main, _ = _partition_mscx_arcs(head_arcs)
     user_main, _ = _partition_mscx_arcs(user_arcs)
@@ -314,9 +267,7 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
             ("head", head_mscz_path),
             ("user", user_mscz_path),
         ):
-            os.makedirs(extract_dirs[label], exist_ok=True)
-            with zipfile.ZipFile(mscz_path, "r") as zip_ref:
-                zip_ref.extractall(extract_dirs[label])
+            extract_mscz(mscz_path, extract_dirs[label])
 
         shutil.copytree(extract_dirs["user"], output_dir)
 
@@ -324,13 +275,13 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
             base_arcs, head_arcs, user_arcs, merge_excerpts=merge_excerpts
         )
         if not merge_excerpts:
-            _remove_excerpts_from_mscz_dir(output_dir)
+            remove_excerpts_from_mscz_dir(output_dir)
 
         for base_arc, head_arc, user_arc in mscx_merge_plan:
-            base_mscx = os.path.join(extract_dirs["base"], base_arc)
-            head_mscx = os.path.join(extract_dirs["head"], head_arc)
-            user_mscx = os.path.join(extract_dirs["user"], user_arc)
-            output_mscx = os.path.join(output_dir, user_arc)
+            base_mscx = mscx_path_from_extract_dir(extract_dirs["base"], base_arc)
+            head_mscx = mscx_path_from_extract_dir(extract_dirs["head"], head_arc)
+            user_mscx = mscx_path_from_extract_dir(extract_dirs["user"], user_arc)
+            output_mscx = mscx_path_from_extract_dir(output_dir, user_arc)
 
             for path in (base_mscx, head_mscx, user_mscx):
                 if not os.path.isfile(path):
@@ -359,8 +310,8 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                     merge_error = exc
 
         if isinstance(merge_error, MergeConflictException):
-            head_mscx = os.path.join(extract_dirs["head"], head_main)
-            user_mscx = os.path.join(extract_dirs["user"], user_main)
+            head_mscx = mscx_path_from_extract_dir(extract_dirs["head"], head_main)
+            user_mscx = mscx_path_from_extract_dir(extract_dirs["user"], user_main)
             head_user_diffs = compute_diff(head_mscx, user_mscx)
             compare_mscz_files(
                 head_mscz_path,
@@ -370,7 +321,7 @@ def three_way_merge_mscz(base_mscz_path, head_mscz_path, user_mscz_path, output_
                 diffs=head_user_diffs,
             )
         else:
-            _write_mscz_from_dir(output_dir, output_mscz_path)
+            write_mscz_from_dir(output_dir, output_mscz_path)
 
     if merge_error is not None:
         raise merge_error

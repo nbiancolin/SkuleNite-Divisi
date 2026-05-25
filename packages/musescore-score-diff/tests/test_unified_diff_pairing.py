@@ -2,8 +2,9 @@
 
 import os
 import tempfile
-import zipfile
 import xml.etree.ElementTree as ET
+
+from mscx_utils import extract_mscz_main_mscx
 
 from musescore_score_diff.compute_diff import compute_diff_with_alignment
 from musescore_score_diff.display_diff import (
@@ -13,17 +14,6 @@ from musescore_score_diff.display_diff import (
     mark_diffs_unified,
 )
 from musescore_score_diff.utils import State
-
-
-def _extract_main_mscx(mscz_path: str, dest_dir: str) -> str:
-    os.makedirs(dest_dir, exist_ok=True)
-    with zipfile.ZipFile(mscz_path, "r") as zf:
-        zf.extractall(dest_dir)
-    for root, _, files in os.walk(dest_dir):
-        for name in files:
-            if name.endswith(".mscx") and "Excerpt" not in root.replace("\\", "/"):
-                return os.path.join(root, name)
-    raise FileNotFoundError(f"No main .mscx in {mscz_path}")
 
 
 def _measure_has_highlight(measure: ET.Element) -> bool:
@@ -40,10 +30,10 @@ def _measure_has_highlight(measure: ET.Element) -> bool:
 def test_unified_pairing_two_staff_piano():
     fixture = "tests/fixtures/merge-scores/merge-conflict-single-measure"
     with tempfile.TemporaryDirectory() as work:
-        head_mscx = _extract_main_mscx(
+        _, head_mscx = extract_mscz_main_mscx(
             f"{fixture}/head.mscz", os.path.join(work, "head")
         )
-        user_mscx = _extract_main_mscx(
+        _, user_mscx = extract_mscz_main_mscx(
             f"{fixture}/user.mscz", os.path.join(work, "user")
         )
         diffs, alignment = compute_diff_with_alignment(head_mscx, user_mscx)
@@ -79,8 +69,8 @@ def test_measure_added_syncs_insert_index_across_piano_staves():
     """Inserted bar must pad every staff in the part at the same measure index."""
     fixture = "tests/fixtures/merge-scores/measure-added"
     with tempfile.TemporaryDirectory() as work:
-        head_mscx = _extract_main_mscx(f"{fixture}/head.mscz", os.path.join(work, "head"))
-        user_mscx = _extract_main_mscx(f"{fixture}/user.mscz", os.path.join(work, "user"))
+        _, head_mscx = extract_mscz_main_mscx(f"{fixture}/head.mscz", os.path.join(work, "head"))
+        _, user_mscx = extract_mscz_main_mscx(f"{fixture}/user.mscz", os.path.join(work, "user"))
 
         diffs, alignment = compute_diff_with_alignment(head_mscx, user_mscx)
         assert len(alignment.rows) == 2
@@ -101,10 +91,10 @@ def test_measure_added_syncs_insert_index_across_piano_staves():
 def test_compare_musescore_piano_conflict_output(tmp_path):
     fixture = "tests/fixtures/merge-scores/merge-conflict-single-measure"
     with tempfile.TemporaryDirectory() as work:
-        head_mscx = _extract_main_mscx(
+        _, head_mscx = extract_mscz_main_mscx(
             f"{fixture}/head.mscz", os.path.join(work, "head")
         )
-        user_mscx = _extract_main_mscx(
+        _, user_mscx = extract_mscz_main_mscx(
             f"{fixture}/user.mscz", os.path.join(work, "user")
         )
         out = tmp_path / "diff.mscx"

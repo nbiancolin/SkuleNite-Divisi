@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "musescore-score-diff"
 version = "0.1.0"
+dependencies = ["mscx-utils"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
