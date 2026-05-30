@@ -84,16 +84,31 @@ WORKDIR /app
 COPY apps/musescore-headless/app.py .
 
 #TOOD only if dev
-COPY apps/musescore-headless/tests.py .
+COPY apps/musescore-headless/test_plugins.py .
+COPY apps/musescore-headless/plugin_runner.py .
 COPY apps/musescore-headless/fixtures ./fixtures
 
 # --------------------------------------------------
-# Non-root user
+# Non-root user and plugins
 # --------------------------------------------------
 RUN useradd -m -u 1000 musescore
 
-RUN mkdir -p /home/musescore/Documents/MuseScore4/Plugins
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# MuseScore must run once to create its user config and Documents/MuseScore4/Plugins
+RUN runuser -u musescore -- timeout 60 musescore -F >/dev/null 2>&1 || true
+
 COPY apps/musescore-headless/plugins /home/musescore/Documents/MuseScore4/Plugins
+
+RUN python3 -c "\
+import glob, json, os; \
+plugins_dir = '/home/musescore/Documents/MuseScore4/Plugins'; \
+config_dir = '/home/musescore/.local/share/MuseScore/MuseScore4/plugins'; \
+os.makedirs(config_dir, exist_ok=True); \
+plugins = [{'codeKey': os.path.splitext(os.path.basename(path))[0], 'enabled': True} for path in glob.glob(plugins_dir + '/*.qml')]; \
+json.dump(plugins, open(config_dir + '/plugins.json', 'w')) \
+" && chown -R musescore:musescore /home/musescore
 
 USER musescore
 

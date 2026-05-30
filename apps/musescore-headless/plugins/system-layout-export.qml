@@ -1,6 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import MuseScore 3.0
+import FileIO 3.0
 
 MuseScore {
     id: root
@@ -12,6 +13,11 @@ MuseScore {
 
     title: "System Layout Export"
 
+    FileIO {
+        id: outputFile
+        source: "/tmp/system-layout-export.json"
+    }
+
     onRun: {
         if (!curScore) {
             console.log("No score open")
@@ -19,14 +25,16 @@ MuseScore {
             return
         }
 
-        console.log("================================")
-        console.log("MuseScore 4.7 Layout Analyzer")
-        console.log("================================")
-
         var result = exportLayout(curScore)
+        var payload = JSON.stringify(result, null, 2)
 
-        console.log(JSON.stringify(result, null, 2))
+        if (!outputFile.write(payload)) {
+            console.log("Failed to write layout export to " + outputFile.source)
+            Qt.quit()
+            return
+        }
 
+        console.log(payload)
         Qt.quit()
     }
 
@@ -53,16 +61,22 @@ MuseScore {
             systems: []
         }
 
+        var targetStaffIdx = 0
         var cursor = score.newCursor()
 
         cursor.rewind(0)
 
-        var previousMeasure = null
+        var previousMeasureNo = -1
 
         var currentSystemObject = null
         var currentSystemMeasures = []
 
         while (cursor.segment) {
+
+            if (cursor.staffIdx !== targetStaffIdx) {
+                cursor.next()
+                continue
+            }
 
             var measure = cursor.measure
 
@@ -70,12 +84,12 @@ MuseScore {
             // Skip duplicate visits to same measure
             //------------------------------------------------------------------
 
-            if (measure === previousMeasure) {
+            if (measure.no === previousMeasureNo) {
                 cursor.next()
                 continue
             }
 
-            previousMeasure = measure
+            previousMeasureNo = measure.no
 
             //------------------------------------------------------------------
             // Rendered system object
