@@ -43,7 +43,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgpg-error0 \
     python3 \
     python3-pip \
-    python3-pytest \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -82,11 +81,20 @@ RUN pip3 install --no-cache-dir --break-system-packages fastapi uvicorn python-m
 
 WORKDIR /app
 COPY apps/musescore-headless/app.py .
-
-#TOOD only if dev
-COPY apps/musescore-headless/test_plugins.py .
 COPY apps/musescore-headless/plugin_runner.py .
-COPY apps/musescore-headless/fixtures ./fixtures
+
+# Dev-only: pytest and test fixtures (see DEV build arg in docker-compose)
+RUN if [ "$(echo "$DEV" | tr '[:upper:]' '[:lower:]')" = "true" ]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends python3-pytest && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+RUN --mount=type=bind,source=apps/musescore-headless,target=/src,readonly \
+    if [ "$(echo "$DEV" | tr '[:upper:]' '[:lower:]')" = "true" ]; then \
+        cp /src/test_plugins.py . && \
+        cp -r /src/fixtures ./fixtures; \
+    fi
 
 # --------------------------------------------------
 # Non-root user and plugins

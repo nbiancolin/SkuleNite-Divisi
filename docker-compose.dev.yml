@@ -91,9 +91,9 @@ services:
   musescore-headless:
     build:
       context: .
-      args:
-        - DEV=True
       dockerfile: ./apps/musescore-headless/musescore.Dockerfile
+      args:
+        DEV: "true"
     restart: unless-stopped
     environment:
       - QT_QPA_PLATFORM=offscreen
