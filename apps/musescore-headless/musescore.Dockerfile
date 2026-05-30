@@ -1,5 +1,7 @@
 FROM debian:bookworm-slim
 
+ARG DEV=false
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV QT_QPA_PLATFORM=offscreen
 
@@ -41,6 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgpg-error0 \
     python3 \
     python3-pip \
+    python3-pytest \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
@@ -80,10 +83,18 @@ RUN pip3 install --no-cache-dir --break-system-packages fastapi uvicorn python-m
 WORKDIR /app
 COPY apps/musescore-headless/app.py .
 
+#TOOD only if dev
+COPY apps/musescore-headless/tests.py .
+COPY apps/musescore-headless/fixtures ./fixtures
+
 # --------------------------------------------------
 # Non-root user
 # --------------------------------------------------
 RUN useradd -m -u 1000 musescore
+
+RUN mkdir -p /home/musescore/Documents/MuseScore4/Plugins
+COPY apps/musescore-headless/plugins /home/musescore/Documents/MuseScore4/Plugins
+
 USER musescore
 
 RUN fc-cache -f -v
