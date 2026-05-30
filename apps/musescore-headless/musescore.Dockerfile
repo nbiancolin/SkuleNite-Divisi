@@ -1,5 +1,7 @@
 FROM debian:bookworm-slim
 
+ARG DEV=false
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV QT_QPA_PLATFORM=offscreen
 
@@ -79,11 +81,43 @@ RUN pip3 install --no-cache-dir --break-system-packages fastapi uvicorn python-m
 
 WORKDIR /app
 COPY apps/musescore-headless/app.py .
+COPY apps/musescore-headless/plugin_runner.py .
+
+# Dev-only: pytest and test fixtures (see DEV build arg in docker-compose)
+RUN if [ "$(echo "$DEV" | tr '[:upper:]' '[:lower:]')" = "true" ]; then \
+        apt-get update && \
+        apt-get install -y --no-install-recommends python3-pytest && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+RUN --mount=type=bind,source=apps/musescore-headless,target=/src,readonly \
+    if [ "$(echo "$DEV" | tr '[:upper:]' '[:lower:]')" = "true" ]; then \
+        cp /src/test_plugins.py . && \
+        cp -r /src/fixtures ./fixtures; \
+    fi
 
 # --------------------------------------------------
-# Non-root user
+# Non-root user and plugins
 # --------------------------------------------------
 RUN useradd -m -u 1000 musescore
+
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# MuseScore must run once to create its user config and Documents/MuseScore4/Plugins
+RUN runuser -u musescore -- timeout 60 musescore -F >/dev/null 2>&1 || true
+
+COPY apps/musescore-headless/plugins /home/musescore/Documents/MuseScore4/Plugins
+
+RUN python3 -c "\
+import glob, json, os; \
+plugins_dir = '/home/musescore/Documents/MuseScore4/Plugins'; \
+config_dir = '/home/musescore/.local/share/MuseScore/MuseScore4/plugins'; \
+os.makedirs(config_dir, exist_ok=True); \
+plugins = [{'codeKey': os.path.splitext(os.path.basename(path))[0], 'enabled': True} for path in glob.glob(plugins_dir + '/*.qml')]; \
+json.dump(plugins, open(config_dir + '/plugins.json', 'w')) \
+" && chown -R musescore:musescore /home/musescore
+
 USER musescore
 
 RUN fc-cache -f -v

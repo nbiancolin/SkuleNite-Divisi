@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException, Response
+from plugin_runner import MuseScorePluginError, run_system_layout_export
 
 logging.basicConfig(
     level=logging.INFO,
@@ -440,6 +441,49 @@ async def render_all_parts_pdf(file: UploadFile):
                 content=zip_buffer.getvalue(),
                 media_type="application/zip",
                 headers={"Content-Disposition": (f'attachment; filename="{src_stem}_score_and_parts.zip"')},
+            )
+
+
+SCORE_EXTENSIONS = {".mscz", ".mscx", ".msc"}
+
+
+@app.post("/export-system-layout")
+async def export_system_layout(file: UploadFile):
+    """
+    Run the system-layout-export plugin on an uploaded MuseScore score.
+
+    Accepts .mscz / .mscx (not PDF). Returns JSON describing which measures
+    belong to each rendered system on staff 1.
+    """
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in SCORE_EXTENSIONS:
+        raise HTTPException(
+            400,
+            f"Unsupported file type '{suffix or '(none)'}'. "
+            f"Upload a MuseScore score ({', '.join(sorted(SCORE_EXTENSIONS))}).",
+        )
+
+    logger.info("export-system-layout for file: %s", file.filename)
+
+    async with render_lock:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / (file.filename or "score.mscz")
+            src.write_bytes(await file.read())
+
+            try:
+                layout = await asyncio.to_thread(
+                    run_system_layout_export, src, timeout=120
+                )
+            except subprocess.TimeoutExpired:
+                raise HTTPException(504, "MuseScore timed out")
+            except MuseScorePluginError as e:
+                logger.error("system-layout-export failed: %s", e)
+                raise HTTPException(500, str(e))
+
+            return Response(
+                content=json.dumps(layout),
+                media_type="application/json",
             )
 
 
