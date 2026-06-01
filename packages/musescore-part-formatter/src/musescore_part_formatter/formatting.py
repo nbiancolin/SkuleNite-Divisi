@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import os
 import re
+from fractions import Fraction
 
 from .utils import (
     _make_part_name_text,
@@ -104,6 +105,72 @@ def add_part_name(
 
 
 # -- LayoutBreak formatting --
+
+
+def _parse_duration_fraction(value: str) -> Fraction | None:
+    value = value.strip()
+    if "/" not in value:
+        return None
+    num_s, den_s = value.split("/", 1)
+    try:
+        return Fraction(int(num_s.strip()), int(den_s.strip()))
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _standard_measure_duration(staff: ET.Element) -> Fraction:
+    """Duration of a single bar on this staff (fallback 4/4)."""
+    for measure in staff.findall("Measure"):
+        if measure.attrib.get("len"):
+            continue
+        for rest in measure.iter("Rest"):
+            dur = rest.find("duration")
+            if dur is not None and dur.text:
+                parsed = _parse_duration_fraction(dur.text)
+                if parsed is not None:
+                    return parsed
+        for ts in measure.iter("TimeSig"):
+            sig_n = ts.find("sigN")
+            sig_d = ts.find("sigD")
+            if (
+                sig_n is not None
+                and sig_d is not None
+                and sig_n.text
+                and sig_d.text
+            ):
+                parsed = _parse_duration_fraction(f"{sig_n.text}/{sig_d.text}")
+                if parsed is not None:
+                    return parsed
+    return Fraction(4, 4)
+
+
+def _multimeasure_rest_span_count(measure: ET.Element, staff: ET.Element) -> int | None:
+    """
+    Number of measures spanned by a multimeasure-rest anchor measure.
+    Returns None if len is present but the span cannot be determined.
+    """
+    if not measure.attrib.get("len"):
+        return None
+
+    mm = measure.find("multiMeasureRest")
+    if mm is not None and mm.text and mm.text.strip():
+        return max(1, int(mm.text.strip()))
+
+    total = _parse_duration_fraction(measure.attrib["len"])
+    if total is None:
+        LOGGER.warning(
+            "Could not parse multimeasure rest len=%r; skipping mm marking",
+            measure.attrib.get("len"),
+        )
+        return None
+
+    bar = _standard_measure_duration(staff)
+    if bar == 0:
+        return None
+
+    return max(1, int(total / bar))
+
+
 def prep_mm_rests(staff: ET.Element) -> ET.Element:
     """
     Go through each measure in score.
@@ -117,7 +184,9 @@ def prep_mm_rests(staff: ET.Element) -> ET.Element:
                 elem.attrib["_mm"] = str(measure_to_mark)  # value is dummy, never used
                 measure_to_mark -= 1
             if elem.attrib.get("len"):
-                measure_to_mark = int(elem.find("multiMeasureRest").text) - 1
+                span = _multimeasure_rest_span_count(elem, staff)
+                if span is not None:
+                    measure_to_mark = span - 1
     return staff
 
 
