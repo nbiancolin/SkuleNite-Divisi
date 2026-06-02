@@ -22,7 +22,7 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { apiService } from "../../services/apiService";
 import type { ArrangementVersionCommentThread, VersionHistoryItem } from "../../services/apiService";
 import { parseVersionIdParam } from "./scoreReviewUtils";
-import { usePageTitle } from "../../context/PageTitleContext";
+import { usePageTitle } from "../../context/usePageTitle";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 

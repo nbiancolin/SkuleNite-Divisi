@@ -26,7 +26,8 @@ import {
   normalizedFormattingSteps,
   type FormattingStepsState,
 } from "./formattingSteps";
-import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
+import { formatArrangementTitle } from "../../context/pageTitleUtils";
+import { usePageTitle } from "../../context/usePageTitle";
 
 export default function CreateVersionFromCommitPage() {
   const { arrangementId = "0", commitId = "" } = useParams();

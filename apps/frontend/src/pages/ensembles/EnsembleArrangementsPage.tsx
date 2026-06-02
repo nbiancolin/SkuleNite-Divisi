@@ -23,7 +23,7 @@ import {
 } from '@mantine/core';
 import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
 import { apiService, type Ensemble, type EnsemblePartBook, type PartName, type Arrangement } from '../../services/apiService';
-import { usePageTitle } from '../../context/PageTitleContext';
+import { usePageTitle } from '../../context/usePageTitle';
 
 const ArrangementsPage = () => {
   const { slug = "NA" } = useParams(); // Get ensemble slug from URL

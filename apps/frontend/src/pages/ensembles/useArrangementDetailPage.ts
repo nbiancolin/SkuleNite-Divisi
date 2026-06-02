@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit, EditableArrangementData, VersionHistoryItem } from "../../services/apiService";
 import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
-import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
+import { formatArrangementTitle } from "../../context/pageTitleUtils";
+import { usePageTitle } from "../../context/usePageTitle";
 
 export function useArrangementDetailPage() {
   const { arrangementId: arrangementIdParam = "1" } = useParams();
@@ -132,25 +133,6 @@ export function useArrangementDetailPage() {
     return data;
   }, []);
 
-  const getDownloadLinks = async (
-    arrangementVersionId: number,
-    options?: { silent?: boolean }
-  ) => {
-    try {
-      if (!options?.silent) {
-        setLoading(true);
-      }
-      setError(null);
-      await refreshLatestVersionDownloads(arrangementVersionId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch version download links");
-    } finally {
-      if (!options?.silent) {
-        setLoading(false);
-      }
-    }
-  };
-
   const fetchVersionHistory = async (aid: number) => {
     try {
       setVersionHistoryLoading(true);
@@ -243,7 +225,19 @@ export function useArrangementDetailPage() {
       });
 
       if (data?.latest_version?.id) {
-        await getDownloadLinks(data.latest_version.id, options);
+        if (!options?.silent) {
+          setLoading(true);
+        }
+        setError(null);
+        try {
+          await refreshLatestVersionDownloads(data.latest_version.id);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to fetch version download links");
+        } finally {
+          if (!options?.silent) {
+            setLoading(false);
+          }
+        }
         await fetchLatestVersionParts(data.latest_version.id);
       } else {
         setExportLoading(false);
@@ -263,7 +257,7 @@ export function useArrangementDetailPage() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [refreshLatestVersionDownloads]);
 
   const handleSaveChanges = async () => {
     if (!arrangement) return;

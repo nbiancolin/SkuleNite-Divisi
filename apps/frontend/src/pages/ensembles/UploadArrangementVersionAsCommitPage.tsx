@@ -19,7 +19,8 @@ import { X, UploadCloud } from "lucide-react";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit } from "../../services/apiService";
 import { CreateCommitError } from "../../services/apiService";
-import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
+import { formatArrangementTitle } from "../../context/pageTitleUtils";
+import { usePageTitle } from "../../context/usePageTitle";
 
 type UploadErrorKind = "generic" | "complicated_merge" | "merge_conflict_tip";
 
