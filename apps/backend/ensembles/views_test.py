@@ -657,15 +657,21 @@ def test_update_part_order_wrong_ensemble(ensemble, user, client):
 @pytest.mark.django_db
 def test_part_names_serialized_with_order(ensemble, user, client):
     """Test that part names are serialized with order and sorted correctly"""
+    from ensembles.factories import PartAssetFactory
     from ensembles.models import PartName
-    
+
     ensemble.owner = user
     ensemble.save()
-    
+
+    arr = ArrangementFactory(ensemble=ensemble, mvt_no="1")
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+
     # Create parts in reverse order
     part3 = PartName.objects.create(ensemble=ensemble, display_name="Saxophone", order=2)
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet", order=1)
+    for part in (part1, part2, part3):
+        PartAssetFactory(arrangement_version=v, part_name=part)
     
     url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
     client.force_login(user)
@@ -691,11 +697,15 @@ def test_part_names_serialized_with_order(ensemble, user, client):
 @pytest.mark.django_db
 def test_part_names_with_null_order_sorted_last(ensemble, user, client):
     """Test that parts with null order are sorted last"""
+    from ensembles.factories import PartAssetFactory
     from ensembles.models import PartName
-    
+
     ensemble.owner = user
     ensemble.save()
-    
+
+    arr = ArrangementFactory(ensemble=ensemble, mvt_no="1")
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+
     # Create parts: some with order, some without
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet", order=1)
@@ -703,6 +713,8 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
     part3 = PartName.objects.create(ensemble=ensemble, display_name="Saxophone")
     part3.order = None
     part3.save()
+    for part in (part1, part2, part3):
+        PartAssetFactory(arrangement_version=v, part_name=part)
     
     url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
     client.force_login(user)
@@ -744,10 +756,34 @@ def test_part_name_matrix(ensemble, user, client):
 
     assert len(data["arrangements"]) == 1
     assert data["arrangements"][0]["id"] == arr.id
-    assert len(data["columns"]) == 2
+    assert len(data["columns"]) == 1
+    assert data["columns"][0]["id"] == flute.id
     assert len(data["cells"]) == 1
     assert data["cells"][0]["part_name_id"] == flute.id
     assert data["cells"][0]["arrangement_id"] == arr.id
+
+
+@pytest.mark.django_db
+def test_part_name_matrix_excludes_names_without_latest_part_assets(
+    ensemble, user, client
+):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+
+    ensemble.owner = user
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble, mvt_no="1")
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    with_asset = PartNameFactory(ensemble=ensemble, display_name="Flute")
+    without_asset = PartNameFactory(ensemble=ensemble, display_name="Unused")
+    PartAssetFactory(arrangement_version=v, part_name=with_asset)
+
+    url = reverse("ensembles:ensemble-part-name-matrix", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200
+    column_ids = [c["id"] for c in r.json()["columns"]]
+    assert column_ids == [with_asset.id]
+    assert without_asset.id not in column_ids
 
 
 @pytest.mark.django_db

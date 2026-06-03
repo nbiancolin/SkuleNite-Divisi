@@ -5,6 +5,7 @@ from divisi.tasks.export import (
     export_mscz_to_mp3,
     export_all_parts_with_tracking,
 )
+from ensembles.lib.part_name_matrix import part_names_with_latest_part_assets
 from ensembles.models import (
     Ensemble,
     PartAsset,
@@ -42,12 +43,15 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
     revision = ensemble.latest_part_book_revision + 1
 
     part_name_ids = list(
-        PartName.objects.filter(ensemble_id=ensemble_id).values_list("id", flat=True)
+        part_names_with_latest_part_assets(ensemble).values_list("id", flat=True)
     )
     if not part_name_ids:
         ensemble.part_books_generating = False
         ensemble.save(update_fields=["part_books_generating"])
-        return {"status": "no action", "detail": "No part names in ensemble"}
+        return {
+            "status": "no action",
+            "detail": "No part names with uploaded parts in latest arrangement versions",
+        }
 
     try:
         for part_name_id in part_name_ids:
@@ -102,7 +106,7 @@ def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custo
         part_book.render()
 
         # If all part books for this revision are now finalized, clear the generating flag
-        part_name_count = PartName.objects.filter(ensemble_id=ensemble_id).count()
+        part_name_count = part_names_with_latest_part_assets(ensemble).count()
         finalized_count = PartBook.objects.filter(
             ensemble_id=ensemble_id, revision=revision, finalized_at__isnull=False
         ).count()

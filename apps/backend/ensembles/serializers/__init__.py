@@ -225,12 +225,9 @@ class EnsembleSerializer(serializers.ModelSerializer):
         """get part names details"""
         request = self.context.get("request")
         if request and request.user.is_authenticated:
-            # Order by order field (nulls last), then by id for stable ordering
-            from django.db.models import F, Value, IntegerField
-            from django.db.models.functions import Coalesce
+            from ensembles.lib.part_name_matrix import part_names_with_latest_part_assets
 
-            # Use Coalesce to put nulls at the end (treat null as a very large number)
-            parts = obj.part_names.all().order_by(Coalesce("order", Value(999999, output_field=IntegerField())), "id")
+            parts = part_names_with_latest_part_assets(obj)
             part_name_ids = [part.id for part in parts]
 
             arrangement_titles_by_part_name_id = defaultdict(list)
