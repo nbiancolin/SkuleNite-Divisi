@@ -139,6 +139,58 @@ class PartName(models.Model):
         )
         second.delete()
 
+    def _persist_display_name_change_aliases(self, previous_display_name: str) -> None:
+        """Record aliases so re-uploads still resolve the old label to this PartName."""
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        arrangements_with_part = set(
+            PartAsset.objects.filter(part_name=self).values_list(
+                "arrangement_version__arrangement_id", flat=True
+            )
+        )
+        arrangements_with_part.discard(None)
+        for arr_id in arrangements_with_part:
+            PartNameAlias.objects.update_or_create(
+                ensemble_id=self.ensemble_id,
+                arrangement_id=arr_id,
+                alias_normalized=PartNameAlias.normalize(previous_display_name),
+                defaults={
+                    "alias": previous_display_name,
+                    "canonical_part_name": self,
+                },
+            )
+
+    def rename_display_name(self, new_display_name: str) -> "PartName":
+        new_display_name = (new_display_name or "").strip()
+        if not new_display_name:
+            raise ValidationError("Display name cannot be empty.")
+
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        if (
+            PartName.objects.filter(
+                ensemble_id=self.ensemble_id, display_name__iexact=new_display_name
+            )
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            raise ValidationError(
+                "A part name with this display name already exists in this ensemble."
+            )
+
+        previous_display_name = self.display_name
+        if PartNameAlias.normalize(previous_display_name) == PartNameAlias.normalize(
+            new_display_name
+        ):
+            return self
+
+        with transaction.atomic():
+            self._persist_display_name_change_aliases(previous_display_name)
+            self.display_name = new_display_name
+            self.save(update_fields=["display_name"])
+
+        return self
+
     @staticmethod
     def normalize_display_name(value: str) -> str:
         # Normalize for stable matching (case/whitespace-insensitive).
@@ -254,29 +306,13 @@ class PartName(models.Model):
                     },
                 )
 
-            # If we are renaming the canonical display name, keep the old canonical name
-            # as an alias too for arrangements that had the target part.
-            if new_displayname and PartNameAlias.normalize(previous_target_name) != PartNameAlias.normalize(new_displayname):
-                arrangements_with_target = set(
-                    PartAsset.objects.filter(part_name=target)
-                    .values_list("arrangement_version__arrangement_id", flat=True)
-                )
-                arrangements_with_target.discard(None)
-                for arr_id in arrangements_with_target:
-                    PartNameAlias.objects.update_or_create(
-                        ensemble_id=ensemble_id,
-                        arrangement_id=arr_id,
-                        alias_normalized=PartNameAlias.normalize(previous_target_name),
-                        defaults={
-                            "alias": previous_target_name,
-                            "canonical_part_name": target,
-                        },
-                    )
-
             # Merge actual PartAsset references and delete the redundant PartName.
             target._merge_objs(merge_from)
 
-            if new_displayname:
+            if new_displayname and PartNameAlias.normalize(previous_target_name) != PartNameAlias.normalize(
+                new_displayname
+            ):
+                target._persist_display_name_change_aliases(previous_target_name)
                 target.display_name = new_displayname
                 target.save(update_fields=["display_name"])
 
