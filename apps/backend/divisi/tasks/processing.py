@@ -85,14 +85,11 @@ def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
     return _format_mscz_file(input_key, output_key, params)
 
 
-@shared_task
-def format_arrangement_version(version_id: int) -> dict[str, str]:
-
-    version = ArrangementVersion.objects.get(id=version_id)
-
-    input_key = version.mscz_file_key
-    output_key = version.output_file_key
-
+def _arrangement_version_format_params(
+    version: ArrangementVersion,
+    *,
+    formatting_steps_override: dict[str, bool] | None = None,
+) -> dict:
     params: dict = {
         "selected_style": version.arrangement.style,
         "show_title": version.ensemble_name,
@@ -109,12 +106,27 @@ def format_arrangement_version(version_id: int) -> dict[str, str]:
         ),
     }
 
-    stored = version.formatting_steps or {}
-    if isinstance(stored, dict):
-        for key in FORMATTING_STEP_KEYS:
-            if key in stored:
-                params[key] = stored[key]
+    if formatting_steps_override is not None:
+        params.update(formatting_steps_override)
+    else:
+        stored = version.formatting_steps or {}
+        if isinstance(stored, dict):
+            for key in FORMATTING_STEP_KEYS:
+                if key in stored:
+                    params[key] = stored[key]
 
     merge_formatting_step_defaults(params)
+    return params
 
-    return _format_mscz_file(input_key, output_key, params)
+
+@shared_task
+def format_arrangement_version(
+    version_id: int,
+    *,
+    formatting_steps_override: dict[str, bool] | None = None,
+) -> dict[str, str]:
+    version = ArrangementVersion.objects.get(id=version_id)
+    params = _arrangement_version_format_params(
+        version, formatting_steps_override=formatting_steps_override
+    )
+    return _format_mscz_file(version.mscz_file_key, version.output_file_key, params)

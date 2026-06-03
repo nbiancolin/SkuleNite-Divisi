@@ -1,6 +1,7 @@
 from celery import shared_task
 
 from divisi.tasks import format_arrangement_version
+from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
 from divisi.tasks.export import (
     export_mscz_to_mp3,
     export_all_parts_with_tracking,
@@ -135,6 +136,23 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 @shared_task
 def prep_and_export_mscz(version_id):
     format_arrangement_version(version_id)
+    res = export_arrangement_version(version_id)
+    v = ArrangementVersion.objects.get(id=version_id)
+    if not res["status"] == "success":
+        v.error_on_export = True
+    v.is_processing = False
+    v.save(update_fields=["is_processing", "error_on_export"])
+
+    return res
+
+
+@shared_task
+def apply_metadata_and_export_mscz(version_id):
+    """Embed version metadata in the MSCZ, then export without full part formatting."""
+    format_arrangement_version(
+        version_id,
+        formatting_steps_override=score_metadata_only_formatting_steps(),
+    )
     res = export_arrangement_version(version_id)
     v = ArrangementVersion.objects.get(id=version_id)
     if not res["status"] == "success":

@@ -19,7 +19,10 @@ from ensembles.models import (
     Commit,
     UserScoreVersion,
 )
-from ensembles.tasks import prep_and_export_mscz, export_arrangement_version
+from ensembles.tasks import (
+    apply_metadata_and_export_mscz,
+    prep_and_export_mscz,
+)
 
 from django.contrib.auth import get_user_model
 
@@ -604,12 +607,11 @@ class CreateArrangementVersionFromCommitSerializer(serializers.Serializer):
         with default_storage.open(commit.mscz_file_key) as f:
             default_storage.save(version.mscz_file_key, f)
 
-        # Format mscz if selected by FE
+        # Format mscz if selected by FE; otherwise still stamp version metadata before export
         if self.validated_data.get("format_parts", None):
             prep_and_export_mscz.delay(version.pk)
         else:
-            # Just export
-            export_arrangement_version.delay(version.pk)
+            apply_metadata_and_export_mscz.delay(version.pk)
 
         # epxort MXL for diff calculation (unnecessary)
         # export_arrangement_version(version.pk, action="mxl")
@@ -704,12 +706,11 @@ class CreateArrangementVersionMsczSerializer(serializers.Serializer):
             version.delete()
             return {"error": "Failed to save file to storage"}
 
-        # Format mscz if selected by FE
+        # Format mscz if selected by FE; otherwise still stamp version metadata before export
         if self.validated_data.get("format_parts", None):
             prep_and_export_mscz.delay(version.pk)
         else:
-            # Just export
-            export_arrangement_version.delay(version.pk)
+            apply_metadata_and_export_mscz.delay(version.pk)
 
         # epxort MXL for diff calculation (unnecessary)
         # export_arrangement_version(version.pk, action="mxl")
