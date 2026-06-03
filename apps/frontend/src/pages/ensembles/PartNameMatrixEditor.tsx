@@ -38,6 +38,38 @@ type Props = {
   onSaved?: () => void;
 };
 
+const SCROLL_EDGE_PX = 48;
+const SCROLL_MAX_SPEED = 14;
+
+/** Scroll a container when the pointer is near an edge (including during HTML5 drag). */
+function autoScrollContainer(
+  container: HTMLElement,
+  clientX: number,
+  clientY: number
+): void {
+  const rect = container.getBoundingClientRect();
+
+  if (clientY < rect.top + SCROLL_EDGE_PX) {
+    const dist = Math.max(0, clientY - rect.top);
+    const intensity = 1 - dist / SCROLL_EDGE_PX;
+    container.scrollTop -= Math.ceil(intensity * SCROLL_MAX_SPEED);
+  } else if (clientY > rect.bottom - SCROLL_EDGE_PX) {
+    const dist = Math.max(0, rect.bottom - clientY);
+    const intensity = 1 - dist / SCROLL_EDGE_PX;
+    container.scrollTop += Math.ceil(intensity * SCROLL_MAX_SPEED);
+  }
+
+  if (clientX < rect.left + SCROLL_EDGE_PX) {
+    const dist = Math.max(0, clientX - rect.left);
+    const intensity = 1 - dist / SCROLL_EDGE_PX;
+    container.scrollLeft -= Math.ceil(intensity * SCROLL_MAX_SPEED);
+  } else if (clientX > rect.right - SCROLL_EDGE_PX) {
+    const dist = Math.max(0, rect.right - clientX);
+    const intensity = 1 - dist / SCROLL_EDGE_PX;
+    container.scrollLeft += Math.ceil(intensity * SCROLL_MAX_SPEED);
+  }
+}
+
 function ColumnHeader({
   displayName,
   isAdmin,
@@ -142,6 +174,7 @@ export function PartNameMatrixEditor({ ensembleSlug, isAdmin, onSaved }: Props) 
   const [linkError, setLinkError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!matrix) return;
@@ -156,6 +189,19 @@ export function PartNameMatrixEditor({ ensembleSlug, isAdmin, onSaved }: Props) 
     setDropTargetBaseId(null);
     setLinkError(null);
   }, [matrix]);
+
+  useEffect(() => {
+    if (draggedColumnId === null) return;
+
+    const onDragOver = (e: DragEvent) => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      autoScrollContainer(container, e.clientX, e.clientY);
+    };
+
+    document.addEventListener("dragover", onDragOver);
+    return () => document.removeEventListener("dragover", onDragOver);
+  }, [draggedColumnId]);
 
   const displayGroups = useMemo(
     () => (matrix ? buildDisplayGroups(matrix.columns, mergeLinks) : []),
@@ -261,6 +307,8 @@ export function PartNameMatrixEditor({ ensembleSlug, isAdmin, onSaved }: Props) 
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     setDropTargetBaseId(getBaseId(targetColumnId, mergeLinks));
+    const container = scrollContainerRef.current;
+    if (container) autoScrollContainer(container, e.clientX, e.clientY);
   };
 
   const handleHeaderDrop = (targetColumnId: number) => (e: React.DragEvent) => {
@@ -479,8 +527,19 @@ export function PartNameMatrixEditor({ ensembleSlug, isAdmin, onSaved }: Props) 
         </Alert>
       )}
 
-      <Table.ScrollContainer minWidth={900} type="native" style={{ maxWidth: "100%" }}>
-        <Table striped highlightOnHover withTableBorder withColumnBorders stickyHeader>
+      <Box
+        ref={scrollContainerRef}
+        className="part-name-matrix-scroll"
+        style={{ maxWidth: "100%", maxHeight: "min(480px, 60vh)", overflow: "auto" }}
+      >
+        <Table
+          striped
+          highlightOnHover
+          withTableBorder
+          withColumnBorders
+          stickyHeader
+          style={{ minWidth: 900 }}
+        >
           <Table.Thead>
             {displayGroups.some((g) => g.kind === "merge") && (
               <Table.Tr>
@@ -569,7 +628,7 @@ export function PartNameMatrixEditor({ ensembleSlug, isAdmin, onSaved }: Props) 
             )}
           </Table.Tbody>
         </Table>
-      </Table.ScrollContainer>
+      </Box>
 
       {isAdmin && (
         <Group justify="flex-end">
