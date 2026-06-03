@@ -718,3 +718,173 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
     # Part with null order should come last
     assert part_names[2]["id"] == part3.id
     assert part_names[2]["order"] is None
+
+
+@pytest.mark.django_db
+def test_part_name_matrix(ensemble, user, client):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+    from ensembles.models import PartName
+
+    ensemble.owner = user
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble, title="Movement 1", mvt_no="1")
+    v_latest = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    ArrangementVersionFactory(arrangement=arr, is_latest=False)
+
+    flute = PartNameFactory(ensemble=ensemble, display_name="Flute", order=0)
+    score_name = PartNameFactory(ensemble=ensemble, display_name="Score", order=1)
+    PartAssetFactory(arrangement_version=v_latest, part_name=flute, is_score=False)
+    PartAssetFactory(arrangement_version=v_latest, part_name=score_name, is_score=True)
+
+    url = reverse("ensembles:ensemble-part-name-matrix", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200, r.content
+    data = r.json()
+
+    assert len(data["arrangements"]) == 1
+    assert data["arrangements"][0]["id"] == arr.id
+    assert len(data["columns"]) == 2
+    assert len(data["cells"]) == 1
+    assert data["cells"][0]["part_name_id"] == flute.id
+    assert data["cells"][0]["arrangement_id"] == arr.id
+
+
+@pytest.mark.django_db
+def test_part_name_matrix_merge_conflicts(ensemble, user, client):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+
+    ensemble.owner = user
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble, mvt_no="1")
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    name1, name2 = PartNameFactory.create_batch(2, ensemble=ensemble)
+    PartAssetFactory(arrangement_version=v, part_name=name1)
+    PartAssetFactory(arrangement_version=v, part_name=name2)
+
+    url = reverse("ensembles:ensemble-part-name-matrix", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200
+    conflicts = r.json()["merge_conflicts"]
+    assert [name1.id, name2.id] in conflicts or [name2.id, name1.id] in conflicts
+
+
+@pytest.mark.django_db
+def test_part_name_matrix_empty_ensemble(ensemble, user, client):
+    ensemble.owner = user
+    ensemble.save()
+
+    url = reverse("ensembles:ensemble-part-name-matrix", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["arrangements"] == []
+    assert data["cells"] == []
+
+
+@pytest.mark.django_db
+def test_rename_part_name_as_admin(ensemble, user, client):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+    from ensembles.models.part_name_alias import PartNameAlias
+
+    ensemble.owner = user
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble)
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    part = PartNameFactory(ensemble=ensemble, display_name="Flute 1")
+    PartAssetFactory(arrangement_version=v, part_name=part)
+
+    url = reverse("ensembles:ensemble-rename-part-name", kwargs={"slug": ensemble.slug})
+    r = client.post(
+        url,
+        data={"part_name_id": part.id, "display_name": "Flute"},
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.content
+    part.refresh_from_db()
+    assert part.display_name == "Flute"
+    assert PartNameAlias.objects.filter(
+        ensemble=ensemble,
+        arrangement=arr,
+        alias_normalized=PartNameAlias.normalize("Flute 1"),
+        canonical_part_name=part,
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_rename_part_name_duplicate_rejected(ensemble, user, client):
+    from ensembles.models import PartName
+
+    ensemble.owner = user
+    ensemble.save()
+
+    part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
+    part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet")
+
+    url = reverse("ensembles:ensemble-rename-part-name", kwargs={"slug": ensemble.slug})
+    r = client.post(
+        url,
+        data={"part_name_id": part2.id, "display_name": "Flute"},
+        content_type="application/json",
+    )
+    assert r.status_code == 400
+
+
+@pytest.mark.django_db
+def test_rename_part_name_as_non_admin(ensemble, user, client):
+    from ensembles.models import PartName, EnsembleUsership
+
+    part = PartName.objects.create(ensemble=ensemble, display_name="Flute")
+    non_admin = UserFactory()
+    EnsembleUsership.objects.create(ensemble=ensemble, user=non_admin)
+
+    url = reverse("ensembles:ensemble-rename-part-name", kwargs={"slug": ensemble.slug})
+    client.force_login(non_admin)
+    r = client.post(
+        url,
+        data={"part_name_id": part.id, "display_name": "Flute I"},
+        content_type="application/json",
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.django_db
+def test_merge_part_names_as_non_admin(ensemble, user, client):
+    from ensembles.models import PartName, EnsembleUsership
+
+    part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
+    part2 = PartName.objects.create(ensemble=ensemble, display_name="Flute I")
+    non_admin = UserFactory()
+    EnsembleUsership.objects.create(ensemble=ensemble, user=non_admin)
+
+    url = reverse("ensembles:ensemble-merge-part-names", kwargs={"slug": ensemble.slug})
+    client.force_login(non_admin)
+    r = client.post(
+        url,
+        data={"first_id": part1.id, "second_id": part2.id},
+        content_type="application/json",
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.django_db
+def test_part_names_include_arrangement_ids(ensemble, user, client):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+
+    ensemble.owner = user
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble, title="Song A")
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    part = PartNameFactory(ensemble=ensemble, display_name="Flute")
+    PartAssetFactory(arrangement_version=v, part_name=part)
+
+    url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200
+    part_names = r.json()["part_names"]
+    flute_entry = next(p for p in part_names if p["id"] == part.id)
+    assert flute_entry["arrangement_ids"] == [arr.id]
+    assert flute_entry["arrangements"] == ["Song A"]
