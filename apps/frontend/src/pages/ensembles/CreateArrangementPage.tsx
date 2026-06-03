@@ -17,7 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import '../../fonts.css'
 import { ScoreTitlePreview } from "../../components/ScoreTitlePreview";
 import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
-import { usePageTitle } from "../../context/PageTitleContext";
+import { usePageTitle } from "../../context/usePageTitle";
 
 export default function CreateArrangementPage() {
 

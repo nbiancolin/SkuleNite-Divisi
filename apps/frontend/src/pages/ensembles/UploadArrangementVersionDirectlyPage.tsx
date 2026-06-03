@@ -26,7 +26,8 @@ import {
   normalizedFormattingSteps,
   type FormattingStepsState,
 } from "./formattingSteps";
-import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
+import { formatArrangementTitle } from "../../context/pageTitleUtils";
+import { usePageTitle } from "../../context/usePageTitle";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 

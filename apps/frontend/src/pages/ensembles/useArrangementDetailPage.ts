@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { apiService } from "../../services/apiService";
 import type { Arrangement, Commit, EditableArrangementData, VersionHistoryItem } from "../../services/apiService";
 import type { PreviewStyleName } from "../../components/ScoreTitlePreview";
-import { formatArrangementTitle, usePageTitle } from "../../context/PageTitleContext";
+import { formatArrangementTitle } from "../../context/pageTitleUtils";
+import { usePageTitle } from "../../context/usePageTitle";
 
 export function useArrangementDetailPage() {
   const { arrangementId: arrangementIdParam = "1" } = useParams();
@@ -120,24 +121,17 @@ export function useArrangementDetailPage() {
     }
   };
 
-  const getDownloadLinks = async (arrangementVersionId: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
-      setRawMsczUrl(data.raw_mscz_url);
-      setMsczUrl(data.processed_mscz_url);
-      setScoreUrl(data.score_parts_pdf_link);
-      setAllPartsUrl(data.combined_parts_pdf_url || data.download_all_parts_url || "");
-      setAudioUrl(data.mp3_link);
-      setExportLoading(data.is_processing);
-      setExportError(data.error);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch version download links");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const refreshLatestVersionDownloads = useCallback(async (arrangementVersionId: number) => {
+    const data = await apiService.getDownloadLinksForVersion(arrangementVersionId);
+    setRawMsczUrl(data.raw_mscz_url);
+    setMsczUrl(data.processed_mscz_url);
+    setScoreUrl(data.score_parts_pdf_link);
+    setAllPartsUrl(data.combined_parts_pdf_url || data.download_all_parts_url || "");
+    setAudioUrl(data.mp3_link);
+    setExportLoading(data.is_processing);
+    setExportError(data.error);
+    return data;
+  }, []);
 
   const fetchVersionHistory = async (aid: number) => {
     try {
@@ -211,9 +205,11 @@ export function useArrangementDetailPage() {
     }
   };
 
-  const fetchArrangement = useCallback(async (id: number) => {
+  const fetchArrangement = useCallback(async (id: number, options?: { silent?: boolean }) => {
     try {
-      setLoading(true);
+      if (!options?.silent) {
+        setLoading(true);
+      }
       setError(null);
       const data = await apiService.getArrangementById(id);
       setArrangement(data);
@@ -229,7 +225,19 @@ export function useArrangementDetailPage() {
       });
 
       if (data?.latest_version?.id) {
-        await getDownloadLinks(data.latest_version.id);
+        if (!options?.silent) {
+          setLoading(true);
+        }
+        setError(null);
+        try {
+          await refreshLatestVersionDownloads(data.latest_version.id);
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to fetch version download links");
+        } finally {
+          if (!options?.silent) {
+            setLoading(false);
+          }
+        }
         await fetchLatestVersionParts(data.latest_version.id);
       } else {
         setExportLoading(false);
@@ -245,9 +253,11 @@ export function useArrangementDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch arrangement");
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
-  }, []);
+  }, [refreshLatestVersionDownloads]);
 
   const handleSaveChanges = async () => {
     if (!arrangement) return;
@@ -284,6 +294,25 @@ export function useArrangementDetailPage() {
   useEffect(() => {
     fetchArrangement(+arrangementId);
   }, [arrangementId, fetchArrangement]);
+
+  // Poll while the latest version export is still processing
+  useEffect(() => {
+    const versionId = arrangement?.latest_version?.id;
+    if (!versionId || !exportLoading) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await refreshLatestVersionDownloads(versionId);
+        if (!data.is_processing) {
+          await fetchArrangement(+arrangementId, { silent: true });
+        }
+      } catch (err) {
+        console.error("Failed to poll export status:", err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [arrangement?.latest_version?.id, exportLoading, arrangementId, refreshLatestVersionDownloads, fetchArrangement]);
 
   const handleRefresh = () => {
     fetchArrangement(+arrangementId);

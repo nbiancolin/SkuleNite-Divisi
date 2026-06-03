@@ -50,7 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /opt
 
 RUN wget -O MuseScore.AppImage \
-      https://github.com/musescore/MuseScore/releases/download/v4.6.2/MuseScore-Studio-4.6.2.252830930-x86_64.AppImage && \
+      https://github.com/musescore/MuseScore/releases/download/v4.7.2/MuseScore-Studio-4.7.2.260525085-x86_64.AppImage  && \
     chmod +x MuseScore.AppImage && \
     ./MuseScore.AppImage --appimage-extract && \
     mv squashfs-root musescore && \

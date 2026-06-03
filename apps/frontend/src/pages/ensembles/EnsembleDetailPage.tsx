@@ -35,7 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
-import { usePageTitle } from '../../context/PageTitleContext';
+import { usePageTitle } from '../../context/usePageTitle';
 
 import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
 import { ScoreTitlePreview, type PreviewStyleName } from '../../components/ScoreTitlePreview';

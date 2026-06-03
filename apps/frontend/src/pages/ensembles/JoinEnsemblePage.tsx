@@ -13,7 +13,7 @@ import {
 } from '@mantine/core';
 import { IconCheck, IconX, IconMusic } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
-import { usePageTitle } from '../../context/PageTitleContext';
+import { usePageTitle } from '../../context/usePageTitle';
 
 const JoinEnsemblePage = () => {
   const { token } = useParams<{ token: string }>();
