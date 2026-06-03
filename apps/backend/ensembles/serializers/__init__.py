@@ -234,12 +234,14 @@ class EnsembleSerializer(serializers.ModelSerializer):
             part_name_ids = [part.id for part in parts]
 
             arrangement_titles_by_part_name_id = defaultdict(list)
+            arrangement_ids_by_part_name_id = defaultdict(list)
             if part_name_ids:
                 part_assets = (
                     PartAsset.objects.filter(
                         part_name_id__in=part_name_ids,
                         arrangement_version__arrangement__ensemble=obj,
                         arrangement_version__is_latest=True,
+                        is_score=False,
                     )
                     .select_related("arrangement_version__arrangement")
                     .order_by(
@@ -248,9 +250,9 @@ class EnsembleSerializer(serializers.ModelSerializer):
                     )
                 )
                 for asset in part_assets:
-                    arrangement_titles_by_part_name_id[asset.part_name_id].append(
-                        asset.arrangement_version.arrangement.title
-                    )
+                    arr = asset.arrangement_version.arrangement
+                    arrangement_titles_by_part_name_id[asset.part_name_id].append(arr.title)
+                    arrangement_ids_by_part_name_id[asset.part_name_id].append(arr.id)
 
             # Keep a stable, typed shape for the frontend
             return [
@@ -258,6 +260,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                     "id": part.id,
                     "display_name": part.display_name,
                     "arrangements": arrangement_titles_by_part_name_id.get(part.id, []),
+                    "arrangement_ids": arrangement_ids_by_part_name_id.get(part.id, []),
                     "order": part.order,
                 }
                 for part in parts
@@ -333,6 +336,21 @@ class EnsembleListSerializer(serializers.ModelSerializer):
         if annotated_count is not None:
             return annotated_count
         return obj.arrangements.count()
+
+
+class EnsemblePartNameRenameSerializer(serializers.Serializer):
+    part_name_id = serializers.IntegerField(required=True)
+    display_name = serializers.CharField(required=True, max_length=64)
+
+    def validate(self, attrs):
+        ensemble = self.context["ensemble"]
+        try:
+            part = PartName.objects.get(id=attrs["part_name_id"], ensemble=ensemble)
+        except PartName.DoesNotExist:
+            raise serializers.ValidationError({"part_name_id": "Invalid part name for this ensemble."})
+
+        attrs["part"] = part
+        return attrs
 
 
 class EnsemblePartNameMergeSerializer(serializers.Serializer):

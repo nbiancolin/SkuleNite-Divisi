@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
     ArrangementVersion,
@@ -18,6 +19,7 @@ from ensembles.serializers import (
     ArrangementSerializer,
     EnsembleListSerializer,
     EnsemblePartNameMergeSerializer,
+    EnsemblePartNameRenameSerializer,
     EnsembleSerializer,
 )
 from ensembles.tasks.part_books import generate_books_for_ensemble
@@ -205,9 +207,56 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+    @action(detail=True, methods=["get"], url_path="part-name-matrix")
+    def part_name_matrix(self, request, slug=None):
+        ensemble = self.get_object()
+        if not self._has_access(ensemble, request.user):
+            return Response(
+                {"detail": "You do not have access to this ensemble."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(build_part_name_matrix(ensemble))
+
+    @action(detail=True, methods=["post"], url_path="rename-part-name")
+    def rename_part_name(self, request, slug=None):
+        ensemble = self.get_object()
+        if not request.user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can rename part names."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = EnsemblePartNameRenameSerializer(
+            data=request.data, context={"ensemble": ensemble}
+        )
+        serializer.is_valid(raise_exception=True)
+        part = serializer.validated_data["part"]
+        display_name = serializer.validated_data["display_name"]
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            part.rename_display_name(display_name)
+        except DjangoValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"id": part.id, "display_name": part.display_name},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["post"])
     def merge_part_names(self, request, slug=None):
-        serializer = EnsemblePartNameMergeSerializer(data=request.data, context={"ensemble": self.get_object()})
+        ensemble = self.get_object()
+        if not request.user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can merge part names."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = EnsemblePartNameMergeSerializer(
+            data=request.data, context={"ensemble": ensemble}
+        )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 

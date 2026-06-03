@@ -207,6 +207,51 @@ export const ensembleApi = {
     return response.json();
   },
 
+  async getPartNameMatrix(ensembleSlug: string) {
+    const response = await fetch(
+      `${API_BASE_URL}/ensembles/${ensembleSlug}/part-name-matrix/`,
+      { credentials: "include" }
+    );
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to fetch part name matrix (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
+  async renamePartName(ensembleSlug: string, partNameId: number, displayName: string) {
+    const response = await fetch(
+      `${API_BASE_URL}/ensembles/${ensembleSlug}/rename-part-name/`,
+      {
+        method: "POST",
+        headers: getHeadersWithCsrf(),
+        body: JSON.stringify({ part_name_id: partNameId, display_name: displayName }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to rename part name (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+    return response.json();
+  },
+
   async mergePartNames(
     ensembleSlug: string,
     firstId: number,

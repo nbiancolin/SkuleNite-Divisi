@@ -108,6 +108,32 @@ export interface PartName {
   display_name: string;
   order: number | null;
   arrangements?: string[];
+  arrangement_ids?: number[];
+}
+
+export interface PartNameMatrixArrangement {
+  id: number;
+  title: string;
+  mvt_no: string;
+}
+
+export interface PartNameMatrixColumn {
+  id: number;
+  display_name: string;
+  order: number | null;
+}
+
+export interface PartNameMatrixCell {
+  arrangement_id: number;
+  part_name_id: number;
+  part_asset_id: number;
+}
+
+export interface PartNameMatrix {
+  arrangements: PartNameMatrixArrangement[];
+  columns: PartNameMatrixColumn[];
+  cells: PartNameMatrixCell[];
+  merge_conflicts: [number, number][];
 }
 
 export interface Ensemble {
