@@ -4,6 +4,7 @@ import { useDisclosure } from '@mantine/hooks';
 import classes from './HeaderSimple.module.css';
 import { Link } from 'react-router-dom';
 import { apiService, type User } from '../services/apiService';
+import { ColorSchemeSwitcher } from './ColorSchemeSwitcher';
 
 const links = [
   { link: '/app/ensembles', label: 'Ensemble Score Management' },
@@ -90,6 +91,7 @@ return (
             {items}
           </Group>
           <Group gap="sm">
+            <ColorSchemeSwitcher />
             {!loading && (
               <>
                 {isAuthenticated && user ? (

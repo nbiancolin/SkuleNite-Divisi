@@ -1,6 +1,20 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      try {
+        var stored = window.localStorage.getItem('mantine-color-scheme-value');
+        var scheme =
+          stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'light';
+        var resolved =
+          scheme === 'auto'
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light'
+            : scheme;
+        document.documentElement.setAttribute('data-mantine-color-scheme', resolved);
+      } catch (e) {}
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/assets/treble-clef.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
