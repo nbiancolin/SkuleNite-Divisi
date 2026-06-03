@@ -61,6 +61,8 @@ jobs:
 
         set -a
         source apps/backend/.env
+        export DJANGO_TIME_ZONE="${DJANGO_TIME_ZONE:-America/Toronto}"
+        export TZ="${TZ:-America/Toronto}"
         set +a
 
         echo "[INFO] Updating backend code"

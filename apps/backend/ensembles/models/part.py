@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 
 from ensembles.models.arrangement_version import ArrangementVersion
 from ensembles.lib.slug import generate_unique_slug
+from ensembles.lib.datetime_format import format_part_book_export_datetime
 from ensembles.lib.pdf import TocEntry
 from ensembles.lib.pdf import (
     generate_full_part_book,
@@ -369,7 +370,7 @@ class PartBook(models.Model):
 
         entries = self.entries.order_by("position")
         export_datetime = timezone.now()
-        export_date_str = export_datetime.strftime("%Y-%m-%d, %H:%M")
+        export_date_str = format_part_book_export_datetime(export_datetime)
 
         book_data = []
         for entry in entries:
@@ -409,7 +410,7 @@ class PartBook(models.Model):
         toc_kwargs: PartBookInfo = {
             "show_title": self.ensemble.name,
             "show_subtitle": "",
-            "export_date": str(export_datetime),
+            "export_date": export_date_str,
             "part_name": self.name,
             "selected_style": self.ensemble.default_style,
         }

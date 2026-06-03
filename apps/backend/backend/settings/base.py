@@ -114,7 +114,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Eastern Time (EST/EDT) for SkuleNite; override with DJANGO_TIME_ZONE if needed.
+TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "America/Toronto")
 
 USE_I18N = True
 
