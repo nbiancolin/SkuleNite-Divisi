@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tacet — {{ song_title }}</title>
+</head>
+<body class="{{ style_class }}">
+  <div class="page tacet">
+    <div class="top-row">
+      <div class="part-name">{{ part_name }}</div>
+      <div class="show-meta">
+        <div class="show-number">{{ show_number }}</div>
+        <div class="show-title">{{ show_title }}</div>
+      </div>
+    </div>
+    <h1 class="song-title">{{ song_title }}</h1>
+    {% if song_subtitle %}
+      <p class="song-subtitle">{{ song_subtitle }}</p>
+    {% endif %}
+    <div class="tacet-label">TACET</div>
+    <div class="revision">Rev. {{ export_date }}</div>
+  </div>
+</body>
+</html>

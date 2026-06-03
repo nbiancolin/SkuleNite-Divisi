@@ -21,9 +21,13 @@ RUN apt-get update && apt-get install -y \
     fontconfig \
     unzip \
     ca-certificates \
-    # WeasyPrint dependencies
+    # WeasyPrint dependencies (https://doc.courtbouillon.org/weasyprint/stable/first_steps.html)
     libcairo2 \
     libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libpangoft2-1.0-0 \
+    libharfbuzz0b \
+    libharfbuzz-subset0 \
     libgdk-pixbuf-2.0-0 \
     libglib2.0-0 \
     shared-mime-info \

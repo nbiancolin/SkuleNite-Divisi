@@ -403,6 +403,7 @@ class PartBook(models.Model):
             export_date=export_date_str,
             part_name=self.name,
             show_title=self.ensemble.name,
+            selected_style=self.ensemble.default_style,
         )
 
         toc_kwargs: PartBookInfo = {

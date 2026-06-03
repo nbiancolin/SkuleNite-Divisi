@@ -3,10 +3,12 @@ import pytest
 from ensembles.lib.pdf import generate_cover_page, generate_tacet_page, generate_table_of_contents
 from ensembles.lib.pdf import TocEntry
 
-from ensembles.lib.fonts import register_fonts
+from ensembles.lib.fonts import IS_CI, register_fonts
 
 
-# Uncomment these tests to check the functionality of the PDFs being generated
+# Part-book cover / TOC / tacet pages are rendered from HTML templates under
+# ensembles/templates/part_book/ (styles in styles.css). Uncomment tests below
+# to write sample PDFs locally (requires WeasyPrint system libs + fonts).
 
 # @pytest.fixture(autouse=True)
 # def font_setup():
