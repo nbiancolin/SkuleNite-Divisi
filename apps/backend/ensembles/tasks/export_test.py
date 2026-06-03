@@ -7,7 +7,8 @@ from django.core.files.base import ContentFile
 
 from ensembles.models import ArrangementVersion, ExportFailureLog
 from ensembles.factories import ArrangementVersionFactory, ArrangementFactory
-from ensembles.tasks import export_arrangement_version
+from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
+from ensembles.tasks import apply_metadata_and_export_mscz, export_arrangement_version
 
 
 """Tests for the export_arrangement_version task"""
@@ -151,6 +152,33 @@ def test_export_nonexistent_version():
 
     assert result["status"] == "error"
     assert "not found" in result["details"].lower()
+
+
+def test_score_metadata_only_formatting_steps():
+    steps = score_metadata_only_formatting_steps()
+    assert steps["apply_score_metadata"] is True
+    assert all(v is False for k, v in steps.items() if k != "apply_score_metadata")
+
+
+@pytest.mark.django_db
+@patch("ensembles.tasks.export.export_arrangement_version")
+@patch("ensembles.tasks.export.format_arrangement_version")
+def test_apply_metadata_and_export_mscz(
+    mock_format, mock_export, arrangement_versions
+):
+    v1, _ = arrangement_versions
+    mock_export.return_value = {"status": "success", "written": []}
+
+    apply_metadata_and_export_mscz(v1.id)
+
+    mock_format.assert_called_once_with(
+        v1.id,
+        formatting_steps_override=score_metadata_only_formatting_steps(),
+    )
+    mock_export.assert_called_once_with(v1.id)
+    v1.refresh_from_db()
+    assert v1.is_processing is False
+    assert v1.error_on_export is False
 
 
 @pytest.mark.django_db
