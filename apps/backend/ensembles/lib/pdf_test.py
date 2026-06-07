@@ -14,6 +14,20 @@ from ensembles.lib.fonts import IS_CI, register_fonts
 # def font_setup():
 #     register_fonts()
 
+
+def test_generate_page_turn_page():
+    from ensembles.lib.pdf import generate_page_turn_page
+    page = generate_page_turn_page(
+        export_date="2026-01-06",
+        part_name="Piano 1",
+        show_title="Test Show",
+        show_number="",
+        copyright="sample copyright test 123123123",
+    )
+
+    with open("sample-page-turn-page.pdf", mode="wb") as f:
+        f.write(page.getbuffer())
+
 # def test_generate_cover_page():
 #     # Uncomment this test to generate a sample cover page
 

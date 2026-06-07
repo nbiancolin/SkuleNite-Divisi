@@ -5,7 +5,7 @@ from pypdf import PdfWriter, PdfReader
 
 from ensembles.lib.part_book_pdf import render_part_book_html
 
-from typing import TypedDict
+from typing import TypedDict, Literal
 
 
 class TocEntry(TypedDict):
@@ -110,6 +110,18 @@ def generate_tacet_page(
     )
 
 
+def generate_page_turn_page(part_name: str, show_title: str, export_date: str, show_number: str | None, **kwargs) -> BytesIO:
+    if not show_number:
+        show_number = ""
+    return render_part_book_html(
+        "part_book/page_turn.html",
+        part_name=part_name,
+        show_title=show_title,
+        show_number=show_number,
+        export_date=export_date,
+    )
+
+
 def count_pdf_pages(pdf: BytesIO | str) -> int:
     reader = PdfReader(pdf)
     return len(reader.pages)
@@ -133,7 +145,7 @@ def overlay_page_numbers(
     """
     Overlay page numbers on every page in writer.
     """
-    #TODO[SC-280]: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
+    # TODO[SC-280]: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
     for i, page in enumerate(writer.pages):
         packet = BytesIO()
         c = canvas.Canvas(packet, pagesize=pagesizes.LETTER)
@@ -154,25 +166,59 @@ def overlay_page_numbers(
         page.merge_page(overlay)
 
 
+def _should_add_blank_page(current_page_position: bool, num_pages: int) -> bool:
+    """
+    current_page_position:
+    True: pdf will start on RHS (odd)
+    False: pdf will start on LHS (even)
+
+    return:
+    True: insert a blank (V.S.) Page
+    False: do not insert a blank page
+    """
+
+    match num_pages:
+        case 1:
+            # just append it, we dont really care
+            return False
+        case 2:
+            # we could optimize this probably but who cares, ease of reading > saving a couple sheets of paper
+            return current_page_position  # always start on LHS
+        # case 4:
+        #     return False # TODO: could try this
+        case _:
+            return not current_page_position  # Start on RHS
+
+
 def merge_pdfs(
     *,
     cover_pdf: BytesIO | None,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
-    # TODO[SC-281]: Allow setting which pdfs to start on a blank page
-    start_on_odd_page: bool = True,
-    overwrite_page_numbers: bool = False, #TODO[SC-280]: Fix this, its janky rn
+    page_turn_page: BytesIO | None = None, #If this is not passed in, generate one w/o any focused txt
+    page_merge_strategy: Literal["optimize"] | Literal["odd"] | Literal["raw"] = "optimize",
+    overwrite_page_numbers: bool = False,  # TODO[SC-280]: Fix this, its janky rn
     first_content_page_number: int = 1,
 ) -> MergedPdfResult:
     """
     Merge PDFs and compute TOC page numbers.
 
+    page_merge_strategy:
+    - `optimize`: use custom divisi logic to try and line up pages well
+    - `odd`: Ensure that every song starts on an odd page
+    - `raw`: Just append the pdfs and no blank pages
+
     content_pdfs:
         List of (toc_entry, pdf) where toc_entry.page will be filled in.
     """
 
+    assert page_merge_strategy in ["optimize", "odd", "raw"], f"Invalid page merge strategy: {page_merge_strategy}"
+
     writer = PdfWriter()
     current_page = 0
     toc_entries: list[TocEntry] = []
+
+    if not page_turn_page:
+        page_turn_page = generate_page_turn_page(part_name="", show_title="", show_number="", export_date="")
 
     # Cover page
     if cover_pdf:
@@ -183,11 +229,21 @@ def merge_pdfs(
     # Main content
     for entry, pdf in content_pdfs:
         reader = PdfReader(pdf)
+        num_pages = len(reader.pages)
 
-        # Ensure odd-page start if requested
-        if start_on_odd_page and current_page % 2 == 1:
-            add_blank_page(writer)
-            current_page += 1
+        match page_merge_strategy:
+            case "optimize":
+                # curr page is odd = RHS
+                if _should_add_blank_page(current_page_position=((current_page + 1) % 2 == 1), num_pages=num_pages):
+                    writer.append(page_turn_page)
+                    current_page += 1
+
+            case "odd":
+                if current_page % 2 == 1:
+                    add_blank_page(writer)
+                    current_page += 1
+            case "raw":
+                pass
 
         # Record TOC page (1-based, after cover)
         entry = entry.copy()
@@ -225,18 +281,21 @@ def generate_full_part_book(
     cover -> toc -> content
     """
 
+    from ensembles.lib.pdf import generate_page_turn_page
+    page_turn_kwargs = toc_kwargs | {"show_number": ""} # TODO: Assess if we even need this..
+    page_turn = generate_page_turn_page(**page_turn_kwargs)
     # Pass 1: merge content only (no cover) to get TOC page numbers and content PDF
     pass1 = merge_pdfs(
         cover_pdf=None,
         content_pdfs=content_pdfs,
         overwrite_page_numbers=False,
+        page_turn_page=page_turn
     )
 
     # TOC page numbers must account for: cover (1) + blank (1) + toc (1) + blank (1) = 4 pages before content
     pages_before_content = 4
     toc_entries_with_offset = [
-        {**entry, "page": entry["page"] + pages_before_content}
-        for entry in pass1["toc_entries"]
+        {**entry, "page": entry["page"] + pages_before_content} for entry in pass1["toc_entries"]
     ]
 
     # Generate TOC PDF
