@@ -70,6 +70,13 @@ class Arrangement(models.Model):
         return latest.version_label if latest else "N/A"
 
     @property
+    def has_unversioned_latest_commit(self) -> bool:
+        from ensembles.models.commit import Commit
+
+        latest = Commit.latest_for_arrangement(self)
+        return latest is not None and not latest.has_version
+
+    @property
     def ensemble_name(self):
         return self.ensemble.name
 

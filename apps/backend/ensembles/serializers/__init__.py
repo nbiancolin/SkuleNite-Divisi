@@ -111,6 +111,7 @@ class CommitSerializer(serializers.ModelSerializer):
 class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
+    has_unversioned_latest_commit = serializers.SerializerMethodField()
 
     class Meta:
         model = Arrangement
@@ -127,12 +128,19 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "style",
             "latest_version",
             "latest_version_num",
+            "has_unversioned_latest_commit",
         ]
         read_only_fields = [
             "slug",
             "ensemble_name",
             "ensemble_slug",
         ]
+
+    def get_has_unversioned_latest_commit(self, obj) -> bool:
+        annotated = getattr(obj, "_has_unversioned_latest_commit", None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.has_unversioned_latest_commit
 
 
 class EnsembleSerializer(serializers.ModelSerializer):

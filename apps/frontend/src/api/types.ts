@@ -76,6 +76,7 @@ export interface Arrangement {
   mvt_no: string;
   latest_version: ArrangementVersion | null;
   latest_version_num: string;
+  has_unversioned_latest_commit?: boolean;
   style: string;
 }
 

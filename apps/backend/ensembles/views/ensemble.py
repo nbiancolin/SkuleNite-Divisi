@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.db.models.expressions import RawSQL
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -10,6 +10,7 @@ from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
     ArrangementVersion,
+    Commit,
     Ensemble,
     EnsembleUsership,
     PartBook,
@@ -95,6 +96,13 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
         arrangements = (
             ensemble.arrangements.annotate(
+                _has_unversioned_latest_commit=Exists(
+                    Commit.objects.filter(
+                        arrangement=OuterRef("pk"),
+                        children__isnull=True,
+                        version__isnull=True,
+                    )
+                ),
                 first_num=RawSQL(
                     "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
                     [],
