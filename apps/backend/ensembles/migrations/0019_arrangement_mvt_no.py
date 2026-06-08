@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0018_arrangementversion_num_lines_per_page'),
+        ("ensembles", "0018_arrangementversion_num_lines_per_page"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangement',
-            name='mvt_no',
+            model_name="arrangement",
+            name="mvt_no",
             field=models.CharField(blank=True, max_length=4),
         ),
     ]

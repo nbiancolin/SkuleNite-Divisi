@@ -5,139 +5,281 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0025_alter_part_options'),
+        ("ensembles", "0025_alter_part_options"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ensemble',
-            name='latest_part_book_revision',
+            model_name="ensemble",
+            name="latest_part_book_revision",
             field=models.IntegerField(default=1),
         ),
         migrations.AddField(
-            model_name='ensemble',
-            name='part_books_generating',
+            model_name="ensemble",
+            name="part_books_generating",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='arrangement',
-            name='mvt_no',
+            model_name="arrangement",
+            name="mvt_no",
             field=models.CharField(max_length=4),
         ),
         migrations.AlterField(
-            model_name='arrangement',
-            name='style',
-            field=models.CharField(choices=[('jazz', 'Jazz'), ('broadway', 'Broadway'), ('classical', 'Classical')], max_length=10),
+            model_name="arrangement",
+            name="style",
+            field=models.CharField(
+                choices=[
+                    ("jazz", "Jazz"),
+                    ("broadway", "Broadway"),
+                    ("classical", "Classical"),
+                ],
+                max_length=10,
+            ),
         ),
         migrations.AlterField(
-            model_name='arrangementversion',
-            name='file_name',
+            model_name="arrangementversion",
+            name="file_name",
             field=models.CharField(max_length=128),
         ),
         migrations.AlterField(
-            model_name='diff',
-            name='error_msg',
+            model_name="diff",
+            name="error_msg",
             field=models.CharField(blank=True, max_length=3000, null=True),
         ),
         migrations.AlterField(
-            model_name='diff',
-            name='file_name',
+            model_name="diff",
+            name="file_name",
             field=models.CharField(max_length=128),
         ),
         migrations.AlterField(
-            model_name='ensemble',
-            name='default_style',
-            field=models.CharField(choices=[('jazz', 'Jazz'), ('broadway', 'Broadway'), ('classical', 'Classical')], max_length=10),
+            model_name="ensemble",
+            name="default_style",
+            field=models.CharField(
+                choices=[
+                    ("jazz", "Jazz"),
+                    ("broadway", "Broadway"),
+                    ("classical", "Classical"),
+                ],
+                max_length=10,
+            ),
         ),
         migrations.AlterField(
-            model_name='exportfailurelog',
-            name='comments',
+            model_name="exportfailurelog",
+            name="comments",
             field=models.CharField(max_length=255),
         ),
         migrations.AlterField(
-            model_name='exportfailurelog',
-            name='error_msg',
+            model_name="exportfailurelog",
+            name="error_msg",
             field=models.CharField(max_length=3000),
         ),
         migrations.CreateModel(
-            name='PartAsset',
+            name="PartAsset",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file_key', models.CharField(max_length=500)),
-                ('is_score', models.BooleanField(default=False)),
-                ('arrangement_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parts', to='ensembles.arrangementversion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("file_key", models.CharField(max_length=500)),
+                ("is_score", models.BooleanField(default=False)),
+                (
+                    "arrangement_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="parts",
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-is_score'],
+                "ordering": ["-is_score"],
             },
         ),
         migrations.CreateModel(
-            name='PartBook',
+            name="PartBook",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('revision', models.PositiveIntegerField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('finalized_at', models.DateTimeField(blank=True, null=True)),
-                ('ensemble', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='part_books', to='ensembles.ensemble')),
-                ('parent', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='ensembles.partbook')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("revision", models.PositiveIntegerField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("finalized_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "ensemble",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="part_books",
+                        to="ensembles.ensemble",
+                    ),
+                ),
+                (
+                    "parent",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to="ensembles.partbook",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PartBookEntry',
+            name="PartBookEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('position', models.PositiveIntegerField()),
-                ('arrangement', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='ensembles.arrangement')),
-                ('arrangement_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='ensembles.arrangementversion')),
-                ('part_asset', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, to='ensembles.partasset')),
-                ('part_book', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='entries', to='ensembles.partbook')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("position", models.PositiveIntegerField()),
+                (
+                    "arrangement",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="ensembles.arrangement",
+                    ),
+                ),
+                (
+                    "arrangement_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
+                (
+                    "part_asset",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.PROTECT,
+                        to="ensembles.partasset",
+                    ),
+                ),
+                (
+                    "part_book",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="entries",
+                        to="ensembles.partbook",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='PartName',
+            name="PartName",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('display_name', models.CharField(max_length=64)),
-                ('slug', models.SlugField()),
-                ('ensemble', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='part_names', to='ensembles.ensemble')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("display_name", models.CharField(max_length=64)),
+                ("slug", models.SlugField()),
+                (
+                    "ensemble",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="part_names",
+                        to="ensembles.ensemble",
+                    ),
+                ),
             ],
         ),
         migrations.AddField(
-            model_name='partbook',
-            name='part_name',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='part_books', to='ensembles.partname'),
+            model_name="partbook",
+            name="part_name",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="part_books",
+                to="ensembles.partname",
+            ),
         ),
         migrations.AddField(
-            model_name='partasset',
-            name='part_name',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='ensembles.partname'),
+            model_name="partasset",
+            name="part_name",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, to="ensembles.partname"
+            ),
         ),
         migrations.CreateModel(
-            name='PartNameAlias',
+            name="PartNameAlias",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('alias', models.CharField(max_length=64)),
-                ('alias_normalized', models.CharField(max_length=64)),
-                ('arrangement', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='part_name_aliases', to='ensembles.arrangement')),
-                ('canonical_part_name', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='aliases', to='ensembles.partname')),
-                ('ensemble', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='part_name_aliases', to='ensembles.ensemble')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("alias", models.CharField(max_length=64)),
+                ("alias_normalized", models.CharField(max_length=64)),
+                (
+                    "arrangement",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="part_name_aliases",
+                        to="ensembles.arrangement",
+                    ),
+                ),
+                (
+                    "canonical_part_name",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="aliases",
+                        to="ensembles.partname",
+                    ),
+                ),
+                (
+                    "ensemble",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="part_name_aliases",
+                        to="ensembles.ensemble",
+                    ),
+                ),
             ],
         ),
         migrations.DeleteModel(
-            name='Part',
+            name="Part",
         ),
         migrations.AlterUniqueTogether(
-            name='partbook',
-            unique_together={('ensemble', 'part_name', 'revision')},
+            name="partbook",
+            unique_together={("ensemble", "part_name", "revision")},
         ),
         migrations.AddConstraint(
-            model_name='partasset',
-            constraint=models.UniqueConstraint(fields=('arrangement_version', 'part_name'), name='uniq_partasset_version_partname'),
+            model_name="partasset",
+            constraint=models.UniqueConstraint(
+                fields=("arrangement_version", "part_name"),
+                name="uniq_partasset_version_partname",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='partnamealias',
-            constraint=models.UniqueConstraint(fields=('ensemble', 'arrangement', 'alias_normalized'), name='uniq_partnamealias_ens_arr_aliasnorm'),
+            model_name="partnamealias",
+            constraint=models.UniqueConstraint(
+                fields=("ensemble", "arrangement", "alias_normalized"),
+                name="uniq_partnamealias_ens_arr_aliasnorm",
+            ),
         ),
     ]

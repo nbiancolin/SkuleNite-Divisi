@@ -17,12 +17,12 @@ palatinolinotype_roman
 
 """
 
-#Flag to check if running tests in CI, and if so, to skip these tests
+# Flag to check if running tests in CI, and if so, to skip these tests
 IS_CI = os.getenv("CI") == "true"
 
 
 def is_running_tests():
-    return 'PYTEST_CURRENT_TEST' in os.environ
+    return "PYTEST_CURRENT_TEST" in os.environ
 
 
 def _font_name_from_filename(filename: str) -> str:
@@ -40,7 +40,7 @@ def register_fonts():
         return
 
     for filename in os.listdir(FONT_DIR):
-        if not filename.lower().endswith((".ttf", )): #TODO: otf
+        if not filename.lower().endswith((".ttf",)):  # TODO: otf
             continue
 
         path = os.path.join(FONT_DIR, filename)

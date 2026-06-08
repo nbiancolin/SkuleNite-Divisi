@@ -69,7 +69,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
         return attrs
 
     def save(self, **kwargs):
-        #TODO[SC-276]: This could be refactored for readability
+        # TODO[SC-276]: This could be refactored for readability
         assert self.validated_data, "Must call `is_valid` first!"
 
         style = self.validated_data["style"]
@@ -114,7 +114,6 @@ class FormatMsczFileSerializer(serializers.Serializer):
 
         if res["status"] != "success":
             raise APIException(detail=f"Export failed: {res.get('details')}")
-
 
         # do success stuff
         session = UploadSession.objects.get(id=session_id)

@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from ensembles.models.commit import Commit
 
+
 @pytest.mark.django_db
 def test_create_new_commit_new_arrangement(arrangement, user):
 
@@ -53,7 +54,7 @@ def test_create_new_commit_works_with_existing_commit(arrangement, user):
     first_commit.refresh_from_db()
 
     assert new.is_latest_commit is True
-    
+
     assert first_commit.is_initial_commit is True
     assert first_commit.is_latest_commit is False
 
@@ -61,10 +62,14 @@ def test_create_new_commit_works_with_existing_commit(arrangement, user):
 @pytest.mark.django_db
 def test_latest_for_arrangement_returns_tip(arrangement, user):
     first_commit = Commit.create_new_commit(
-        arrangement, created_by_user=user, create_kwargs={"file_name": "a.mscz", "message": "m1"}
+        arrangement,
+        created_by_user=user,
+        create_kwargs={"file_name": "a.mscz", "message": "m1"},
     )
     second = Commit.create_new_commit(
-        arrangement, created_by_user=user, create_kwargs={"file_name": "b.mscz", "message": "m2"}
+        arrangement,
+        created_by_user=user,
+        create_kwargs={"file_name": "b.mscz", "message": "m2"},
     )
     assert Commit.latest_for_arrangement(arrangement) == second
     assert Commit.latest_for_arrangement(arrangement) != first_commit
@@ -74,14 +79,16 @@ def test_latest_for_arrangement_returns_tip(arrangement, user):
 def test_latest_for_arrangement_empty(arrangement):
     assert Commit.latest_for_arrangement(arrangement) is None
 
+
 @pytest.mark.django_db
 @patch("ensembles.models.utils.default_storage.delete")
 @patch("ensembles.models.utils.default_storage.exists")
 def test_delete_commit_deletes_file(mock_exists, mock_delete, arrangement):
     mock_exists.return_value = True
 
-    c = Commit.objects.create(arrangement=arrangement, file_name="test.mscz", message="test delete")\
-    
+    c = Commit.objects.create(
+        arrangement=arrangement, file_name="test.mscz", message="test delete"
+    )
     c.delete()
 
     mock_delete.assert_called_once()

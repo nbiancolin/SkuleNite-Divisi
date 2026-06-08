@@ -64,7 +64,8 @@ class ArrangementVersionCreateThreadView(APIView):
             )
 
         return Response(
-            ArrangementVersionCommentThreadSerializer(thread).data, status=status.HTTP_201_CREATED
+            ArrangementVersionCommentThreadSerializer(thread).data,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -99,7 +100,9 @@ class ArrangementVersionResolveThreadView(APIView):
         thread.status = ArrangementVersionCommentThread.Status.RESOLVED
         thread.resolved_by = request.user
         thread.resolved_at = timezone.now()
-        thread.save(update_fields=["status", "resolved_by", "resolved_at", "updated_at"])
+        thread.save(
+            update_fields=["status", "resolved_by", "resolved_at", "updated_at"]
+        )
         return Response(ArrangementVersionCommentThreadSerializer(thread).data)
 
 
@@ -111,5 +114,7 @@ class ArrangementVersionReopenThreadView(APIView):
         thread.status = ArrangementVersionCommentThread.Status.OPEN
         thread.resolved_by = None
         thread.resolved_at = None
-        thread.save(update_fields=["status", "resolved_by", "resolved_at", "updated_at"])
+        thread.save(
+            update_fields=["status", "resolved_by", "resolved_at", "updated_at"]
+        )
         return Response(ArrangementVersionCommentThreadSerializer(thread).data)

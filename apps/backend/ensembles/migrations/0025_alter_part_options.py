@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0024_part'),
+        ("ensembles", "0024_part"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='part',
-            options={'ordering': ['-is_score', 'name']},
+            name="part",
+            options={"ordering": ["-is_score", "name"]},
         ),
     ]

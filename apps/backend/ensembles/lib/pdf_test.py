@@ -1,11 +1,3 @@
-import pytest
-
-from ensembles.lib.pdf import generate_cover_page, generate_tacet_page, generate_table_of_contents
-from ensembles.lib.pdf import TocEntry
-
-from ensembles.lib.fonts import IS_CI, register_fonts
-
-
 # Part-book cover / TOC / tacet pages are rendered from HTML templates under
 # ensembles/templates/part_book/ (styles in styles.css). Uncomment tests below
 # to write sample PDFs locally (requires WeasyPrint system libs + fonts).
@@ -62,13 +54,13 @@ from ensembles.lib.fonts import IS_CI, register_fonts
 #         {
 #             "show_number": "1",
 #             "page": 1,
-#             "title": "My First Song", 
+#             "title": "My First Song",
 #             "version_label": "v1.0.0"
 #         },
 #         {
 #             "show_number": "2-1",
 #             "page": 2,
-#             "title": "My Second Song", 
+#             "title": "My Second Song",
 #             "version_label": "v1.2.1"
 #         }
 #     ]

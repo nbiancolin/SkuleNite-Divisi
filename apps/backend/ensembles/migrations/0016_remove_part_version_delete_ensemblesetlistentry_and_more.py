@@ -4,20 +4,19 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0015_diff_error_msg'),
+        ("ensembles", "0015_diff_error_msg"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='part',
-            name='version',
+            model_name="part",
+            name="version",
         ),
         migrations.DeleteModel(
-            name='EnsembleSetlistEntry',
+            name="EnsembleSetlistEntry",
         ),
         migrations.DeleteModel(
-            name='Part',
+            name="Part",
         ),
     ]

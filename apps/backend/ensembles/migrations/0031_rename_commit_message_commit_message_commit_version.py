@@ -5,20 +5,25 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0030_commit'),
+        ("ensembles", "0030_commit"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='commit',
-            old_name='commit_message',
-            new_name='message',
+            model_name="commit",
+            old_name="commit_message",
+            new_name="message",
         ),
         migrations.AddField(
-            model_name='commit',
-            name='version',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='commit', to='ensembles.arrangementversion'),
+            model_name="commit",
+            name="version",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="commit",
+                to="ensembles.arrangementversion",
+            ),
         ),
     ]

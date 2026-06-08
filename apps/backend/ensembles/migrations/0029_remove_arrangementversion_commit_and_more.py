@@ -4,24 +4,23 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0028_commit_arrangementversion_commit_gitrepo_and_more'),
+        ("ensembles", "0028_commit_arrangementversion_commit_gitrepo_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='arrangementversion',
-            name='commit',
+            model_name="arrangementversion",
+            name="commit",
         ),
         migrations.RemoveField(
-            model_name='gitrepo',
-            name='arrangement',
+            model_name="gitrepo",
+            name="arrangement",
         ),
         migrations.DeleteModel(
-            name='Commit',
+            name="Commit",
         ),
         migrations.DeleteModel(
-            name='GitRepo',
+            name="GitRepo",
         ),
     ]

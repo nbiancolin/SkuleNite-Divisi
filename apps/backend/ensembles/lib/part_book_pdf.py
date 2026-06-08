@@ -11,8 +11,12 @@ from pathlib import Path
 from django.template.loader import render_to_string
 from weasyprint import CSS, HTML
 
-FONT_DIR = Path(os.environ.get("PART_BOOK_FONT_DIR", "/usr/share/fonts/truetype/custom"))
-PART_BOOK_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "part_book"
+FONT_DIR = Path(
+    os.environ.get("PART_BOOK_FONT_DIR", "/usr/share/fonts/truetype/custom")
+)
+PART_BOOK_TEMPLATE_DIR = (
+    Path(__file__).resolve().parent.parent / "templates" / "part_book"
+)
 
 # Filenames from assets/fonts.zip (see ensembles/lib/fonts.py)
 FONT_FILES = {
@@ -37,7 +41,9 @@ def _font_context(selected_style: str) -> dict:
     }
 
 
-def render_part_book_html(template_name: str, *, selected_style: str = "broadway", **context) -> BytesIO:
+def render_part_book_html(
+    template_name: str, *, selected_style: str = "broadway", **context
+) -> BytesIO:
     """
     Render a part-book HTML template to a single-page Letter PDF.
     """

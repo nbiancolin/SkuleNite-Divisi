@@ -21,7 +21,10 @@ from celery import shared_task
 
 LOGGER = getLogger("divisi_processing")
 
-def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) -> dict[str, str]:
+
+def _format_mscz_file(
+    input_key: str, output_key: str, formatting_params: dict
+) -> dict[str, str]:
     """Internal fn to format a mscz file. Reads in the file from the key, and writes it back"""
 
     tmp_in_path = tmp_out_path = None
@@ -54,7 +57,7 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) 
     finally:
         # cleanup temp files if created
 
-        #TODO: Is this ever reached?
+        # TODO: Is this ever reached?
         if tmp_in_path and os.path.exists(tmp_in_path):
             os.remove(tmp_in_path)
         if tmp_out_path and os.path.exists(tmp_out_path):
@@ -63,7 +66,7 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) 
 
 @shared_task
 def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
-    """ Takes in divisi.UploadSession obj id, and formats it"""
+    """Takes in divisi.UploadSession obj id, and formats it"""
 
     session = UploadSession.objects.get(id=session_id)
 

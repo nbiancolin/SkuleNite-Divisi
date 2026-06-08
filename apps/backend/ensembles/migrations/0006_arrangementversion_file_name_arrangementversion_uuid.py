@@ -5,21 +5,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0005_alter_arrangement_piece_number'),
+        ("ensembles", "0005_alter_arrangement_piece_number"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='file_name',
-            field=models.CharField(default='name'),
+            model_name="arrangementversion",
+            name="file_name",
+            field=models.CharField(default="name"),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='arrangementversion',
-            name='uuid',
+            model_name="arrangementversion",
+            name="uuid",
             field=models.UUIDField(default=uuid.uuid4, editable=False),
         ),
     ]

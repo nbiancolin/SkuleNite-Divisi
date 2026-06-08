@@ -28,9 +28,9 @@ def part_names_with_latest_part_assets(ensemble):
         .values_list("part_name_id", flat=True)
         .distinct()
     )
-    return PartName.objects.filter(
-        ensemble=ensemble, id__in=part_name_ids
-    ).order_by(*_part_name_ordering())
+    return PartName.objects.filter(ensemble=ensemble, id__in=part_name_ids).order_by(
+        *_part_name_ordering()
+    )
 
 
 def build_part_name_matrix(ensemble):
@@ -55,14 +55,11 @@ def build_part_name_matrix(ensemble):
 
     columns = list(part_names_with_latest_part_assets(ensemble))
 
-    part_assets = (
-        PartAsset.objects.filter(
-            arrangement_version__arrangement__ensemble=ensemble,
-            arrangement_version__is_latest=True,
-            is_score=False,
-        )
-        .select_related("arrangement_version__arrangement")
-    )
+    part_assets = PartAsset.objects.filter(
+        arrangement_version__arrangement__ensemble=ensemble,
+        arrangement_version__is_latest=True,
+        is_score=False,
+    ).select_related("arrangement_version__arrangement")
 
     cells = []
     part_names_by_version = defaultdict(set)

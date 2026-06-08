@@ -5,15 +5,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0033_commit_created_by'),
+        ("ensembles", "0033_commit_created_by"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='formatting_steps',
-            field=models.JSONField(default=ensembles.formatting_steps_constants.default_formatting_steps),
+            model_name="arrangementversion",
+            name="formatting_steps",
+            field=models.JSONField(
+                default=ensembles.formatting_steps_constants.default_formatting_steps
+            ),
         ),
     ]

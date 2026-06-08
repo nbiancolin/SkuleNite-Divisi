@@ -110,7 +110,9 @@ def generate_tacet_page(
     )
 
 
-def generate_page_turn_page(part_name: str, show_title: str, export_date: str, show_number: str | None, **kwargs) -> BytesIO:
+def generate_page_turn_page(
+    part_name: str, show_title: str, export_date: str, show_number: str | None, **kwargs
+) -> BytesIO:
     if not show_number:
         show_number = ""
     return render_part_book_html(
@@ -194,8 +196,11 @@ def merge_pdfs(
     *,
     cover_pdf: BytesIO | None,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
-    page_turn_page: BytesIO | None = None, #If this is not passed in, generate one w/o any focused txt
-    page_merge_strategy: Literal["optimize"] | Literal["odd"] | Literal["raw"] = "optimize",
+    page_turn_page: BytesIO
+    | None = None,  # If this is not passed in, generate one w/o any focused txt
+    page_merge_strategy: Literal["optimize"]
+    | Literal["odd"]
+    | Literal["raw"] = "optimize",
     overwrite_page_numbers: bool = False,  # TODO[SC-280]: Fix this, its janky rn
     first_content_page_number: int = 1,
 ) -> MergedPdfResult:
@@ -211,14 +216,18 @@ def merge_pdfs(
         List of (toc_entry, pdf) where toc_entry.page will be filled in.
     """
 
-    assert page_merge_strategy in ["optimize", "odd", "raw"], f"Invalid page merge strategy: {page_merge_strategy}"
+    assert page_merge_strategy in ["optimize", "odd", "raw"], (
+        f"Invalid page merge strategy: {page_merge_strategy}"
+    )
 
     writer = PdfWriter()
     current_page = 0
     toc_entries: list[TocEntry] = []
 
     if not page_turn_page:
-        page_turn_page = generate_page_turn_page(part_name="", show_title="", show_number="", export_date="")
+        page_turn_page = generate_page_turn_page(
+            part_name="", show_title="", show_number="", export_date=""
+        )
 
     # Cover page
     if cover_pdf:
@@ -234,7 +243,10 @@ def merge_pdfs(
         match page_merge_strategy:
             case "optimize":
                 # curr page is odd = RHS
-                if _should_add_blank_page(current_page_position=((current_page + 1) % 2 == 1), num_pages=num_pages):
+                if _should_add_blank_page(
+                    current_page_position=((current_page + 1) % 2 == 1),
+                    num_pages=num_pages,
+                ):
                     writer.append(page_turn_page)
                     current_page += 1
 
@@ -282,20 +294,24 @@ def generate_full_part_book(
     """
 
     from ensembles.lib.pdf import generate_page_turn_page
-    page_turn_kwargs = toc_kwargs | {"show_number": ""} # TODO: Assess if we even need this..
+
+    page_turn_kwargs = toc_kwargs | {
+        "show_number": ""
+    }  # TODO: Assess if we even need this..
     page_turn = generate_page_turn_page(**page_turn_kwargs)
     # Pass 1: merge content only (no cover) to get TOC page numbers and content PDF
     pass1 = merge_pdfs(
         cover_pdf=None,
         content_pdfs=content_pdfs,
         overwrite_page_numbers=False,
-        page_turn_page=page_turn
+        page_turn_page=page_turn,
     )
 
     # TOC page numbers must account for: cover (1) + blank (1) + toc (1) + blank (1) = 4 pages before content
     pages_before_content = 4
     toc_entries_with_offset = [
-        {**entry, "page": entry["page"] + pages_before_content} for entry in pass1["toc_entries"]
+        {**entry, "page": entry["page"] + pages_before_content}
+        for entry in pass1["toc_entries"]
     ]
 
     # Generate TOC PDF

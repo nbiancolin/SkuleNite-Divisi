@@ -104,7 +104,9 @@ class JoinEnsembleView(APIView):
                     request.user.is_authenticated
                     and (
                         ensemble.owner == request.user
-                        or EnsembleUsership.objects.filter(ensemble=ensemble, user=request.user).exists()
+                        or EnsembleUsership.objects.filter(
+                            ensemble=ensemble, user=request.user
+                        ).exists()
                     )
                 )
                 if request.user.is_authenticated

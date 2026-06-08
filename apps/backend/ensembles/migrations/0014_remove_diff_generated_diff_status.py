@@ -4,19 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0013_diff'),
+        ("ensembles", "0013_diff"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='diff',
-            name='generated',
+            model_name="diff",
+            name="generated",
         ),
         migrations.AddField(
-            model_name='diff',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('in_progress', 'In Progress'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending', max_length=20),
+            model_name="diff",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Pending"),
+                    ("in_progress", "In Progress"),
+                    ("completed", "Completed"),
+                    ("failed", "Failed"),
+                ],
+                default="pending",
+                max_length=20,
+            ),
         ),
     ]

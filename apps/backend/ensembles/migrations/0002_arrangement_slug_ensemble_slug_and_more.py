@@ -4,37 +4,36 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0001_initial'),
+        ("ensembles", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangement',
-            name='slug',
-            field=models.SlugField(default='hi', unique=True),
+            model_name="arrangement",
+            name="slug",
+            field=models.SlugField(default="hi", unique=True),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='ensemble',
-            name='slug',
-            field=models.SlugField(default='hi', unique=True),
+            model_name="ensemble",
+            name="slug",
+            field=models.SlugField(default="hi", unique=True),
             preserve_default=False,
         ),
         migrations.AlterField(
-            model_name='arrangement',
-            name='act_number',
+            model_name="arrangement",
+            name="act_number",
             field=models.IntegerField(blank=True, default=1, null=True),
         ),
         migrations.AlterField(
-            model_name='arrangement',
-            name='title',
+            model_name="arrangement",
+            name="title",
             field=models.CharField(max_length=60),
         ),
         migrations.AlterField(
-            model_name='ensemble',
-            name='name',
+            model_name="ensemble",
+            name="name",
             field=models.CharField(max_length=30),
         ),
     ]

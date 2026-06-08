@@ -4,15 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0021_ensemble_owner_alter_arrangementversion_audio_state_and_more'),
+        (
+            "ensembles",
+            "0021_ensemble_owner_alter_arrangementversion_audio_state_and_more",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ensemble',
-            name='invite_token',
+            model_name="ensemble",
+            name="invite_token",
             field=models.CharField(blank=True, max_length=64, null=True, unique=True),
         ),
     ]

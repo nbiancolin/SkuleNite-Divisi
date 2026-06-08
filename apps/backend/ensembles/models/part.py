@@ -1,6 +1,6 @@
 from io import BytesIO
 from pathlib import Path
-from django.utils import timezone 
+from django.utils import timezone
 from django.db import models
 from django.db import transaction
 from django.db.models import Max
@@ -52,7 +52,7 @@ class PartAsset(models.Model):
     def __str__(self):
         part_type = "Score" if self.is_score else "Part"
         return f"{part_type}: {self.name} ({self.arrangement_version})"
-    
+
     def delete(self, **kwargs):
         # Delete files when diff is deleted
         keys_to_delete = [self.file_key]
@@ -81,7 +81,7 @@ class PartAsset(models.Model):
                 name="uniq_partasset_version_partname",
             ),
         ]
-    
+
 
 class PartName(models.Model):
     id: int
@@ -98,13 +98,16 @@ class PartName(models.Model):
     # Defaults to None, which means it will be set based on creation order
     order = models.PositiveIntegerField(null=True, blank=True)
 
-
     def get_arrangements(self) -> list:
         res = []
         for a in self.ensemble.arrangements.all():
-            #if the arrangement's latest version has a part asset with this part name (OR a mapping to this name), include it
+            # if the arrangement's latest version has a part asset with this part name (OR a mapping to this name), include it
             v = a.latest_version
-            if PartAsset.objects.filter(arrangement_version=v).filter(part_name=self).exists():
+            if (
+                PartAsset.objects.filter(arrangement_version=v)
+                .filter(part_name=self)
+                .exists()
+            ):
                 res.append(a.title)
         return res
 
@@ -283,8 +286,9 @@ class PartName(models.Model):
         # Arrangements that had a part under the name we're merging away:
         # when we re-upload that arrangement, we want "merge_from" label -> target.
         arrangements_with_merge_from = set(
-            PartAsset.objects.filter(part_name=merge_from)
-            .values_list("arrangement_version__arrangement_id", flat=True)
+            PartAsset.objects.filter(part_name=merge_from).values_list(
+                "arrangement_version__arrangement_id", flat=True
+            )
         )
         arrangements_with_merge_from.discard(None)
 
@@ -310,9 +314,9 @@ class PartName(models.Model):
             # Merge actual PartAsset references and delete the redundant PartName.
             target._merge_objs(merge_from)
 
-            if new_displayname and PartNameAlias.normalize(previous_target_name) != PartNameAlias.normalize(
-                new_displayname
-            ):
+            if new_displayname and PartNameAlias.normalize(
+                previous_target_name
+            ) != PartNameAlias.normalize(new_displayname):
                 target._persist_display_name_change_aliases(previous_target_name)
                 target.display_name = new_displayname
                 target.save(update_fields=["display_name"])
@@ -436,7 +440,6 @@ class PartBook(models.Model):
 
         self.finalized_at = export_datetime
         self.save(update_fields=["finalized_at"])
-
 
     def delete(self, **kwargs):
         # Delete files when diff is deleted

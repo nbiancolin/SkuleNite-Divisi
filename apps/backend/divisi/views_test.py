@@ -5,9 +5,10 @@ from django.urls import reverse
 
 from divisi.models import UploadSession
 
+
 def get_format_payload(session_id):
     return {
-        "session_id": session_id, 
+        "session_id": session_id,
         "style": "broadway",
         "show_title": "My Show",
         "show_number": "1-1",
@@ -15,7 +16,7 @@ def get_format_payload(session_id):
     }
 
 
-#can test formatting works
+# can test formatting works
 @pytest.mark.django_db
 @patch("divisi.serializers.export_mscz_to_pdf")
 @patch("divisi.serializers.format_upload_session")
@@ -35,5 +36,4 @@ def test_part_formatter_endpoint_works(mock_export, mock_format, client):
     assert session.completed is True
 
 
-
-#test it all e2e
+# test it all e2e

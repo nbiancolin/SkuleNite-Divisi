@@ -13,6 +13,7 @@ import os
 
 logger = getLogger("export_tasks")
 
+
 @shared_task
 def export_arrangement_version(version_id: int, action: str = "score"):
     """
@@ -45,7 +46,10 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     version.is_processing = False
                     version.save()
 
-                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
+                    ExportFailureLog.objects.create(
+                        arrangement_version=version,
+                        error_msg=f"No input file found for version {version_id}",
+                    )
 
                     return {"status": "error", "details": "No input file found"}
 
@@ -55,7 +59,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 
                 logger.info(f"Starting export for version {version_id}")
                 # Use the new function that creates Part records
-                result = export_all_parts_with_tracking(input_key, output_dir, arrangement_version_id=version_id)
+                result = export_all_parts_with_tracking(
+                    input_key, output_dir, arrangement_version_id=version_id
+                )
 
                 if result["status"] == "success":
                     logger.info(
@@ -67,7 +73,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                         f"Export failed for version {version_id}: {result.get('details', 'Unknown error')}"
                     )
                     version.error_on_export = True
-                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=result["details"])
+                    ExportFailureLog.objects.create(
+                        arrangement_version=version, error_msg=result["details"]
+                    )
 
                 version.is_processing = False
                 version.save()
@@ -82,7 +90,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 version.is_processing = False
                 version.save()
 
-                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+                ExportFailureLog.objects.create(
+                    arrangement_version=version, error_msg=str(e)
+                )
 
                 return {"status": "error", "details": str(e)}
 
@@ -94,7 +104,10 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     version.audio_state = ArrangementVersion.AudioStatus.ERROR
                     version.save(update_fields=["audio_state"])
 
-                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=f"No input file found for version {version_id}")
+                    ExportFailureLog.objects.create(
+                        arrangement_version=version,
+                        error_msg=f"No input file found for version {version_id}",
+                    )
                     return {
                         "status": "error",
                         "details": "No input file found when exporting MP3",
@@ -102,7 +115,9 @@ def export_arrangement_version(version_id: int, action: str = "score"):
 
                 output_key = version.audio_file_key
                 if default_storage.exists(output_key):
-                    logger.info(f"[EXPORT] - mp3 file already exists for version id {version_id}, returning.")
+                    logger.info(
+                        f"[EXPORT] - mp3 file already exists for version id {version_id}, returning."
+                    )
                     return {}
 
                 version.audio_state = ArrangementVersion.AudioStatus.PROCESSING
@@ -117,10 +132,11 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                     version.audio_state = ArrangementVersion.AudioStatus.ERROR
                     version.save(update_fields=["audio_state"])
                     print("Status was not success")
-                    ExportFailureLog.objects.create(arrangement_version=version, error_msg=res["details"])
-                
+                    ExportFailureLog.objects.create(
+                        arrangement_version=version, error_msg=res["details"]
+                    )
+
                 return res
-                
 
             except Exception as e:
                 logger.error(
@@ -129,9 +145,12 @@ def export_arrangement_version(version_id: int, action: str = "score"):
                 version.audio_state = ArrangementVersion.AudioStatus.ERROR
                 version.save(update_fields=["audio_state"])
 
-                ExportFailureLog.objects.create(arrangement_version=version, error_msg=str(e))
+                ExportFailureLog.objects.create(
+                    arrangement_version=version, error_msg=str(e)
+                )
 
                 return {"status": "error", "details": str(e)}
+
 
 @shared_task
 def prep_and_export_mscz(version_id):

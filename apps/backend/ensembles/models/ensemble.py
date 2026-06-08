@@ -18,11 +18,10 @@ if TYPE_CHECKING:
 logger = getLogger("app")
 
 
-
 class Ensemble(models.Model):
-    
     if TYPE_CHECKING:
         from django.db.models.manager import RelatedManager
+
         arrangements: RelatedManager["Arrangement"]
         part_names: RelatedManager["PartName"]
 
@@ -31,16 +30,15 @@ class Ensemble(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(max_length=10, choices=STYLE_CHOICES)
 
-
     part_books_generating = models.BooleanField(default=False)
     latest_part_book_revision = models.IntegerField(default=1)
-    
+
     owner = models.ForeignKey(
-        'auth.User',
-        related_name='owned_ensembles',
+        "auth.User",
+        related_name="owned_ensembles",
         on_delete=models.CASCADE,
         null=True,
-        blank=True
+        blank=True,
     )
     invite_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
 
@@ -55,7 +53,7 @@ class Ensemble(models.Model):
         while Ensemble.objects.filter(invite_token=token).exists():
             token = secrets.token_urlsafe(32)
         self.invite_token = token
-        self.save(update_fields=['invite_token'])
+        self.save(update_fields=["invite_token"])
         return token
 
     def get_or_create_invite_token(self):
@@ -64,28 +62,22 @@ class Ensemble(models.Model):
             self.generate_invite_token()
         return self.invite_token
 
-
-    #TODO[SC-284]: Allow for passing in custom revisions of arrangements here
+    # TODO[SC-284]: Allow for passing in custom revisions of arrangements here
     def generate_part_book_entries(self, part_book):
         """Given a part book, generate part book entries for all the arrangements in this ensemble."""
 
         PartBookEntry = apps.get_model("ensembles.PartBookEntry")
         PartAsset = apps.get_model("ensembles.PartAsset")
 
-        arrangements = (
-            self.arrangements
-            .annotate(
-                first_num=RawSQL(
-                    "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
-                    []
-                ),
-                second_num=RawSQL(
-                    "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
-                    []
-                ),
-            )
-            .order_by("first_num", "second_num", "mvt_no")
-        )
+        arrangements = self.arrangements.annotate(
+            first_num=RawSQL(
+                "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)", []
+            ),
+            second_num=RawSQL(
+                "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
+                [],
+            ),
+        ).order_by("first_num", "second_num", "mvt_no")
 
         position = 0
         for arrangement in arrangements:
@@ -105,7 +97,6 @@ class Ensemble(models.Model):
                 position=position,
             )
             position += 1
-
 
     def __str__(self):
         return self.name
