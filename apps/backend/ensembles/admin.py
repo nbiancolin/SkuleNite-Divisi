@@ -1,22 +1,21 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 
 from .models import (
-    ExportFailureLog,
-    Ensemble,
     Arrangement,
     ArrangementVersion,
-    Diff,
-    EnsembleUsership,
-    PartAsset,
-    PartName,
-    PartBook,
     Commit,
+    Diff,
+    Ensemble,
+    EnsembleUsership,
+    ExportFailureLog,
+    PartAsset,
+    PartBook,
+    PartName,
     UserScoreVersion,
 )
 from .tasks import export_arrangement_version, prep_and_export_mscz
-
-from django.http import HttpRequest
 
 
 class PdfObjMixin:

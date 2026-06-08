@@ -1,8 +1,8 @@
+from logging import getLogger
+
 from django.db import models
 
 from ensembles.models.arrangement_version import ArrangementVersion
-
-from logging import getLogger
 
 logger = getLogger("app")
 

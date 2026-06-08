@@ -1,23 +1,22 @@
-import pytest
-import zipfile
 import io
+import zipfile
 from unittest.mock import patch
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
+
+import pytest
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.urls import reverse
 
-from ensembles.models import PartAsset, PartName
-from ensembles.models import PartNameAlias
-from ensembles.factories import (
-    ArrangementVersionFactory,
-    ArrangementFactory,
-    EnsembleFactory,
-    PartNameFactory,
-    PartAssetFactory,
-)
 from divisi.tasks.export import export_all_parts_with_tracking
-
+from ensembles.factories import (
+    ArrangementFactory,
+    ArrangementVersionFactory,
+    EnsembleFactory,
+    PartAssetFactory,
+    PartNameFactory,
+)
+from ensembles.models import PartAsset, PartName, PartNameAlias
 
 """Tests for the export_all_parts_with_tracking function"""
 

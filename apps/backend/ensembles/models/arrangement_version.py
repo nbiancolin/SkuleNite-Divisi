@@ -1,14 +1,12 @@
-from django.db import models
-from django.core.files.storage import default_storage
-
 import os
 from logging import getLogger
-
-from ensembles.models.arrangement import Arrangement
-from ensembles.formatting_steps_constants import default_formatting_steps
-
 from typing import TYPE_CHECKING
 
+from django.core.files.storage import default_storage
+from django.db import models
+
+from ensembles.formatting_steps_constants import default_formatting_steps
+from ensembles.models.arrangement import Arrangement
 
 if TYPE_CHECKING:
     from ensembles.models.part import PartAsset

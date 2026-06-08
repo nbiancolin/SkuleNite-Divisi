@@ -1,24 +1,19 @@
-import tempfile
-import os
-from celery import shared_task
-import subprocess
-
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-
-from divisi.models import UploadSession
-
-from divisi.lib import render_mscz, render_all_parts_pdf
-from ensembles.models import ArrangementVersion, PartAsset, PartName
-
-import zipfile
 import io
-
-from pypdf import PdfWriter, PdfReader
+import os
+import subprocess
+import tempfile
+import zipfile
 from io import BytesIO
-
-
 from logging import getLogger
+
+from celery import shared_task
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from pypdf import PdfReader, PdfWriter
+
+from divisi.lib import render_all_parts_pdf, render_mscz
+from divisi.models import UploadSession
+from ensembles.models import ArrangementVersion, PartAsset, PartName
 
 LOGGER = getLogger("divisi_export")
 

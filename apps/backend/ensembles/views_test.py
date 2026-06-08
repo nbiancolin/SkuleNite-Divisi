@@ -1,23 +1,23 @@
-import pytest
 from io import BytesIO
 from unittest.mock import patch
 
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from musescore_score_diff.merge import MergeConflictException
 
-from ensembles.models import (
-    ArrangementVersion,
-    Commit,
-    EnsembleUsership,
-    UserScoreVersion,
-)
 from ensembles.factories import (
     ArrangementFactory,
     ArrangementVersionFactory,
     EnsembleUsershipFactory,
     UserFactory,
 )
-from musescore_score_diff.merge import MergeConflictException
+from ensembles.models import (
+    ArrangementVersion,
+    Commit,
+    EnsembleUsership,
+    UserScoreVersion,
+)
 
 
 @pytest.mark.django_db
@@ -627,10 +627,9 @@ def test_update_part_order_as_admin(ensemble, user, client):
 @pytest.mark.django_db
 def test_update_part_order_as_non_admin(ensemble, user, client):
     """Test that non-admins cannot update part order"""
-    from ensembles.models import PartName, EnsembleUsership
-
     # Create another user who is not an admin
     from ensembles.factories import UserFactory
+    from ensembles.models import EnsembleUsership, PartName
 
     non_admin = UserFactory()
 
@@ -689,8 +688,8 @@ def test_update_part_order_invalid_part_id(ensemble, user, client):
 @pytest.mark.django_db
 def test_update_part_order_wrong_ensemble(ensemble, user, client):
     """Test that updating order with part from different ensemble fails"""
-    from ensembles.models import PartName
     from ensembles.factories import EnsembleFactory
+    from ensembles.models import PartName
 
     ensemble.owner = user
     ensemble.save()
@@ -935,7 +934,7 @@ def test_rename_part_name_duplicate_rejected(ensemble, user, client):
 
 @pytest.mark.django_db
 def test_rename_part_name_as_non_admin(ensemble, user, client):
-    from ensembles.models import PartName, EnsembleUsership
+    from ensembles.models import EnsembleUsership, PartName
 
     part = PartName.objects.create(ensemble=ensemble, display_name="Flute")
     non_admin = UserFactory()
@@ -953,7 +952,7 @@ def test_rename_part_name_as_non_admin(ensemble, user, client):
 
 @pytest.mark.django_db
 def test_merge_part_names_as_non_admin(ensemble, user, client):
-    from ensembles.models import PartName, EnsembleUsership
+    from ensembles.models import EnsembleUsership, PartName
 
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Flute I")

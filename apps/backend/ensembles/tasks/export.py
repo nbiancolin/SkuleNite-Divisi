@@ -1,15 +1,16 @@
+import os
+from logging import getLogger
+
 from celery import shared_task
+from django.core.files.storage import default_storage
 
 from divisi.tasks import format_arrangement_version
-from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
 from divisi.tasks.export import (
-    export_mscz_to_mp3,
     export_all_parts_with_tracking,
+    export_mscz_to_mp3,
 )
+from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
 from ensembles.models import ArrangementVersion, ExportFailureLog
-from logging import getLogger
-from django.core.files.storage import default_storage
-import os
 
 logger = getLogger("export_tasks")
 

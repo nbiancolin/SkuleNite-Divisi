@@ -1,15 +1,15 @@
 import factory
+from django.contrib.auth import get_user_model
 from factory.django import DjangoModelFactory
+
 from ensembles.models import (
-    Ensemble,
     Arrangement,
     ArrangementVersion,
     Diff,
+    Ensemble,
     PartAsset,
     PartName,
 )
-
-from django.contrib.auth import get_user_model
 
 
 class EnsembleFactory(DjangoModelFactory):

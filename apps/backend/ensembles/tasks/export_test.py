@@ -1,12 +1,12 @@
-import pytest
 from unittest.mock import patch
-from django.core.files.storage import default_storage
+
+import pytest
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
-from ensembles.models import ExportFailureLog
 from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
+from ensembles.models import ExportFailureLog
 from ensembles.tasks import apply_metadata_and_export_mscz, export_arrangement_version
-
 
 """Tests for the export_arrangement_version task"""
 

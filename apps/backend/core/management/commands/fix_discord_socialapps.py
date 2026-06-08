@@ -16,9 +16,9 @@ MultipleObjectsReturned error that occurs when both exist simultaneously.
 See DISCORD_SETUP.md for full documentation.
 """
 
-from django.core.management.base import BaseCommand
 from allauth.socialaccount.models import SocialApp
 from django.conf import settings
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):

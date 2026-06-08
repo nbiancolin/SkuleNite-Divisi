@@ -1,15 +1,15 @@
-import pytest
 from decimal import Decimal
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils.dateparse import parse_datetime
 
 from ensembles.serializers import (
-    ArrangementVersionSerializer,
     ArrangementSerializer,
-    EnsembleSerializer,
+    ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
+    EnsembleSerializer,
 )
-
 
 # -------------------------------------------------------------------
 # Arrangement / Ensemble serializer tests

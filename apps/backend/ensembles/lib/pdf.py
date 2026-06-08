@@ -1,11 +1,11 @@
+from io import BytesIO
+from typing import Literal, TypedDict
+
+from pypdf import PdfReader, PdfWriter
 from reportlab.lib import pagesizes
 from reportlab.pdfgen import canvas
-from io import BytesIO
-from pypdf import PdfWriter, PdfReader
 
 from ensembles.lib.part_book_pdf import render_part_book_html
-
-from typing import TypedDict, Literal
 
 
 class TocEntry(TypedDict):

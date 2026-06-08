@@ -1,13 +1,14 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.contrib.auth import get_user_model
 from allauth.socialaccount.models import SocialAccount
-from core.models import SiteWarning
+from django.contrib.auth import get_user_model
+from django.middleware.csrf import get_token
 from django.shortcuts import redirect
 from django.views import View
-from django.middleware.csrf import get_token
+from rest_framework import status
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.models import SiteWarning
 
 User = get_user_model()
 

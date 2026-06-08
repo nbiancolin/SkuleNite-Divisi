@@ -2,9 +2,9 @@
 Signal handlers for django-allauth to handle redirects after social login.
 """
 
-from django.dispatch import receiver
 from allauth.account.signals import user_logged_in
 from allauth.socialaccount.signals import pre_social_login
+from django.dispatch import receiver
 
 
 @receiver(user_logged_in)

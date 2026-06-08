@@ -1,9 +1,9 @@
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
-from ensembles.models import ArrangementVersion
 
 from divisi.models import UploadSession
-from divisi.tasks import format_upload_session, export_mscz_to_pdf
+from divisi.tasks import export_mscz_to_pdf, format_upload_session
+from ensembles.models import ArrangementVersion
 
 STYLE_CHOICES = [("jazz", "Jazz"), ("broadway", "Broadway"), ("classical", "Classical")]
 

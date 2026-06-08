@@ -15,29 +15,26 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
-from django.conf.urls.static import static
-from django.urls import path, include
-from rest_framework import routers
-
 from django.conf import settings
-
-from core.views import GetWarningsView
-
-from ensembles.views import (
-    EnsembleViewSet,
-    ArrangementViewSet,
-    ArrangementByIdViewSet,
-    ArrangementVersionViewSet,
-    JoinEnsembleView,
-)
-from divisi.views import PartFormatterViewSet
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
+from rest_framework import routers
 
 from core.views import (
     CurrentUserView,
-    LogoutView,
     DirectDiscordLoginView,
     GetCsrfTokenView,
+    GetWarningsView,
+    LogoutView,
+)
+from divisi.views import PartFormatterViewSet
+from ensembles.views import (
+    ArrangementByIdViewSet,
+    ArrangementVersionViewSet,
+    ArrangementViewSet,
+    EnsembleViewSet,
+    JoinEnsembleView,
 )
 
 divisi_router = routers.DefaultRouter()

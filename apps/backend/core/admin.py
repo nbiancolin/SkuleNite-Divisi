@@ -29,7 +29,7 @@ class SiteWarningAdmin(admin.ModelAdmin):
 admin.site.register(SiteWarning, SiteWarningAdmin)
 
 # unregister unneeded socialaccount models
-from allauth.socialaccount.models import SocialApp, SocialAccount, SocialToken
+from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 
 admin.site.unregister(SocialApp)
 admin.site.unregister(SocialAccount)

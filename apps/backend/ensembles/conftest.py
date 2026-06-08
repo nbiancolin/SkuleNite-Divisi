@@ -1,14 +1,13 @@
 import pytest
+from rest_framework.test import APIClient
 
 from ensembles.factories import (
-    EnsembleFactory,
     ArrangementFactory,
     ArrangementVersionFactory,
     DiffFactory,
+    EnsembleFactory,
     EnsembleUsershipFactory,
 )
-
-from rest_framework.test import APIClient
 
 
 @pytest.fixture

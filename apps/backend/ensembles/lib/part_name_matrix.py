@@ -1,7 +1,7 @@
 from collections import defaultdict
 from itertools import combinations
 
-from django.db.models import Value, IntegerField
+from django.db.models import IntegerField, Value
 from django.db.models.functions import Coalesce
 
 from ensembles.models import PartAsset, PartName

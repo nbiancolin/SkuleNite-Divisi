@@ -1,7 +1,8 @@
-import pytest
-import zipfile
 import io
-from unittest.mock import patch, MagicMock, mock_open
+import zipfile
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 import requests
 
 from divisi.lib.musescore_headless import render_all_parts_pdf

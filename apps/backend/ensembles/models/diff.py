@@ -1,8 +1,9 @@
-from django.db import models
-from django.core.files.storage import default_storage
-from ensembles.models.arrangement_version import ArrangementVersion
-
 from logging import getLogger
+
+from django.core.files.storage import default_storage
+from django.db import models
+
+from ensembles.models.arrangement_version import ArrangementVersion
 
 logger = getLogger("app")
 

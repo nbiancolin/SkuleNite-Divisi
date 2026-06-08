@@ -1,9 +1,8 @@
-from django.db import models
-from django.core.files.storage import default_storage
-
+import logging
 import uuid
 
-import logging
+from django.core.files.storage import default_storage
+from django.db import models
 
 logger = logging.getLogger(__name__)
 

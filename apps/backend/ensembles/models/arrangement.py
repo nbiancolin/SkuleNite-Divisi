@@ -1,11 +1,11 @@
-from django.db import models
 from logging import getLogger
-from ensembles.models import Ensemble
-from ensembles.models.constants import STYLE_CHOICES
-from ensembles.lib.slug import generate_unique_slug
-
 from typing import TYPE_CHECKING
 
+from django.db import models
+
+from ensembles.lib.slug import generate_unique_slug
+from ensembles.models import Ensemble
+from ensembles.models.constants import STYLE_CHOICES
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement_version import ArrangementVersion

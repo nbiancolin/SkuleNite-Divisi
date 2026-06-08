@@ -1,3 +1,5 @@
+from logging import getLogger
+
 from celery import shared_task
 
 from ensembles.lib.part_name_matrix import part_names_with_latest_part_assets
@@ -6,7 +8,6 @@ from ensembles.models import (
     PartBook,
     PartName,
 )
-from logging import getLogger
 
 logger = getLogger("part_book_tasks")
 

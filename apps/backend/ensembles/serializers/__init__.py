@@ -1,37 +1,33 @@
 import io
 from collections import defaultdict
-from rest_framework import serializers
-from rest_framework import status
+from logging import getLogger
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import F
-from django.core.files.storage import default_storage
-from django.conf import settings
-
-from ensembles.models import (
-    Ensemble,
-    EnsembleUsership,
-    Arrangement,
-    ArrangementVersion,
-    PartBook,
-    PartAsset,
-    PartName,
-    Commit,
-    UserScoreVersion,
-)
-from ensembles.tasks import (
-    apply_metadata_and_export_mscz,
-    prep_and_export_mscz,
-)
-
-from django.contrib.auth import get_user_model
-
-from logging import getLogger
+from rest_framework import serializers, status
 
 from ensembles.formatting_steps_constants import (
     FORMATTING_STEP_KEYS,
     default_formatting_steps,
     merge_formatting_step_defaults,
+)
+from ensembles.models import (
+    Arrangement,
+    ArrangementVersion,
+    Commit,
+    Ensemble,
+    EnsembleUsership,
+    PartAsset,
+    PartBook,
+    PartName,
+    UserScoreVersion,
+)
+from ensembles.tasks import (
+    apply_metadata_and_export_mscz,
+    prep_and_export_mscz,
 )
 
 logger = getLogger("EnsembleViews")
@@ -532,13 +528,14 @@ class CreateArrangementCommitSerializer(serializers.Serializer):
                     dst.write(src.read())
                 return temp_input
 
-            from musescore_score_diff.merge import (
-                three_way_merge_mscz,
-                MergeConflictException,
-            )
-            import tempfile
             import os
+            import tempfile
+
             from django.core.files.base import ContentFile
+            from musescore_score_diff.merge import (
+                MergeConflictException,
+                three_way_merge_mscz,
+            )
 
             merge_error_response = {
                 "merge_error": "Unable to merge scores. Use a force commit",

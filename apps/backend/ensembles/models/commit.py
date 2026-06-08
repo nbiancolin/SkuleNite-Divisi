@@ -1,9 +1,9 @@
-from django.db import models
+from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db import models
 
 from ensembles.models import Arrangement, ArrangementVersion
 from ensembles.models.utils import DeleteFilesMixin
-from django.conf import settings
 
 
 class Commit(DeleteFilesMixin, models.Model):

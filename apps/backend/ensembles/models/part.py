@@ -1,26 +1,24 @@
 from io import BytesIO
+from logging import getLogger
 from pathlib import Path
-from django.utils import timezone
-from django.db import models
-from django.db import transaction
-from django.db.models import Max
-from django.core.files.storage import default_storage
-from django.core.exceptions import ValidationError
-
-from ensembles.models.arrangement_version import ArrangementVersion
-from ensembles.lib.slug import generate_unique_slug
-from ensembles.lib.datetime_format import format_part_book_export_datetime
-from ensembles.lib.pdf import TocEntry
-from ensembles.lib.pdf import (
-    generate_full_part_book,
-    generate_cover_page,
-    generate_tacet_page,
-    PartBookInfo,
-)
-
 from typing import TYPE_CHECKING
 
-from logging import getLogger
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+from django.db import models, transaction
+from django.db.models import Max
+from django.utils import timezone
+
+from ensembles.lib.datetime_format import format_part_book_export_datetime
+from ensembles.lib.pdf import (
+    PartBookInfo,
+    TocEntry,
+    generate_cover_page,
+    generate_full_part_book,
+    generate_tacet_page,
+)
+from ensembles.lib.slug import generate_unique_slug
+from ensembles.models.arrangement_version import ArrangementVersion
 
 logger = getLogger("app")
 

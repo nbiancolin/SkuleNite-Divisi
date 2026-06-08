@@ -1,23 +1,19 @@
-import tempfile
 import os
 import shutil
+import tempfile
+from logging import getLogger
 
+from celery import shared_task
 from django.core.files import File
 from django.core.files.storage import default_storage
-
 from musescore_part_formatter.main import format_mscz
 
+from divisi.models import UploadSession
 from ensembles.formatting_steps_constants import (
     FORMATTING_STEP_KEYS,
     merge_formatting_step_defaults,
 )
-
-from divisi.models import UploadSession
 from ensembles.models import ArrangementVersion
-
-from logging import getLogger
-
-from celery import shared_task
 
 LOGGER = getLogger("divisi_processing")
 

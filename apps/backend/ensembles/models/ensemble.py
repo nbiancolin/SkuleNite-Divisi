@@ -1,14 +1,13 @@
-from django.db import models
-from django.apps import apps
 import secrets
 from logging import getLogger
-from ensembles.models.constants import STYLE_CHOICES
-from ensembles.lib.slug import generate_unique_slug
-
-from django.db.models.expressions import RawSQL
-
 from typing import TYPE_CHECKING
 
+from django.apps import apps
+from django.db import models
+from django.db.models.expressions import RawSQL
+
+from ensembles.lib.slug import generate_unique_slug
+from ensembles.models.constants import STYLE_CHOICES
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement import Arrangement

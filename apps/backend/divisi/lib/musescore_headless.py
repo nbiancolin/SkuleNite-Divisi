@@ -1,5 +1,5 @@
-from django.conf import settings
 import requests
+from django.conf import settings
 
 
 def _get_host() -> str:
