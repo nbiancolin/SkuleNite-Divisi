@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from weasyprint import CSS, HTML
 
 FONT_DIR = Path(os.environ.get("PART_BOOK_FONT_DIR", "/usr/share/fonts/truetype/custom"))
+PART_BOOK_TEMPLATE_DIR = Path(__file__).resolve().parent.parent / "templates" / "part_book"
 
 # Filenames from assets/fonts.zip (see ensembles/lib/fonts.py)
 FONT_FILES = {
@@ -45,7 +46,10 @@ def render_part_book_html(template_name: str, *, selected_style: str = "broadway
     css_string = render_to_string("part_book/styles.css", full_context)
 
     buffer = BytesIO()
-    HTML(string=html_string).write_pdf(
+    HTML(
+        string=html_string,
+        base_url=f"{PART_BOOK_TEMPLATE_DIR.as_uri()}/",
+    ).write_pdf(
         buffer,
         stylesheets=[CSS(string=css_string)],
     )

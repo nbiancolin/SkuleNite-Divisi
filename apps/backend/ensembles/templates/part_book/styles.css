@@ -219,3 +219,70 @@ body.style-jazz {
   text-align: center;
   font-size: 12pt;
 }
+
+/* --- Page turn --- */
+
+.page-turn .top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35in;
+}
+
+.page-turn .part-name {
+  font-size: 12pt;
+  max-width: 45%;
+}
+
+.page-turn .show-meta {
+  text-align: right;
+  max-width: 50%;
+}
+
+.page-turn .show-number {
+  display: inline-block;
+  font-size: 32pt;
+  line-height: 1;
+  padding: 0.08in 0.2in 0.12in;
+  border: 1px solid #000;
+}
+
+.page-turn .show-title {
+  font-size: 12pt;
+  margin-top: 0.08in;
+}
+
+.page-turn-content {
+  position: absolute;
+  top: 3.6in;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.page-turn-image {
+  margin-bottom: 0.45in;
+}
+
+.page-turn-image img {
+  width: 2.5in;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.page-turn-label {
+  margin: 0;
+  padding: 0 1in;
+  font-size: 12pt;
+  line-height: 1.4;
+}
+
+.page-turn .revision {
+  position: absolute;
+  bottom: 0.75in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12pt;
+}
