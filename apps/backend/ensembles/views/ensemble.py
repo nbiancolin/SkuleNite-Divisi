@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from comments.models import ArrangementVersionCommentThread
 from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
@@ -101,6 +102,13 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                         arrangement=OuterRef("pk"),
                         children__isnull=True,
                         version__isnull=True,
+                    )
+                ),
+                _has_unresolved_comments_on_latest_version=Exists(
+                    ArrangementVersionCommentThread.objects.filter(
+                        arrangement_version__arrangement=OuterRef("pk"),
+                        arrangement_version__is_latest=True,
+                        status=ArrangementVersionCommentThread.Status.OPEN,
                     )
                 ),
                 first_num=RawSQL(

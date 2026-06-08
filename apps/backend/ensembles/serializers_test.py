@@ -60,6 +60,7 @@ def test_arrangement_serializer_includes_latest_version(
         "latest_version",
         "latest_version_num",
         "has_unversioned_latest_commit",
+        "has_unresolved_comments_on_latest_version",
     ]
     _, latest = arrangement_versions
     data = ArrangementSerializer(arrangement).data
@@ -77,6 +78,7 @@ def test_arrangement_serializer_includes_latest_version(
         assert data[field] == getattr(arrangement, field)
 
     assert data["has_unversioned_latest_commit"] is False
+    assert data["has_unresolved_comments_on_latest_version"] is False
 
 
 @pytest.mark.django_db
@@ -91,6 +93,46 @@ def test_arrangement_serializer_has_unversioned_latest_commit(arrangement, user)
 
     data = ArrangementSerializer(arrangement).data
     assert data["has_unversioned_latest_commit"] is True
+
+
+@pytest.mark.django_db
+def test_arrangement_serializer_has_unresolved_comments_on_latest_version(
+    arrangement, arrangement_versions, user
+):
+    from comments.models import ArrangementVersionCommentThread
+
+    _, latest = arrangement_versions
+    ArrangementVersionCommentThread.objects.create(
+        arrangement_version=latest,
+        created_by=user,
+        page_number=1,
+        x=0.5,
+        y=0.5,
+        status=ArrangementVersionCommentThread.Status.OPEN,
+    )
+
+    data = ArrangementSerializer(arrangement).data
+    assert data["has_unresolved_comments_on_latest_version"] is True
+
+
+@pytest.mark.django_db
+def test_arrangement_serializer_ignores_resolved_comments_on_latest_version(
+    arrangement, arrangement_versions, user
+):
+    from comments.models import ArrangementVersionCommentThread
+
+    _, latest = arrangement_versions
+    ArrangementVersionCommentThread.objects.create(
+        arrangement_version=latest,
+        created_by=user,
+        page_number=1,
+        x=0.5,
+        y=0.5,
+        status=ArrangementVersionCommentThread.Status.RESOLVED,
+    )
+
+    data = ArrangementSerializer(arrangement).data
+    assert data["has_unresolved_comments_on_latest_version"] is False
 
 
 @pytest.mark.django_db

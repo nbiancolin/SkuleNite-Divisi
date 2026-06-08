@@ -112,6 +112,7 @@ class ArrangementSerializer(serializers.ModelSerializer):
     latest_version = ArrangementVersionSerializer(read_only=True)
     latest_version_num = serializers.ReadOnlyField()
     has_unversioned_latest_commit = serializers.SerializerMethodField()
+    has_unresolved_comments_on_latest_version = serializers.SerializerMethodField()
 
     class Meta:
         model = Arrangement
@@ -129,6 +130,7 @@ class ArrangementSerializer(serializers.ModelSerializer):
             "latest_version",
             "latest_version_num",
             "has_unversioned_latest_commit",
+            "has_unresolved_comments_on_latest_version",
         ]
         read_only_fields = [
             "slug",
@@ -141,6 +143,12 @@ class ArrangementSerializer(serializers.ModelSerializer):
         if annotated is not None:
             return bool(annotated)
         return obj.has_unversioned_latest_commit
+
+    def get_has_unresolved_comments_on_latest_version(self, obj) -> bool:
+        annotated = getattr(obj, "_has_unresolved_comments_on_latest_version", None)
+        if annotated is not None:
+            return bool(annotated)
+        return obj.has_unresolved_comments_on_latest_version
 
 
 class EnsembleSerializer(serializers.ModelSerializer):

@@ -77,6 +77,17 @@ class Arrangement(models.Model):
         return latest is not None and not latest.has_version
 
     @property
+    def has_unresolved_comments_on_latest_version(self) -> bool:
+        from comments.models import ArrangementVersionCommentThread
+
+        latest = self.latest_version
+        if latest is None:
+            return False
+        return latest.comment_threads.filter(
+            status=ArrangementVersionCommentThread.Status.OPEN
+        ).exists()
+
+    @property
     def ensemble_name(self):
         return self.ensemble.name
 
