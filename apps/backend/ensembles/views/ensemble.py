@@ -1,15 +1,17 @@
 from django.conf import settings
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.db.models.expressions import RawSQL
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from comments.models import ArrangementVersionCommentThread
 from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
     ArrangementVersion,
+    Commit,
     Ensemble,
     EnsembleUsership,
     PartBook,
@@ -104,16 +106,32 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        arrangements = ensemble.arrangements.annotate(
-            first_num=RawSQL(
-                "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
-                [],
-            ),
-            second_num=RawSQL(
-                "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
-                [],
-            ),
-        ).order_by("first_num", "second_num", "mvt_no")
+        arrangements = (
+            ensemble.arrangements.annotate(
+                _has_unversioned_latest_commit=Exists(
+                    Commit.objects.filter(
+                        arrangement=OuterRef("pk"),
+                        children__isnull=True,
+                        version__isnull=True,
+                    )
+                ),
+                _has_unresolved_comments_on_latest_version=Exists(
+                    ArrangementVersionCommentThread.objects.filter(
+                        arrangement_version__arrangement=OuterRef("pk"),
+                        arrangement_version__is_latest=True,
+                        status=ArrangementVersionCommentThread.Status.OPEN,
+                    )
+                ),
+                first_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
+                    [],
+                ),
+                second_num=RawSQL(
+                    "CAST((regexp_matches(mvt_no, '^[0-9]+(?:-|m)([0-9]+)'))[1] AS INTEGER)",
+                    [],
+                ),
+            ).order_by("first_num", "second_num", "mvt_no")
+        )
         serializer = ArrangementSerializer(arrangements, many=True)
         return Response(serializer.data)
 
