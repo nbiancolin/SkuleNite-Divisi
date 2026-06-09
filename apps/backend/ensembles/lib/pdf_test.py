@@ -52,7 +52,7 @@ def test_merge_pdfs_raw_has_no_blank_pages_between_content():
     assert result["toc_entries"][1]["page"] == 2
 
 
-def test_merge_pdfs_optimize_inserts_blank_between_odd_page_counts():
+def test_merge_pdfs_optimize_does_not_pad_single_page_songs():
     pdf1 = _make_single_page_pdf("song1")
     pdf2 = _make_single_page_pdf("song2")
     result = merge_pdfs(
@@ -63,8 +63,8 @@ def test_merge_pdfs_optimize_inserts_blank_between_odd_page_counts():
         ],
         page_merge_strategy="optimize",
     )
-    # Two 1-page songs: optimize inserts a page-turn page before song 2
-    assert count_pdf_pages(result["pdf"]) == 3
+    # Two 1-page songs: placement does not matter, so no page-turn padding
+    assert count_pdf_pages(result["pdf"]) == 2
 
 
 @pytest.mark.skipif(IS_CI, reason="WeasyPrint PDF smoke test skipped in CI")

@@ -363,7 +363,12 @@ class EnsembleViewSet(viewsets.ModelViewSet):
             status=status.HTTP_202_ACCEPTED,
         )
 
-    @action(detail=True, methods=["post"], url_path="generate-part-book")
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="generate-part-book",
+        url_name="generate-part-book",
+    )
     def generate_single_part_book(self, request, slug=None):
         ensemble = self.get_object()
         user = request.user
