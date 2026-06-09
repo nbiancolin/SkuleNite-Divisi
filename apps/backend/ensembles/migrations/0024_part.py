@@ -5,23 +5,37 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0023_ensembleusership_role'),
+        ("ensembles", "0023_ensembleusership_role"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Part',
+            name="Part",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=255)),
-                ('file_key', models.CharField(max_length=500)),
-                ('is_score', models.BooleanField(default=False)),
-                ('arrangement_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parts', to='ensembles.arrangementversion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=255)),
+                ("file_key", models.CharField(max_length=500)),
+                ("is_score", models.BooleanField(default=False)),
+                (
+                    "arrangement_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="parts",
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['is_score', 'name'],
+                "ordering": ["is_score", "name"],
             },
         ),
     ]

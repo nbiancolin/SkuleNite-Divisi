@@ -1,0 +1,288 @@
+/* Part book PDF styles — edit freely; rendered with Django then passed to WeasyPrint. */
+
+{% if font_roman_uri %}
+@font-face {
+  font-family: "PartBookRoman";
+  src: url("{{ font_roman_uri }}");
+  font-weight: normal;
+  font-style: normal;
+}
+{% endif %}
+
+{% if font_jazz_uri %}
+@font-face {
+  font-family: "PartBookJazz";
+  src: url("{{ font_jazz_uri }}");
+  font-weight: normal;
+  font-style: normal;
+}
+{% endif %}
+
+@page {
+  size: letter;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  width: 8.5in;
+  height: 11in;
+  font-family: "PartBookRoman", "Palatino Linotype", Palatino, serif;
+  color: #000;
+}
+
+body.style-jazz {
+  font-family: "PartBookJazz", "Inkpen2 Script Std", cursive, serif;
+}
+
+.page {
+  position: relative;
+  width: 8.5in;
+  height: 11in;
+  padding: 0.6in;
+}
+
+/* --- Cover --- */
+
+.cover .part-name {
+  position: absolute;
+  top: 3.2in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 20pt;
+}
+
+.cover .show-title {
+  position: absolute;
+  top: 4.1in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 32pt;
+  line-height: 1.15;
+}
+
+.cover .show-subtitle {
+  position: absolute;
+  top: 4.9in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 16pt;
+}
+
+.cover .revision {
+  position: absolute;
+  top: 5.35in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 14pt;
+}
+
+.cover .revision--solo {
+  top: 5.0in;
+}
+
+.cover .copyright {
+  position: absolute;
+  bottom: 0.75in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12pt;
+}
+
+/* --- Table of contents --- */
+
+.toc .header {
+  text-align: center;
+  margin-bottom: 0.35in;
+}
+
+.toc .show-title {
+  font-size: 32pt;
+  line-height: 1.1;
+  margin: 0;
+}
+
+.toc .show-subtitle {
+  font-size: 28pt;
+  line-height: 1.1;
+  margin: 0.15in 0 0;
+}
+
+.toc .part-name {
+  font-size: 16pt;
+  margin-bottom: 0.35in;
+}
+
+.toc .entries {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.25in;
+  font-size: 12pt;
+}
+
+.toc .entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.25in;
+  margin-bottom: 0.18in;
+}
+
+.toc .entry-title {
+  flex: 1 1 auto;
+}
+
+.toc .entry-page {
+  flex: 0 0 auto;
+  min-width: 0.5in;
+  text-align: right;
+}
+
+.toc .revision {
+  position: absolute;
+  bottom: 0.75in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12pt;
+}
+
+/* --- Tacet --- */
+
+.tacet .top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35in;
+}
+
+.tacet .part-name {
+  font-size: 12pt;
+  max-width: 45%;
+}
+
+.tacet .show-meta {
+  text-align: right;
+  max-width: 50%;
+}
+
+.tacet .show-number {
+  display: inline-block;
+  font-size: 32pt;
+  line-height: 1;
+  padding: 0.08in 0.2in 0.12in;
+  border: 1px solid #000;
+}
+
+.tacet .show-title {
+  font-size: 12pt;
+  margin-top: 0.08in;
+}
+
+.tacet .song-title {
+  text-align: center;
+  font-size: 32pt;
+  line-height: 1.15;
+  margin: 0.15in 0 0;
+}
+
+.tacet .song-subtitle {
+  text-align: center;
+  font-size: 28pt;
+  line-height: 1.15;
+  margin: 0.1in 0 0;
+}
+
+.tacet .tacet-label {
+  position: absolute;
+  top: 4.6in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 32pt;
+}
+
+.tacet .revision {
+  position: absolute;
+  bottom: 0.75in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12pt;
+}
+
+/* --- Page turn --- */
+
+.page-turn .top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.35in;
+}
+
+.page-turn .part-name {
+  font-size: 12pt;
+  max-width: 45%;
+}
+
+.page-turn .show-meta {
+  text-align: right;
+  max-width: 50%;
+}
+
+.page-turn .show-number {
+  display: inline-block;
+  font-size: 32pt;
+  line-height: 1;
+  padding: 0.08in 0.2in 0.12in;
+  border: 1px solid #000;
+}
+
+.page-turn .show-title {
+  font-size: 12pt;
+  margin-top: 0.08in;
+}
+
+.page-turn-content {
+  position: absolute;
+  top: 3.6in;
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.page-turn-image {
+  margin-bottom: 0.45in;
+}
+
+.page-turn-image img {
+  width: 2.5in;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.page-turn-label {
+  margin: 0;
+  padding: 0 1in;
+  font-size: 12pt;
+  line-height: 1.4;
+}
+
+.page-turn .revision {
+  position: absolute;
+  bottom: 0.75in;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12pt;
+}

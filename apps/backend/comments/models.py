@@ -19,7 +19,9 @@ class ArrangementVersionCommentThread(models.Model):
         related_name="created_arrangement_version_comment_threads",
         on_delete=models.CASCADE,
     )
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN)
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.OPEN
+    )
     page_number = models.PositiveIntegerField()
     x = models.FloatField()
     y = models.FloatField()

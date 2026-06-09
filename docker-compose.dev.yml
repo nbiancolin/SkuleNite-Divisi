@@ -18,6 +18,8 @@ services:
       - 0.0.0.0:8000
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
+      - DJANGO_TIME_ZONE=America/Toronto
+      - TZ=America/Toronto
       - POSTGRES_DB=${POSTGRES_DB:-mydb}
       - POSTGRES_USER=${POSTGRES_USER:-user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}
@@ -75,6 +77,8 @@ services:
       - --loglevel=info
     environment:
       - DJANGO_SETTINGS_MODULE=backend.settings.development
+      - DJANGO_TIME_ZONE=America/Toronto
+      - TZ=America/Toronto
       - POSTGRES_DB=${POSTGRES_DB:-mydb}
       - POSTGRES_USER=${POSTGRES_USER:-user}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-pass}

@@ -1,28 +1,25 @@
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 
 from .models import (
-    ExportFailureLog,
-    Ensemble,
     Arrangement,
     ArrangementVersion,
-    Diff,
-    EnsembleUsership,
-    PartAsset,
-    PartName,
-    PartBook,
     Commit,
+    Diff,
+    Ensemble,
+    EnsembleUsership,
+    ExportFailureLog,
+    PartAsset,
+    PartBook,
+    PartName,
     UserScoreVersion,
 )
 from .tasks import export_arrangement_version, prep_and_export_mscz
 
-from django.http import HttpRequest
-
-
 
 class PdfObjMixin:
     """Mixin for modeladmins with pdfs. Pdfs and files need to be cleaned up"""
-
 
     # Override to allow for delete method to actualy clean up old stuff
     # There is a performance impact, but its ncessary to save space
@@ -34,15 +31,17 @@ class PdfObjMixin:
 class PartNameInline(admin.TabularInline):
     model = PartName
     extra = 0
-    fields = ('display_name',) 
+    fields = ("display_name",)
+
 
 class EnsembleAdmin(admin.ModelAdmin):
     list_display = ("name", "num_arrangements", "owner")
     inlines = [PartNameInline]
 
     def part_names_list(self, obj):
-        return ", ".join(obj.part_names.values_list('name', flat=True))
-    part_names_list.short_description = 'Parts'
+        return ", ".join(obj.part_names.values_list("name", flat=True))
+
+    part_names_list.short_description = "Parts"
 
 
 class ArrangementAdmin(admin.ModelAdmin):
@@ -50,8 +49,13 @@ class ArrangementAdmin(admin.ModelAdmin):
 
 
 class ArrangementVersionAdmin(admin.ModelAdmin, PdfObjMixin):
-
-    list_display = ("version_label", "arrangement_title", "ensemble_name", "timestamp", "audio_state")
+    list_display = (
+        "version_label",
+        "arrangement_title",
+        "ensemble_name",
+        "timestamp",
+        "audio_state",
+    )
 
     actions = (
         "re_export_version",
@@ -91,16 +95,14 @@ class ArrangementVersionAdmin(admin.ModelAdmin, PdfObjMixin):
     @admin.action(description="Re-trigger audio export of version")
     def re_export_audio(self, request, queryset):
         if len(queryset) != 1:
-            messages.warning(
-                request, "Can only export audio of one score at a time."
-            )
+            messages.warning(request, "Can only export audio of one score at a time.")
             return
-        
+
         export_arrangement_version.delay(queryset[0].pk, action="mp3")
         messages.success(
-                request,
-                f'Successfully re-triggered audio export for "{queryset[0].arrangement.title}" v{queryset[0].version_label}',
-            )
+            request,
+            f'Successfully re-triggered audio export for "{queryset[0].arrangement.title}" v{queryset[0].version_label}',
+        )
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -113,7 +115,7 @@ class ExportFailureLogAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
-    
+
 
 class DiffAdmin(admin.ModelAdmin, PdfObjMixin):
     list_display = ("from_version__str__", "to_version__str__", "status", "timestamp")
@@ -135,11 +137,9 @@ class PartAssetAdmin(admin.ModelAdmin, PdfObjMixin):
     readonly_fields = ("file_key", "file_url")
 
 
-
 class PartNameAdmin(admin.ModelAdmin):
-
     list_display = ("display_name", "ensemble")
-    list_filter = ("ensemble", )
+    list_filter = ("ensemble",)
     search_fields = ("ensemble",)
 
     @admin.action(description="Merge Part Names")
@@ -175,7 +175,12 @@ class CommitAdmin(admin.ModelAdmin):
         "arrangement__title",
         "arrangement__ensemble__name",
     )
-    readonly_fields = ("mscz_file_key", "mscz_file_url", "is_initial_commit", "is_latest_commit")
+    readonly_fields = (
+        "mscz_file_key",
+        "mscz_file_url",
+        "is_initial_commit",
+        "is_latest_commit",
+    )
 
 
 class UserScoreVersionEnsembleFilter(admin.SimpleListFilter):
@@ -184,8 +189,7 @@ class UserScoreVersionEnsembleFilter(admin.SimpleListFilter):
 
     def lookups(self, request, model_admin):
         return [
-            (e.pk, e.name)
-            for e in Ensemble.objects.order_by("name").only("pk", "name")
+            (e.pk, e.name) for e in Ensemble.objects.order_by("name").only("pk", "name")
         ]
 
     def queryset(self, request, queryset):

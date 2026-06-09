@@ -4,20 +4,29 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0034_arrangementversion_formatting_steps'),
+        ("ensembles", "0034_arrangementversion_formatting_steps"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='staff_spacing_strategy',
-            field=models.CharField(choices=[('predict', 'Predict from score'), ('preserve', 'Keep from uploaded file'), ('override', 'Custom spatium')], default='predict', max_length=16),
+            model_name="arrangementversion",
+            name="staff_spacing_strategy",
+            field=models.CharField(
+                choices=[
+                    ("predict", "Predict from score"),
+                    ("preserve", "Keep from uploaded file"),
+                    ("override", "Custom spatium"),
+                ],
+                default="predict",
+                max_length=16,
+            ),
         ),
         migrations.AddField(
-            model_name='arrangementversion',
-            name='staff_spacing_value',
-            field=models.DecimalField(blank=True, decimal_places=5, max_digits=10, null=True),
+            model_name="arrangementversion",
+            name="staff_spacing_value",
+            field=models.DecimalField(
+                blank=True, decimal_places=5, max_digits=10, null=True
+            ),
         ),
     ]

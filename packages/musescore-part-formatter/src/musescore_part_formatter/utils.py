@@ -44,6 +44,8 @@ class FormattingParams(TypedDict):
     show_title: str
     show_number: str
     version_num: str
+    # MuseScore metaTag workTitle (arrangement/song name on the website).
+    work_title: NotRequired[str]
     num_measures_per_line_score: int
     num_measures_per_line_part: int
     num_lines_per_page: int

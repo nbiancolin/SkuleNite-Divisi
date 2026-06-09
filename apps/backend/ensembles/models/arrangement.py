@@ -1,11 +1,11 @@
-from django.db import models
 from logging import getLogger
-from ensembles.models import Ensemble
-from ensembles.models.constants import STYLE_CHOICES
-from ensembles.lib.slug import generate_unique_slug
-
 from typing import TYPE_CHECKING
 
+from django.db import models
+
+from ensembles.lib.slug import generate_unique_slug
+from ensembles.models.ensemble import Ensemble
+from ensembles.models.constants import STYLE_CHOICES
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement_version import ArrangementVersion
@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 logger = getLogger("app")
 
 
-
 class Arrangement(models.Model):
     if TYPE_CHECKING:
         from django.db.models.manager import RelatedManager
+
         versions: RelatedManager["ArrangementVersion"]
 
     ensemble = models.ForeignKey(
@@ -26,11 +26,11 @@ class Arrangement(models.Model):
     slug = models.SlugField(unique=True)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     composer = models.CharField(max_length=255, blank=True, null=True)
-    #TODO[SC-282]: Remove act number and piece number, they are no longer used
+    # TODO[SC-282]: Remove act number and piece number, they are no longer used
     act_number = models.IntegerField(blank=True, null=True)
     piece_number = models.IntegerField(default=1, blank=True, null=True)
 
-    #This field cannot be blank, if its blank the value is filled in with the arrangemnt pk
+    # This field cannot be blank, if its blank the value is filled in with the arrangemnt pk
     mvt_no = models.CharField(max_length=4)
 
     style = models.CharField(max_length=10, choices=STYLE_CHOICES)
@@ -45,9 +45,8 @@ class Arrangement(models.Model):
         creating = self.pk is None
         if creating and self.mvt_no is None:
             raise NotImplementedError("mvt_no is required")
-        
-        super().save(*args, **kwargs)
 
+        super().save(*args, **kwargs)
 
     @property
     def latest_version(self):
@@ -55,7 +54,9 @@ class Arrangement(models.Model):
         if prefetched_latest_versions is not None:
             return prefetched_latest_versions[0] if prefetched_latest_versions else None
 
-        prefetched_versions = getattr(self, "_prefetched_objects_cache", {}).get("versions")
+        prefetched_versions = getattr(self, "_prefetched_objects_cache", {}).get(
+            "versions"
+        )
         if prefetched_versions is not None:
             for version in prefetched_versions:
                 if version.is_latest:
@@ -68,6 +69,24 @@ class Arrangement(models.Model):
     def latest_version_num(self):
         latest = self.latest_version
         return latest.version_label if latest else "N/A"
+
+    @property
+    def has_unversioned_latest_commit(self) -> bool:
+        from ensembles.models.commit import Commit
+
+        latest = Commit.latest_for_arrangement(self)
+        return latest is not None and not latest.has_version
+
+    @property
+    def has_unresolved_comments_on_latest_version(self) -> bool:
+        from comments.models import ArrangementVersionCommentThread
+
+        latest = self.latest_version
+        if latest is None:
+            return False
+        return latest.comment_threads.filter(
+            status=ArrangementVersionCommentThread.Status.OPEN
+        ).exists()
 
     @property
     def ensemble_name(self):

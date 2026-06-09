@@ -41,7 +41,12 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
         ensemble = serializer.validated_data["ensemble"]
         user = self.request.user
 
-        if ensemble.owner != user and not EnsembleUsership.objects.filter(ensemble=ensemble, user=user).exists():
+        if (
+            ensemble.owner != user
+            and not EnsembleUsership.objects.filter(
+                ensemble=ensemble, user=user
+            ).exists()
+        ):
             from rest_framework.exceptions import PermissionDenied
 
             raise PermissionDenied("You do not have access to this ensemble.")
@@ -75,7 +80,9 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
             return Response({"status": "ok"})
 
         try:
-            user_download_commit = UserScoreVersion.objects.get(user=user, arrangement=arr).commit
+            user_download_commit = UserScoreVersion.objects.get(
+                user=user, arrangement=arr
+            ).commit
         except UserScoreVersion.DoesNotExist:
             return Response(
                 {
@@ -112,14 +119,16 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
 
         if r.get("merge_error"):
             return Response(r, status=409)
-        
+
         if r.get("client_error"):
             return Response(r, status=400)
 
         s = ArrangementSerializer(self.get_object())
         return Response(s.data)
 
-    def _commit_mscz_file_response(self, commit: Commit, arrangement: Arrangement, record_download: bool):
+    def _commit_mscz_file_response(
+        self, commit: Commit, arrangement: Arrangement, record_download: bool
+    ):
         if commit.arrangement_id != arrangement.id:
             return Response(
                 {"detail": "Commit does not belong to this arrangement."},
@@ -166,8 +175,12 @@ class BaseArrangementViewSet(viewsets.ModelViewSet):
                 {"detail": "Commit not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        record_download = request.query_params.get("record_download", "true").lower() != "false"
-        return self._commit_mscz_file_response(commit, arr, record_download=record_download)
+        record_download = (
+            request.query_params.get("record_download", "true").lower() != "false"
+        )
+        return self._commit_mscz_file_response(
+            commit, arr, record_download=record_download
+        )
 
     @action(
         detail=True,

@@ -1,8 +1,15 @@
 import factory
-from factory.django import DjangoModelFactory
-from ensembles.models import Ensemble, Arrangement, ArrangementVersion, Diff, PartAsset, PartName
-
 from django.contrib.auth import get_user_model
+from factory.django import DjangoModelFactory
+
+from ensembles.models import (
+    Arrangement,
+    ArrangementVersion,
+    Diff,
+    Ensemble,
+    PartAsset,
+    PartName,
+)
 
 
 class EnsembleFactory(DjangoModelFactory):
@@ -28,7 +35,6 @@ class ArrangementVersionFactory(DjangoModelFactory):
     class Meta:
         model = ArrangementVersion
 
-
     file_name = "ArrangementFile.mscz"
     arrangement = factory.SubFactory(ArrangementFactory)
     version_label = factory.Sequence(lambda n: f"v1.{n}.0")
@@ -47,17 +53,19 @@ class DiffFactory(DjangoModelFactory):
     file_name = "comp-diff.pdf"
     status = "pending"
 
+
 class UserFactory(DjangoModelFactory):
     class Meta:
         model = get_user_model()
 
     username = factory.Sequence(lambda n: f"user{n}")
     email = factory.LazyAttribute(lambda n: f"user{n}@gmail.com")
-    password = factory.PostGenerationMethodCall('set_password', 'password123')
+    password = factory.PostGenerationMethodCall("set_password", "password123")
+
 
 class EnsembleUsershipFactory(DjangoModelFactory):
     class Meta:
-        model = 'ensembles.EnsembleUsership'
+        model = "ensembles.EnsembleUsership"
 
     user = factory.SubFactory(UserFactory)
     ensemble = factory.SubFactory(EnsembleFactory)
@@ -68,17 +76,17 @@ class PartNameFactory(DjangoModelFactory):
     class Meta:
         model = PartName
 
-
     ensemble = factory.SubFactory(EnsembleFactory)
     display_name = factory.Sequence(lambda n: f"Part: Piano {n}")
-    
 
 
 class PartAssetFactory(DjangoModelFactory):
     class Meta:
         model = PartAsset
-    
+
     arrangement_version = factory.SubFactory(ArrangementVersionFactory)
     part_name = factory.SubFactory(PartNameFactory)
-    file_key = factory.LazyAttribute(lambda obj: f"test/{obj.part_name.display_name.lower()}.pdf")
+    file_key = factory.LazyAttribute(
+        lambda obj: f"test/{obj.part_name.display_name.lower()}.pdf"
+    )
     is_score = False

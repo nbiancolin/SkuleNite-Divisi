@@ -1,5 +1,3 @@
-import '@mantine/core/styles.css';
-
 import {
   Container,
   Title,
@@ -153,12 +151,12 @@ export default function LandingPage() {
       </Container>
 
       {/* Features Section */}
-      <Box style={{ backgroundColor: 'white' }} py={80}>
+      <Box bg="var(--mantine-color-body)" py={80}>
         <Container size="lg">
           <Stack>
             <Center>
               <Stack align="center">
-                <Title order={2} size={42} c="dark">
+                <Title order={2} size={42}>
                   Everything you need for ensemble management
                 </Title>
                 <Text c="dimmed" style={{ maxWidth: 600 }}>
@@ -179,7 +177,7 @@ export default function LandingPage() {
                   radius="xl" 
                   padding={30}
                   style={{
-                    border: '1px solid #f0f0f0',
+                    border: '1px solid var(--mantine-color-default-border)',
                     transition: 'transform 0.3s ease, box-shadow 0.3s ease'
                   }}
                 >
@@ -209,7 +207,7 @@ export default function LandingPage() {
       </Box>
 
       {/* Standalone Formatter Highlight */}
-      <Box style={{ backgroundColor: '#f8f9fa' }} py={80}>
+      <Box bg="gray.0" py={80}>
         <Container size="lg">
           <Grid align="center" gutter={60}>
             <Grid.Col span={6}>
@@ -258,13 +256,13 @@ export default function LandingPage() {
               <Box 
                 style={{
                   height: 400,
-                  backgroundColor: 'white',
+                  backgroundColor: 'var(--mantine-color-body)',
                   borderRadius: 20,
                   boxShadow: '0 20px 40px rgba(0,0,0,0.1)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  border: '1px solid #e0e0e0'
+                  border: '1px solid var(--mantine-color-default-border)'
                 }}
               >
                 <Stack align="center">

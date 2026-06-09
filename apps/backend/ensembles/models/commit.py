@@ -1,9 +1,10 @@
-from django.db import models
+from django.conf import settings
 from django.core.files.storage import default_storage
+from django.db import models
 
 from ensembles.models import Arrangement, ArrangementVersion
 from ensembles.models.utils import DeleteFilesMixin
-from django.conf import settings
+
 
 class Commit(DeleteFilesMixin, models.Model):
     """
@@ -18,9 +19,13 @@ class Commit(DeleteFilesMixin, models.Model):
         Arrangement, related_name="commits", on_delete=models.CASCADE
     )
 
-    #TODO: eventually cleanup blank/null on this
+    # TODO: eventually cleanup blank/null on this
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, related_name="commits", on_delete=models.PROTECT, blank=True, null=True
+        settings.AUTH_USER_MODEL,
+        related_name="commits",
+        on_delete=models.PROTECT,
+        blank=True,
+        null=True,
     )
 
     file_name = models.CharField(max_length=128)
@@ -30,7 +35,13 @@ class Commit(DeleteFilesMixin, models.Model):
     is_merge_commit = models.BooleanField(default=False)
     is_merge_conflict = models.BooleanField(default=False)
 
-    version = models.ForeignKey(ArrangementVersion, on_delete=models.SET_NULL, blank=True, null=True, related_name="commit")
+    version = models.ForeignKey(
+        ArrangementVersion,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="commit",
+    )
 
     @property
     def has_version(self) -> bool:
@@ -62,7 +73,10 @@ class Commit(DeleteFilesMixin, models.Model):
 
     @classmethod
     def create_new_commit(
-        cls, arrangement: Arrangement, created_by_user, create_kwargs: dict[str, str | bool] | None = None
+        cls,
+        arrangement: Arrangement,
+        created_by_user,
+        create_kwargs: dict[str, str | bool] | None = None,
     ) -> "Commit":
         if create_kwargs is None:
             create_kwargs = {}
@@ -74,7 +88,9 @@ class Commit(DeleteFilesMixin, models.Model):
         )
 
         if latest_commit is None:
-            return cls.objects.create(arrangement=arrangement, created_by=created_by_user, **create_kwargs)
+            return cls.objects.create(
+                arrangement=arrangement, created_by=created_by_user, **create_kwargs
+            )
 
         return cls.objects.create(
             arrangement=arrangement,

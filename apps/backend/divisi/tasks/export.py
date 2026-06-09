@@ -1,27 +1,22 @@
-import tempfile
-import os
-from celery import shared_task
-import subprocess
-
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-
-from divisi.models import UploadSession
-
-from divisi.lib import render_mscz, render_all_parts_pdf
-from ensembles.models import ArrangementVersion, PartAsset, PartName
-
-import zipfile
 import io
-
-from pypdf import PdfWriter, PdfReader
+import os
+import subprocess
+import tempfile
+import zipfile
 from io import BytesIO
-from django.db import transaction
-
-
 from logging import getLogger
 
+from celery import shared_task
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
+from pypdf import PdfReader, PdfWriter
+
+from divisi.lib import render_all_parts_pdf, render_mscz
+from divisi.models import UploadSession
+from ensembles.models import ArrangementVersion, PartAsset, PartName
+
 LOGGER = getLogger("divisi_export")
+
 
 def _export_mscz_to_pdf_score(input_file_path: str, output_path: str):
     """Uses Musescore to render the provided musescore file and output a pdf of the score"""
@@ -63,21 +58,22 @@ def export_mscz_to_mp3(input_key, output_key):
             return {"status": "error", "details": str(e)}
 
 
-def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version_id=None):
+def export_all_parts_with_tracking(
+    input_key, output_prefix, arrangement_version_id=None
+):
     """
     Export score and all parts using the new render-all-parts-pdf endpoint,
     extract individual PDFs from zip, save them, and create Part records.
-    
+
     Args:
         input_key (str): storage key for the input .mscz file
         output_prefix (str): storage path prefix to save outputs (should end with '/')
         arrangement_version_id (int, optional): ID of ArrangementVersion to create Part records for
-    
+
     Returns:
         dict: {"status": "success"|"error", "written": [saved_keys], "parts_created": int, "details": "..."}
     """
-    
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         # Download input
         try:
@@ -90,14 +86,14 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
         except Exception as e:
             LOGGER.exception("Failed to download input file from storage")
             return {"status": "error", "details": f"Download error: {e}"}
-        
+
         # Call the new render-all-parts-pdf endpoint
         try:
             zip_bytes = render_all_parts_pdf(temp_input)
         except Exception as e:
             LOGGER.exception("Failed to call render-all-parts-pdf endpoint")
             return {"status": "error", "details": f"MuseScore API error: {e}"}
-        
+
         # Extract PDFs from zip
         written = []
         parts_created = 0
@@ -105,31 +101,33 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
 
         # Track non-score parts in a stable order for combined PDF generation
         combined_candidates: list[tuple[int | None, str, str]] = []
-        
+
         try:
             with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zip_file:
                 for file_info in zip_file.filelist:
                     if file_info.filename.endswith(".pdf"):
                         # Extract PDF from zip
                         pdf_bytes = zip_file.read(file_info.filename)
-                        
+
                         # Determine if it's the score or a part
                         is_score = file_info.filename.lower() == "score.pdf"
                         part_name = file_info.filename.replace(".pdf", "")
-                        
+
                         # Generate storage key
                         if is_score:
                             key = f"{output_prefix}{stem}.pdf"
                         else:
                             # Sanitize part name for filename
-                            safe_name = "".join(c for c in part_name if c not in r'\/:*?"<>|').strip()
+                            safe_name = "".join(
+                                c for c in part_name if c not in r'\/:*?"<>|'
+                            ).strip()
                             key = f"{output_prefix}{stem} - {safe_name}.pdf"
-                        
+
                         # Save PDF to storage
                         default_storage.save(key, ContentFile(pdf_bytes))
                         written.append(key)
                         LOGGER.info("Saved PDF: %s", key)
-                        
+
                         # Create Part record if arrangement_version_id is provided
                         if arrangement_version_id:
                             try:
@@ -147,7 +145,7 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                                     defaults={
                                         "file_key": key,
                                         "is_score": is_score,
-                                    }
+                                    },
                                 )
                                 parts_created += 1
                                 LOGGER.info(
@@ -159,25 +157,36 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                                 # Track non-score parts for combined PDF
                                 if not is_score:
                                     combined_candidates.append(
-                                        (part_name_obj.order, part_name_obj.display_name, key)
+                                        (
+                                            part_name_obj.order,
+                                            part_name_obj.display_name,
+                                            key,
+                                        )
                                     )
                             except ArrangementVersion.DoesNotExist:
-                                LOGGER.warning("ArrangementVersion %d does not exist, skipping Part record", arrangement_version_id)
-                            except Exception as e:
-                                LOGGER.exception("Failed to create Part record for %s", part_name)
-        
+                                LOGGER.warning(
+                                    "ArrangementVersion %d does not exist, skipping Part record",
+                                    arrangement_version_id,
+                                )
+                            except Exception:
+                                LOGGER.exception(
+                                    "Failed to create Part record for %s", part_name
+                                )
+
         except zipfile.BadZipFile:
-            return {"status": "error", "details": "Invalid zip file received from MuseScore"}
+            return {
+                "status": "error",
+                "details": "Invalid zip file received from MuseScore",
+            }
         except Exception as e:
             LOGGER.exception("Failed to extract PDFs from zip")
             return {"status": "error", "details": f"Zip extraction error: {e}"}
-        
+
         if not written:
             return {
                 "status": "error",
                 "details": "MuseScore ran but no PDFs were extracted from zip.",
             }
-
 
         # Generate a combined PDF of all parts for easier printing.
         # (We exclude the score; score is already available separately.)
@@ -202,19 +211,22 @@ def export_all_parts_with_tracking(input_key, output_prefix, arrangement_version
                 buf.seek(0)
 
                 version = ArrangementVersion.objects.get(id=arrangement_version_id)
-                default_storage.save(version.combined_parts_pdf_key, ContentFile(buf.read()))
+                default_storage.save(
+                    version.combined_parts_pdf_key, ContentFile(buf.read())
+                )
 
                 written.append(version.combined_parts_pdf_key)
-                LOGGER.info("Saved combined parts PDF: %s", version.combined_parts_pdf_key)
+                LOGGER.info(
+                    "Saved combined parts PDF: %s", version.combined_parts_pdf_key
+                )
             except Exception:
                 LOGGER.exception("Failed to generate combined parts PDF")
-        
+
         return {
             "status": "success",
             "written": written,
             "parts_created": parts_created,
         }
-
 
 
 @shared_task
@@ -228,9 +240,10 @@ def export_mscz_to_pdf(uuid: int):
     output_key = session.output_file_key.rsplit(".", 1)[0] + ".pdf"
 
     # Create temp files for input and output
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in, \
-         tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out:
-
+    with (
+        tempfile.NamedTemporaryFile(delete=False, suffix=".mscz") as tmp_in,
+        tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_out,
+    ):
         tmp_in_path = tmp_in.name
         tmp_out_path = tmp_out.name
 

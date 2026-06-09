@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Contents — {{ show_title }}</title>
+</head>
+<body class="{{ style_class }}">
+  <div class="page toc">
+    <header class="header">
+      <h1 class="show-title">{{ show_title }}</h1>
+      {% if show_subtitle %}
+        <p class="show-subtitle">{{ show_subtitle }}</p>
+      {% endif %}
+    </header>
+    <div class="part-name">{{ part_name }}</div>
+    <ul class="entries">
+      {% for entry in entries %}
+        <li class="entry">
+          <span class="entry-title">{{ entry.show_number }}: {{ entry.title }} (v{{ entry.version_label }})</span>
+          <span class="entry-page">{{ entry.page }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="revision">Rev. {{ export_date }}</div>
+  </div>
+</body>
+</html>

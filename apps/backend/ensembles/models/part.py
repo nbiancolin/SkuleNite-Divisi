@@ -1,25 +1,24 @@
 from io import BytesIO
+from logging import getLogger
 from pathlib import Path
-from django.utils import timezone 
-from django.db import models
-from django.db import transaction
-from django.db.models import Max
-from django.core.files.storage import default_storage
-from django.core.exceptions import ValidationError
-
-from ensembles.models.arrangement_version import ArrangementVersion
-from ensembles.lib.slug import generate_unique_slug
-from ensembles.lib.pdf import TocEntry
-from ensembles.lib.pdf import (
-    generate_full_part_book,
-    generate_cover_page,
-    generate_tacet_page,
-    PartBookInfo,
-)
-
 from typing import TYPE_CHECKING
 
-from logging import getLogger
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+from django.db import models, transaction
+from django.db.models import Max
+from django.utils import timezone
+
+from ensembles.lib.datetime_format import format_part_book_export_datetime
+from ensembles.lib.pdf import (
+    PartBookInfo,
+    TocEntry,
+    generate_cover_page,
+    generate_full_part_book,
+    generate_tacet_page,
+)
+from ensembles.lib.slug import generate_unique_slug
+from ensembles.models.arrangement_version import ArrangementVersion
 
 logger = getLogger("app")
 
@@ -51,7 +50,7 @@ class PartAsset(models.Model):
     def __str__(self):
         part_type = "Score" if self.is_score else "Part"
         return f"{part_type}: {self.name} ({self.arrangement_version})"
-    
+
     def delete(self, **kwargs):
         # Delete files when diff is deleted
         keys_to_delete = [self.file_key]
@@ -80,7 +79,7 @@ class PartAsset(models.Model):
                 name="uniq_partasset_version_partname",
             ),
         ]
-    
+
 
 class PartName(models.Model):
     id: int
@@ -97,13 +96,16 @@ class PartName(models.Model):
     # Defaults to None, which means it will be set based on creation order
     order = models.PositiveIntegerField(null=True, blank=True)
 
-
     def get_arrangements(self) -> list:
         res = []
         for a in self.ensemble.arrangements.all():
-            #if the arrangement's latest version has a part asset with this part name (OR a mapping to this name), include it
+            # if the arrangement's latest version has a part asset with this part name (OR a mapping to this name), include it
             v = a.latest_version
-            if PartAsset.objects.filter(arrangement_version=v).filter(part_name=self).exists():
+            if (
+                PartAsset.objects.filter(arrangement_version=v)
+                .filter(part_name=self)
+                .exists()
+            ):
                 res.append(a.title)
         return res
 
@@ -138,6 +140,58 @@ class PartName(models.Model):
             part_name_id=self.id
         )
         second.delete()
+
+    def _persist_display_name_change_aliases(self, previous_display_name: str) -> None:
+        """Record aliases so re-uploads still resolve the old label to this PartName."""
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        arrangements_with_part = set(
+            PartAsset.objects.filter(part_name=self).values_list(
+                "arrangement_version__arrangement_id", flat=True
+            )
+        )
+        arrangements_with_part.discard(None)
+        for arr_id in arrangements_with_part:
+            PartNameAlias.objects.update_or_create(
+                ensemble_id=self.ensemble_id,
+                arrangement_id=arr_id,
+                alias_normalized=PartNameAlias.normalize(previous_display_name),
+                defaults={
+                    "alias": previous_display_name,
+                    "canonical_part_name": self,
+                },
+            )
+
+    def rename_display_name(self, new_display_name: str) -> "PartName":
+        new_display_name = (new_display_name or "").strip()
+        if not new_display_name:
+            raise ValidationError("Display name cannot be empty.")
+
+        from ensembles.models.part_name_alias import PartNameAlias
+
+        if (
+            PartName.objects.filter(
+                ensemble_id=self.ensemble_id, display_name__iexact=new_display_name
+            )
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            raise ValidationError(
+                "A part name with this display name already exists in this ensemble."
+            )
+
+        previous_display_name = self.display_name
+        if PartNameAlias.normalize(previous_display_name) == PartNameAlias.normalize(
+            new_display_name
+        ):
+            return self
+
+        with transaction.atomic():
+            self._persist_display_name_change_aliases(previous_display_name)
+            self.display_name = new_display_name
+            self.save(update_fields=["display_name"])
+
+        return self
 
     @staticmethod
     def normalize_display_name(value: str) -> str:
@@ -230,8 +284,9 @@ class PartName(models.Model):
         # Arrangements that had a part under the name we're merging away:
         # when we re-upload that arrangement, we want "merge_from" label -> target.
         arrangements_with_merge_from = set(
-            PartAsset.objects.filter(part_name=merge_from)
-            .values_list("arrangement_version__arrangement_id", flat=True)
+            PartAsset.objects.filter(part_name=merge_from).values_list(
+                "arrangement_version__arrangement_id", flat=True
+            )
         )
         arrangements_with_merge_from.discard(None)
 
@@ -254,29 +309,13 @@ class PartName(models.Model):
                     },
                 )
 
-            # If we are renaming the canonical display name, keep the old canonical name
-            # as an alias too for arrangements that had the target part.
-            if new_displayname and PartNameAlias.normalize(previous_target_name) != PartNameAlias.normalize(new_displayname):
-                arrangements_with_target = set(
-                    PartAsset.objects.filter(part_name=target)
-                    .values_list("arrangement_version__arrangement_id", flat=True)
-                )
-                arrangements_with_target.discard(None)
-                for arr_id in arrangements_with_target:
-                    PartNameAlias.objects.update_or_create(
-                        ensemble_id=ensemble_id,
-                        arrangement_id=arr_id,
-                        alias_normalized=PartNameAlias.normalize(previous_target_name),
-                        defaults={
-                            "alias": previous_target_name,
-                            "canonical_part_name": target,
-                        },
-                    )
-
             # Merge actual PartAsset references and delete the redundant PartName.
             target._merge_objs(merge_from)
 
-            if new_displayname:
+            if new_displayname and PartNameAlias.normalize(
+                previous_target_name
+            ) != PartNameAlias.normalize(new_displayname):
+                target._persist_display_name_change_aliases(previous_target_name)
                 target.display_name = new_displayname
                 target.save(update_fields=["display_name"])
 
@@ -333,7 +372,7 @@ class PartBook(models.Model):
 
         entries = self.entries.order_by("position")
         export_datetime = timezone.now()
-        export_date_str = export_datetime.strftime("%Y-%m-%d, %H:%M")
+        export_date_str = format_part_book_export_datetime(export_datetime)
 
         book_data = []
         for entry in entries:
@@ -367,12 +406,13 @@ class PartBook(models.Model):
             export_date=export_date_str,
             part_name=self.name,
             show_title=self.ensemble.name,
+            selected_style=self.ensemble.default_style,
         )
 
         toc_kwargs: PartBookInfo = {
             "show_title": self.ensemble.name,
             "show_subtitle": "",
-            "export_date": str(export_datetime),
+            "export_date": export_date_str,
             "part_name": self.name,
             "selected_style": self.ensemble.default_style,
         }
@@ -398,7 +438,6 @@ class PartBook(models.Model):
 
         self.finalized_at = export_datetime
         self.save(update_fields=["finalized_at"])
-
 
     def delete(self, **kwargs):
         # Delete files when diff is deleted

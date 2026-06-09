@@ -1,20 +1,13 @@
+from logging import getLogger
+
 from celery import shared_task
 
-from divisi.tasks import format_arrangement_version
-from divisi.tasks.export import (
-    export_mscz_to_mp3,
-    export_all_parts_with_tracking,
-)
+from ensembles.lib.part_name_matrix import part_names_with_latest_part_assets
 from ensembles.models import (
     Ensemble,
-    PartAsset,
     PartBook,
-    PartBookEntry,
     PartName,
 )
-from logging import getLogger
-from django.core.files.storage import default_storage
-import os
 
 logger = getLogger("part_book_tasks")
 
@@ -42,12 +35,15 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
     revision = ensemble.latest_part_book_revision + 1
 
     part_name_ids = list(
-        PartName.objects.filter(ensemble_id=ensemble_id).values_list("id", flat=True)
+        part_names_with_latest_part_assets(ensemble).values_list("id", flat=True)
     )
     if not part_name_ids:
         ensemble.part_books_generating = False
         ensemble.save(update_fields=["part_books_generating"])
-        return {"status": "no action", "detail": "No part names in ensemble"}
+        return {
+            "status": "no action",
+            "detail": "No part names with uploaded parts in latest arrangement versions",
+        }
 
     try:
         for part_name_id in part_name_ids:
@@ -55,7 +51,9 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
 
         ensemble.latest_part_book_revision = revision
         ensemble.part_books_generating = False
-        ensemble.save(update_fields=["part_books_generating", "latest_part_book_revision"])
+        ensemble.save(
+            update_fields=["part_books_generating", "latest_part_book_revision"]
+        )
 
         return {"status": "success", "ensemble_id": ensemble_id}
     except Exception:
@@ -69,7 +67,12 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
 
 
 @shared_task
-def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custom_versions: dict[int, int] = {}):
+def generate_part_book(
+    ensemble_id: int,
+    part_name_id: int,
+    revision: int,
+    custom_versions: dict[int, int] = {},
+):
     """
     Generate a part book for a specific part in an ensemble
 
@@ -102,7 +105,7 @@ def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custo
         part_book.render()
 
         # If all part books for this revision are now finalized, clear the generating flag
-        part_name_count = PartName.objects.filter(ensemble_id=ensemble_id).count()
+        part_name_count = part_names_with_latest_part_assets(ensemble).count()
         finalized_count = PartBook.objects.filter(
             ensemble_id=ensemble_id, revision=revision, finalized_at__isnull=False
         ).count()
@@ -112,7 +115,7 @@ def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custo
 
         return {"status": "success", "file_key": part_book.pdf_file_key}
 
-    except Exception as e:
+    except Exception:
         logger.exception(
             "Part book generation failed: ensemble_id=%s part_name=%s revision=%s",
             ensemble_id,
@@ -124,4 +127,3 @@ def generate_part_book(ensemble_id: int, part_name_id: int, revision: int, custo
         # Remove the part book we created so we don't leave an unfinalized orphan
         part_book.delete()
         raise
-

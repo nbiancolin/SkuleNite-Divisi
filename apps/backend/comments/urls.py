@@ -8,7 +8,6 @@ from comments.views import (
     ArrangementVersionResolveThreadView,
 )
 
-
 urlpatterns = [
     path(
         "arrangementversions/<int:version_id>/comments/",

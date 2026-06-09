@@ -92,6 +92,9 @@ def format_mscx(
                 "trackNum": params["show_number"],
                 "versionNum": params["version_num"],
             }
+            work_title = (params.get("work_title") or "").strip()
+            if work_title:
+                score_properties["workTitle"] = work_title
             set_score_properties(score, score_properties)
 
         staves = score.findall("Staff")
@@ -162,12 +165,15 @@ def format_mscz(
         params["selected_style"] if params.get("selected_style") else "broadway"
     )
 
+    work_title = (params.get("work_title") or "").strip()
+
     if predict:
         prepped_params: FormattingParams = {
             "selected_style": Style(style_name),
             "show_title": params.get("show_title", ""),  # title of song from header
             "show_number": params.get("show_number", ""),  # empty
             "version_num": params.get("version_num", ""),  # v1.0?
+            "work_title": work_title,
             "num_measures_per_line_part": params.get(
                 "num_measures_per_line_part", 6
             ),  # predict part
@@ -184,6 +190,7 @@ def format_mscz(
             "show_title": params.get("show_title", ""),
             "show_number": params.get("show_number", ""),
             "version_num": params.get("version_num", ""),
+            "work_title": work_title,
             "num_measures_per_line_part": params.get("num_measures_per_line_part", 6),
             "num_measures_per_line_score": params.get("num_measures_per_line_score", 4),
             "num_lines_per_page": params.get("num_lines_per_page", 8),

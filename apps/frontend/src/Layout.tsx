@@ -4,7 +4,7 @@ import { HeaderSimple } from './components/HeaderSimple';
 import { Outlet } from 'react-router-dom';
 import { useEffect } from 'react';
 import { apiService } from './services/apiService';
-import { PageTitleProvider } from './context/PageTitleContext';
+import { PageTitleProvider } from './context/PageTitleProvider';
 
 export default function Layout() {
   // Fetch CSRF token on app initialization to ensure cookie is set

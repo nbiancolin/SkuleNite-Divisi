@@ -1,27 +1,26 @@
-import tempfile
 import os
 import shutil
+import tempfile
+from logging import getLogger
 
+from celery import shared_task
 from django.core.files import File
 from django.core.files.storage import default_storage
-
 from musescore_part_formatter.main import format_mscz
 
+from divisi.models import UploadSession
 from ensembles.formatting_steps_constants import (
     FORMATTING_STEP_KEYS,
     merge_formatting_step_defaults,
 )
-
-from divisi.models import UploadSession
 from ensembles.models import ArrangementVersion
-
-from logging import getLogger
-
-from celery import shared_task
 
 LOGGER = getLogger("divisi_processing")
 
-def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) -> dict[str, str]:
+
+def _format_mscz_file(
+    input_key: str, output_key: str, formatting_params: dict
+) -> dict[str, str]:
     """Internal fn to format a mscz file. Reads in the file from the key, and writes it back"""
 
     tmp_in_path = tmp_out_path = None
@@ -54,7 +53,7 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) 
     finally:
         # cleanup temp files if created
 
-        #TODO: Is this ever reached?
+        # TODO: Is this ever reached?
         if tmp_in_path and os.path.exists(tmp_in_path):
             os.remove(tmp_in_path)
         if tmp_out_path and os.path.exists(tmp_out_path):
@@ -63,7 +62,7 @@ def _format_mscz_file(input_key: str, output_key: str, formatting_params: dict) 
 
 @shared_task
 def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
-    """ Takes in divisi.UploadSession obj id, and formats it"""
+    """Takes in divisi.UploadSession obj id, and formats it"""
 
     session = UploadSession.objects.get(id=session_id)
 
@@ -85,18 +84,16 @@ def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
     return _format_mscz_file(input_key, output_key, params)
 
 
-@shared_task
-def format_arrangement_version(version_id: int) -> dict[str, str]:
-
-    version = ArrangementVersion.objects.get(id=version_id)
-
-    input_key = version.mscz_file_key
-    output_key = version.output_file_key
-
+def _arrangement_version_format_params(
+    version: ArrangementVersion,
+    *,
+    formatting_steps_override: dict[str, bool] | None = None,
+) -> dict:
     params: dict = {
         "selected_style": version.arrangement.style,
         "show_title": version.ensemble_name,
         "show_number": version.arrangement.mvt_no,
+        "work_title": version.arrangement.title,
         "version_num": f"v{version.version_label}",
         "num_measures_per_line_score": version.num_measures_per_line_score,
         "num_measures_per_line_part": version.num_measures_per_line_part,
@@ -109,12 +106,27 @@ def format_arrangement_version(version_id: int) -> dict[str, str]:
         ),
     }
 
-    stored = version.formatting_steps or {}
-    if isinstance(stored, dict):
-        for key in FORMATTING_STEP_KEYS:
-            if key in stored:
-                params[key] = stored[key]
+    if formatting_steps_override is not None:
+        params.update(formatting_steps_override)
+    else:
+        stored = version.formatting_steps or {}
+        if isinstance(stored, dict):
+            for key in FORMATTING_STEP_KEYS:
+                if key in stored:
+                    params[key] = stored[key]
 
     merge_formatting_step_defaults(params)
+    return params
 
-    return _format_mscz_file(input_key, output_key, params)
+
+@shared_task
+def format_arrangement_version(
+    version_id: int,
+    *,
+    formatting_steps_override: dict[str, bool] | None = None,
+) -> dict[str, str]:
+    version = ArrangementVersion.objects.get(id=version_id)
+    params = _arrangement_version_format_params(
+        version, formatting_steps_override=formatting_steps_override
+    )
+    return _format_mscz_file(version.mscz_file_key, version.output_file_key, params)

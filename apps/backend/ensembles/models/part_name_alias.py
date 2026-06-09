@@ -48,4 +48,3 @@ class PartNameAlias(models.Model):
                 name="uniq_partnamealias_ens_arr_aliasnorm",
             )
         ]
-

@@ -26,19 +26,15 @@ import {
 import { 
   IconAlertCircle, 
   IconTrash,
-  IconBook,
-  IconDownload,
-  IconRefresh,
-  IconChevronDown,
-  IconChevronRight,
-  IconGripVertical,
 } from '@tabler/icons-react';
 import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
-import { usePageTitle } from '../../context/PageTitleContext';
+import { usePageTitle } from '../../context/usePageTitle';
 
-import type { Ensemble, PartName, EnsemblePartBook } from '../../services/apiService';
+import type { Ensemble, PartName } from '../../services/apiService';
 import { ScoreTitlePreview, type PreviewStyleName } from '../../components/ScoreTitlePreview';
+import { PartNameMatrixEditor } from './PartNameMatrixEditor';
+import { EnsemblePartBooksSection } from './EnsemblePartBooksSection';
 
 type LegacyPartNameMap = Record<string, string>;
 type EnsembleWithPartNames = Ensemble & {
@@ -63,15 +59,7 @@ export default function EnsembleDisplay() {
 
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
   const [removeCandidate, setRemoveCandidate] = useState<{ id: number; username: string } | null>(null);
-
-  const [mergeModalOpen, setMergeModalOpen] = useState(false);
-  const [mergeFirstId, setMergeFirstId] = useState<string | null>(null);
-  const [mergeSecondId, setMergeSecondId] = useState<string | null>(null);
-  const [mergeNewDisplayName, setMergeNewDisplayName] = useState<string>('');
-  const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
-  const [reorderingParts, setReorderingParts] = useState(false);
-  const [draggedPartId, setDraggedPartId] = useState<number | null>(null);
-  const [dragOverPartId, setDragOverPartId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>('overview');
 
   // helper to read CSRF token from cookies (same logic as apiService)
   function getCsrfToken(): string | null {
@@ -268,55 +256,11 @@ export default function EnsembleDisplay() {
       .filter(Boolean) as PartName[];
   })();
 
-  const partNameSelectData = partNames
-    .slice()
-    .sort((a, b) => a.display_name.localeCompare(b.display_name))
-    .map((p) => ({ value: String(p.id), label: p.display_name }));
-
-  const handleGeneratePartBooks = async () => {
-    if (!ensemble) return;
-    try {
-      setError(null);
-      await apiService.generatePartBooksForEnsemble(ensemble.slug);
-      await fetchEnsemble(ensemble.slug);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  const handleMergePartNames = async () => {
-    if (!ensemble) return;
-    const firstId = Number(mergeFirstId);
-    const secondId = Number(mergeSecondId);
-    if (!Number.isFinite(firstId) || !Number.isFinite(secondId) || firstId === secondId) {
-      setError('Please select two different part names to merge.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setError(null);
-      await apiService.mergePartNames(
-        ensemble.slug,
-        firstId,
-        secondId,
-        mergeNewDisplayName.trim() ? mergeNewDisplayName.trim() : null
-      );
-      await fetchEnsemble(ensemble.slug);
-      setMergeModalOpen(false);
-      setMergeFirstId(null);
-      setMergeSecondId(null);
-      setMergeNewDisplayName('');
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSaving(false);
-    }
-  };
+  const isPartsTab = activeTab === 'parts';
 
   return (
-    <Container size="md" py="xl">
-      <Paper shadow="sm" p="xl" radius="md">
+    <Container fluid={isPartsTab} size={isPartsTab ? undefined : 'md'} py="xl">
+      <Paper shadow="sm" p={isPartsTab ? 'lg' : 'xl'} radius="md">
         <Group align="center" mb="md">
           <Group align="center">
             <Title order={2}>{ensemble.name}</Title>
@@ -355,10 +299,11 @@ export default function EnsembleDisplay() {
           </Card>
         </Collapse>
 
-        <Tabs defaultValue="overview" mt="md">
+        <Tabs value={activeTab} onChange={setActiveTab} mt="md">
           <Tabs.List>
             <Tabs.Tab value="overview">Overview</Tabs.Tab>
-            <Tabs.Tab value="parts">Parts & part books</Tabs.Tab>
+            <Tabs.Tab value="parts">Parts</Tabs.Tab>
+            <Tabs.Tab value="part-books">Part books</Tabs.Tab>
           </Tabs.List>
 
           <Tabs.Panel value="overview" pt="md">
@@ -463,277 +408,31 @@ export default function EnsembleDisplay() {
           </Tabs.Panel>
 
           <Tabs.Panel value="parts" pt="md">
-            <Card withBorder>
-              <Group mb="xs" justify="space-between">
-                <Group gap="xs">
-                  <IconBook size={18} />
-                  <Text fw={500}>Parts & part books</Text>
-                  <Badge size="sm" variant="light">{partNames.length} parts</Badge>
-                  {ensemble.part_books_generating && (
-                    <Badge color="blue" variant="light" leftSection={<Loader size={12} />}>
-                      Generating…
-                    </Badge>
-                  )}
-                </Group>
-                {isAdmin && (
-                  <Group gap="xs">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      onClick={() => setMergeModalOpen(true)}
-                      disabled={partNames.length < 2}
-                    >
-                      Merge part names
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="filled"
-                      leftSection={<IconRefresh size={14} />}
-                      onClick={handleGeneratePartBooks}
-                      disabled={!!ensemble.part_books_generating || partNames.length === 0}
-                    >
-                      Generate part books
-                    </Button>
-                  </Group>
-                )}
-              </Group>
-              <Divider />
-              <div style={{ maxHeight: 480, overflowY: 'auto' }}>
-                {partNames.length === 0 ? (
-                  <Text mt="md" size="sm" c="dimmed">
-                    No part names yet. Part names are added when you upload arrangement versions with parts.
-                  </Text>
-                ) : (
-                  <Stack mt="md" gap={0}>
-                    {partNames
-                      .slice()
-                      .sort((a, b) => {
-                        // Sort by order (nulls last), then by display_name for stable ordering
-                        if (a.order !== null && b.order !== null) {
-                          return a.order - b.order;
-                        }
-                        if (a.order !== null) return -1;
-                        if (b.order !== null) return 1;
-                        return a.display_name.localeCompare(b.display_name);
-                      })
-                      .map((part, index, sortedParts) => {
-                        const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])
-                          .filter((b) => b.part_display_name === part.display_name)
-                          .sort((a, b) => b.revision - a.revision);
-                        const latestBook = partBooks[0];
-                        const olderBooks = partBooks.slice(1);
-                        const latestRev = ensemble.latest_part_book_revision ?? 0;
-                        const isExpanded = expandedPartId === part.id;
+            <Group gap="xs" mb="md">
+              <Text fw={600} size="lg">
+                Part names
+              </Text>
+              <Badge size="sm" variant="light">
+                {partNames.length} parts
+              </Badge>
+            </Group>
+            <Text size="sm" c="dimmed" mb="md">
+              Map and merge part names across arrangements. Drag a part onto a base column to link them for merging.
+            </Text>
+            <PartNameMatrixEditor
+              ensembleSlug={slug}
+              isAdmin={isAdmin}
+              onSaved={() => fetchEnsemble(slug)}
+            />
+          </Tabs.Panel>
 
-                        const isDragging = draggedPartId === part.id;
-                        const isDragOver = dragOverPartId === part.id;
-
-                        const handleDragStart = (e: React.DragEvent) => {
-                          if (!ensemble?.is_admin) return;
-                          setDraggedPartId(part.id);
-                          e.dataTransfer.effectAllowed = 'move';
-                          e.dataTransfer.setData('text/plain', part.id.toString());
-                          // Make the dragged element semi-transparent
-                          if (e.currentTarget instanceof HTMLElement) {
-                            e.currentTarget.style.opacity = '0.5';
-                          }
-                        };
-
-                        const handleDragEnd = (e: React.DragEvent) => {
-                          setDraggedPartId(null);
-                          setDragOverPartId(null);
-                          // Reset opacity
-                          if (e.currentTarget instanceof HTMLElement) {
-                            e.currentTarget.style.opacity = '1';
-                          }
-                        };
-
-                        const handleDragOver = (e: React.DragEvent) => {
-                          if (!ensemble?.is_admin || draggedPartId === part.id) return;
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = 'move';
-                          setDragOverPartId(part.id);
-                        };
-
-                        const handleDragLeave = () => {
-                          setDragOverPartId(null);
-                        };
-
-                        const handleDrop = async (e: React.DragEvent) => {
-                          e.preventDefault();
-                          if (!ensemble?.is_admin || draggedPartId === null || draggedPartId === part.id) {
-                            setDragOverPartId(null);
-                            return;
-                          }
-
-                          const draggedIndex = sortedParts.findIndex(p => p.id === draggedPartId);
-                          const targetIndex = index;
-
-                          if (draggedIndex === -1 || draggedIndex === targetIndex) {
-                            setDragOverPartId(null);
-                            return;
-                          }
-
-                          // Create new order array
-                          const reorderedParts = [...sortedParts];
-                          const [draggedPart] = reorderedParts.splice(draggedIndex, 1);
-                          reorderedParts.splice(targetIndex, 0, draggedPart);
-
-                          // Update orders based on new positions
-                          const updatedParts = reorderedParts.map((p, i) => ({
-                            ...p,
-                            order: i
-                          }));
-
-                          try {
-                            setReorderingParts(true);
-                            await apiService.updatePartOrder(
-                              slug,
-                              updatedParts.map(p => ({ id: p.id, order: p.order ?? 0 }))
-                            );
-                            // Refresh ensemble data
-                            const updated = await apiService.getEnsemble(slug);
-                            setEnsemble(updated);
-                          } catch (err) {
-                            console.error('Failed to update part order:', err);
-                            alert('Failed to update part order. Please try again.');
-                          } finally {
-                            setReorderingParts(false);
-                            setDragOverPartId(null);
-                            setDraggedPartId(null);
-                          }
-                        };
-
-                        return (
-                          <div key={part.id}>
-                            <Card 
-                              withBorder 
-                              radius="sm" 
-                              p="sm" 
-                              mb="xs"
-                              draggable={ensemble?.is_admin && !reorderingParts}
-                              onDragStart={handleDragStart}
-                              onDragEnd={handleDragEnd}
-                              onDragOver={handleDragOver}
-                              onDragLeave={handleDragLeave}
-                              onDrop={handleDrop}
-                              style={{
-                                cursor: ensemble?.is_admin ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                                opacity: isDragging ? 0.5 : 1,
-                                borderColor: isDragOver ? 'var(--mantine-color-blue-6)' : undefined,
-                                borderWidth: isDragOver ? 2 : undefined,
-                                backgroundColor: isDragOver ? 'var(--mantine-color-blue-0)' : undefined,
-                                transition: 'background-color 0.2s, border-color 0.2s',
-                              }}
-                            >
-                              <Group justify="space-between" wrap="nowrap">
-                                <Group gap="xs" style={{ minWidth: 0 }}>
-                                  {ensemble?.is_admin && (
-                                    <ActionIcon
-                                      variant="subtle"
-                                      size="sm"
-                                      style={{ cursor: 'grab' }}
-                                      title="Drag to reorder"
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <IconGripVertical size={16} />
-                                    </ActionIcon>
-                                  )}
-                                  <ActionIcon
-                                    variant="subtle"
-                                    size="sm"
-                                    onClick={() => setExpandedPartId(isExpanded ? null : part.id)}
-                                    disabled={olderBooks.length === 0}
-                                    title={olderBooks.length ? 'Older revisions' : undefined}
-                                  >
-                                    {olderBooks.length > 0 ? (
-                                      isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />
-                                    ) : (
-                                      <IconChevronRight size={16} style={{ opacity: 0.3 }} />
-                                    )}
-                                  </ActionIcon>
-                                  <Text size="sm" fw={600}>{part.display_name}</Text>
-                                  {latestBook && (
-                                    <>
-                                      <Badge size="xs" variant="light" color={latestBook.revision === latestRev ? 'teal' : 'gray'}>
-                                        r{latestBook.revision} {latestBook.revision === latestRev ? '(latest)' : ''}
-                                      </Badge>
-                                      {!latestBook.is_rendered && (
-                                        <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
-                                      )}
-                                    </>
-                                  )}
-                                  {!latestBook && (
-                                    <Text size="xs" c="dimmed">No part book</Text>
-                                  )}
-                                </Group>
-                                <Group>
-                                  {(part.arrangements) && (length <= 2)  && (
-                                    <>
-                                      {part.arrangements.map((arr) => ( 
-                                        <Text size="xs" c="dimmed">{arr} </Text>
-                                      ))}
-                                    </>
-                                  )}
-                                  {(part.arrangements) && (length >2) && (
-                                    <>
-                                      <Text size="xs" c="dimmed">{part.arrangements[0]}</Text>
-                                      <Text size="xs" c="dimmed">... {part.arrangements.length - 1} more</Text>
-                                    {part.arrangements.map((arr) => ( <Text size="xs" c="dimmed">{arr}</Text> ))}
-                                    </>
-                                  )}
-                                </Group>
-                                {latestBook?.is_rendered && latestBook.download_url && (
-                                  <Button
-                                    component="a"
-                                    href={latestBook.download_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    size="xs"
-                                    variant="light"
-                                    leftSection={<IconDownload size={14} />}
-                                  >
-                                    Download
-                                  </Button>
-                                )}
-                              </Group>
-                              <Collapse in={isExpanded && olderBooks.length > 0}>
-                                <Stack gap="xs" mt="sm" pl="md" style={{ borderLeft: '2px solid var(--mantine-color-default-border)' }}>
-                                  <Text size="xs" c="dimmed" fw={500}>Older revisions</Text>
-                                  {olderBooks.map((book) => (
-                                    <Group key={book.id} justify="space-between">
-                                      <Group gap="xs">
-                                        <Text size="sm">Revision {book.revision}</Text>
-                                        {!book.is_rendered && (
-                                          <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
-                                        )}
-                                      </Group>
-                                      {book.is_rendered && book.download_url && (
-                                        <Button
-                                          component="a"
-                                          href={book.download_url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          size="xs"
-                                          variant="subtle"
-                                          leftSection={<IconDownload size={12} />}
-                                        >
-                                          Download
-                                        </Button>
-                                      )}
-                                    </Group>
-                                  ))}
-                                </Stack>
-                              </Collapse>
-                            </Card>
-                          </div>
-                        );
-                      })}
-                  </Stack>
-                )}
-              </div>
-            </Card>
+          <Tabs.Panel value="part-books" pt="md">
+            <EnsemblePartBooksSection
+              ensemble={ensemble}
+              partNames={partNames}
+              onRefresh={() => fetchEnsemble(slug)}
+              onError={(message) => setError(message)}
+            />
           </Tabs.Panel>
         </Tabs>
       </Paper>
@@ -746,48 +445,6 @@ export default function EnsembleDisplay() {
         </Group>
       </Modal>
 
-      <Modal
-        opened={mergeModalOpen}
-        onClose={() => setMergeModalOpen(false)}
-        title="Merge part names"
-      >
-        <Stack>
-          <Select
-            label="Keep"
-            placeholder="Choose the part name to keep"
-            data={partNameSelectData}
-            value={mergeFirstId}
-            onChange={setMergeFirstId}
-            searchable
-          />
-          <Select
-            label="Merge into it"
-            placeholder="Choose the part name to merge"
-            data={partNameSelectData}
-            value={mergeSecondId}
-            onChange={setMergeSecondId}
-            searchable
-          />
-          <TextInput
-            label="New display name (optional)"
-            placeholder="Leave blank to keep the chosen name"
-            value={mergeNewDisplayName}
-            onChange={(e) => setMergeNewDisplayName(e.currentTarget.value)}
-          />
-          <Group justify="flex-end">
-            <Button variant="outline" onClick={() => setMergeModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleMergePartNames}
-              loading={saving}
-              disabled={!mergeFirstId || !mergeSecondId}
-            >
-              Merge
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
     </Container>
   );
 }

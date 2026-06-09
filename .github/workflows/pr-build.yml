@@ -76,6 +76,23 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install WeasyPrint system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libcairo2 \
+            libpango-1.0-0 \
+            libpangocairo-1.0-0 \
+            libpangoft2-1.0-0 \
+            libharfbuzz0b \
+            libgdk-pixbuf-2.0-0 \
+            libglib2.0-0 \
+            shared-mime-info
+            # libharfbuzz-subset0 is only packaged on Ubuntu 24.04+; WeasyPrint falls back without it.
+            if apt-cache show libharfbuzz-subset0 >/dev/null 2>&1; then
+              sudo apt-get install -y --no-install-recommends libharfbuzz-subset0
+            fi
+
       - name: Install dependencies
         working-directory: apps/backend
         run: |

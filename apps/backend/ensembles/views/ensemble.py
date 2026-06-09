@@ -1,14 +1,17 @@
+from comments.models import ArrangementVersionCommentThread
 from django.conf import settings
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.db.models.expressions import RawSQL
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
     ArrangementVersion,
+    Commit,
     Ensemble,
     EnsembleUsership,
     PartBook,
@@ -18,6 +21,7 @@ from ensembles.serializers import (
     ArrangementSerializer,
     EnsembleListSerializer,
     EnsemblePartNameMergeSerializer,
+    EnsemblePartNameRenameSerializer,
     EnsembleSerializer,
 )
 from ensembles.tasks.part_books import generate_books_for_ensemble
@@ -39,19 +43,30 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Ensemble.objects.none()
 
-        base_qs = Ensemble.objects.filter(Q(owner=user) | Q(userships__user=user)).select_related("owner")
+        base_qs = Ensemble.objects.filter(
+            Q(owner=user) | Q(userships__user=user)
+        ).select_related("owner")
 
         if self.action == "list":
-            return base_qs.annotate(arrangements_count=Count("arrangements", distinct=True)).prefetch_related(
-                Prefetch(
-                    "userships",
-                    queryset=EnsembleUsership.objects.filter(user=user).only(
-                        "id", "user_id", "ensemble_id", "role"
-                    ),
+            return (
+                base_qs.annotate(
+                    arrangements_count=Count("arrangements", distinct=True)
                 )
-            ).order_by("id").distinct()
+                .prefetch_related(
+                    Prefetch(
+                        "userships",
+                        queryset=EnsembleUsership.objects.filter(user=user).only(
+                            "id", "user_id", "ensemble_id", "role"
+                        ),
+                    )
+                )
+                .order_by("id")
+                .distinct()
+            )
 
-        arrangements_queryset = Arrangement.objects.select_related("ensemble").prefetch_related(
+        arrangements_queryset = Arrangement.objects.select_related(
+            "ensemble"
+        ).prefetch_related(
             Prefetch(
                 "versions",
                 queryset=ArrangementVersion.objects.filter(is_latest=True),
@@ -93,6 +108,20 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
         arrangements = (
             ensemble.arrangements.annotate(
+                _has_unversioned_latest_commit=Exists(
+                    Commit.objects.filter(
+                        arrangement=OuterRef("pk"),
+                        children__isnull=True,
+                        version__isnull=True,
+                    )
+                ),
+                _has_unresolved_comments_on_latest_version=Exists(
+                    ArrangementVersionCommentThread.objects.filter(
+                        arrangement_version__arrangement=OuterRef("pk"),
+                        arrangement_version__is_latest=True,
+                        status=ArrangementVersionCommentThread.Status.OPEN,
+                    )
+                ),
                 first_num=RawSQL(
                     "CAST((regexp_matches(mvt_no, '^([0-9]+)'))[1] AS INTEGER)",
                     [],
@@ -107,7 +136,10 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def _has_access(self, ensemble, user):
-        return ensemble.owner == user or EnsembleUsership.objects.filter(ensemble=ensemble, user=user).exists()
+        return (
+            ensemble.owner == user
+            or EnsembleUsership.objects.filter(ensemble=ensemble, user=user).exists()
+        )
 
     @action(detail=True, methods=["get", "post"], url_path="invite-link")
     def invite_link(self, request, slug=None):
@@ -119,7 +151,9 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
         if not is_owner and not is_admin:
             return Response(
-                {"detail": "Only ensemble owners and admins can generate invite links."},
+                {
+                    "detail": "Only ensemble owners and admins can generate invite links."
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -157,7 +191,9 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         try:
             usership = EnsembleUsership.objects.get(ensemble=ensemble, user__id=user_id)
             usership.delete()
-            return Response({"detail": "User removed from ensemble."}, status=status.HTTP_200_OK)
+            return Response(
+                {"detail": "User removed from ensemble."}, status=status.HTTP_200_OK
+            )
         except EnsembleUsership.DoesNotExist:
             return Response(
                 {"detail": "User is not a member of this ensemble."},
@@ -179,10 +215,14 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         new_role = request.data.get("role")
 
         if not user_id:
-            return Response({"detail": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "User ID is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         if not new_role:
-            return Response({"detail": "Role is required."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Role is required."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         valid_roles = [choice[0] for choice in EnsembleUsership.Role.choices]
         if new_role not in valid_roles:
@@ -205,9 +245,56 @@ class EnsembleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+    @action(detail=True, methods=["get"], url_path="part-name-matrix")
+    def part_name_matrix(self, request, slug=None):
+        ensemble = self.get_object()
+        if not self._has_access(ensemble, request.user):
+            return Response(
+                {"detail": "You do not have access to this ensemble."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return Response(build_part_name_matrix(ensemble))
+
+    @action(detail=True, methods=["post"], url_path="rename-part-name")
+    def rename_part_name(self, request, slug=None):
+        ensemble = self.get_object()
+        if not request.user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can rename part names."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = EnsemblePartNameRenameSerializer(
+            data=request.data, context={"ensemble": ensemble}
+        )
+        serializer.is_valid(raise_exception=True)
+        part = serializer.validated_data["part"]
+        display_name = serializer.validated_data["display_name"]
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        try:
+            part.rename_display_name(display_name)
+        except DjangoValidationError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"id": part.id, "display_name": part.display_name},
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["post"])
     def merge_part_names(self, request, slug=None):
-        serializer = EnsemblePartNameMergeSerializer(data=request.data, context={"ensemble": self.get_object()})
+        ensemble = self.get_object()
+        if not request.user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can merge part names."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = EnsemblePartNameMergeSerializer(
+            data=request.data, context={"ensemble": ensemble}
+        )
         serializer.is_valid(raise_exception=True)
         validated_data = serializer.validated_data
 
@@ -217,7 +304,9 @@ class EnsembleViewSet(viewsets.ModelViewSet):
         from django.core.exceptions import ValidationError as DjangoValidationError
 
         try:
-            merged = PartName.merge_part_names(first, second, validated_data.get("new_displayname", "") or "")
+            merged = PartName.merge_part_names(
+                first, second, validated_data.get("new_displayname", "") or ""
+            )
         except DjangoValidationError as e:
             return Response(
                 {"detail": str(e)},
@@ -233,7 +322,10 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     def generate_part_books(self, request, slug=None):
         ensemble = self.get_object()
         generate_books_for_ensemble.delay(ensemble.id)
-        return Response({"detail": "Export of Part Books triggered"}, status=status.HTTP_202_ACCEPTED)
+        return Response(
+            {"detail": "Export of Part Books triggered"},
+            status=status.HTTP_202_ACCEPTED,
+        )
 
     @action(detail=True, methods=["post"], url_path="update-part-order")
     def update_part_order(self, request, slug=None):
@@ -250,25 +342,37 @@ class EnsembleViewSet(viewsets.ModelViewSet):
 
         if not isinstance(part_orders, list):
             return Response(
-                {"detail": "part_orders must be a list of objects with 'id' and 'order' fields."},
+                {
+                    "detail": "part_orders must be a list of objects with 'id' and 'order' fields."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         part_ids = [item.get("id") for item in part_orders if item.get("id")]
         if not part_ids:
-            return Response({"detail": "No part IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "No part IDs provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         parts = PartName.objects.filter(id__in=part_ids, ensemble=ensemble)
         if parts.count() != len(part_ids):
             return Response(
-                {"detail": "One or more part IDs are invalid or do not belong to this ensemble."},
+                {
+                    "detail": "One or more part IDs are invalid or do not belong to this ensemble."
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        part_dict = {item.get("id"): item.get("order") for item in part_orders if item.get("id") is not None}
+        part_dict = {
+            item.get("id"): item.get("order")
+            for item in part_orders
+            if item.get("id") is not None
+        }
         for part in parts:
             if part.id in part_dict:
                 part.order = part_dict[part.id]
                 part.save(update_fields=["order"])
 
-        return Response({"detail": "Part order updated successfully."}, status=status.HTTP_200_OK)
+        return Response(
+            {"detail": "Part order updated successfully."}, status=status.HTTP_200_OK
+        )

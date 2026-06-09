@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0017_exportfailurelog'),
+        ("ensembles", "0017_exportfailurelog"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='num_lines_per_page',
+            model_name="arrangementversion",
+            name="num_lines_per_page",
             field=models.IntegerField(default=8),
             preserve_default=False,
         ),

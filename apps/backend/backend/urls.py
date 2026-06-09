@@ -15,25 +15,27 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
+from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path, include
+from django.contrib import admin
+from django.urls import include, path
 from rest_framework import routers
 
-from django.conf import settings
-
-from core.views import GetWarningsView
-
-from ensembles.views import (
-    EnsembleViewSet,
-    ArrangementViewSet,
-    ArrangementByIdViewSet,
-    ArrangementVersionViewSet,
-    JoinEnsembleView,
+from core.views import (
+    CurrentUserView,
+    DirectDiscordLoginView,
+    GetCsrfTokenView,
+    GetWarningsView,
+    LogoutView,
 )
 from divisi.views import PartFormatterViewSet
-
-from core.views import CurrentUserView, LogoutView, DirectDiscordLoginView, GetCsrfTokenView
+from ensembles.views import (
+    ArrangementByIdViewSet,
+    ArrangementVersionViewSet,
+    ArrangementViewSet,
+    EnsembleViewSet,
+    JoinEnsembleView,
+)
 
 divisi_router = routers.DefaultRouter()
 divisi_router.register(r"part-formatter", PartFormatterViewSet, "part-formatter")
@@ -41,8 +43,12 @@ divisi_router.register(r"part-formatter", PartFormatterViewSet, "part-formatter"
 ensembles_router = routers.DefaultRouter()
 ensembles_router.register(r"ensembles", EnsembleViewSet, "ensemble")
 ensembles_router.register(r"arrangements", ArrangementViewSet, "arrangement")
-ensembles_router.register(r"arrangements-by-id", ArrangementByIdViewSet, "arrangement-by-id")
-ensembles_router.register(r"arrangementversions", ArrangementVersionViewSet, "arrangementversion")
+ensembles_router.register(
+    r"arrangements-by-id", ArrangementByIdViewSet, "arrangement-by-id"
+)
+ensembles_router.register(
+    r"arrangementversions", ArrangementVersionViewSet, "arrangementversion"
+)
 
 
 urlpatterns = [
@@ -53,7 +59,11 @@ urlpatterns = [
     path("api/auth/current-user/", CurrentUserView.as_view(), name="current-user"),
     path("api/auth/logout/", LogoutView.as_view(), name="logout"),
     # Direct Discord login (skips allauth login page)
-    path("api/auth/discord/login/", DirectDiscordLoginView.as_view(), name="direct-discord-login"),
+    path(
+        "api/auth/discord/login/",
+        DirectDiscordLoginView.as_view(),
+        name="direct-discord-login",
+    ),
     path("api/", include((divisi_router.urls, "divisi"), namespace="divisi")),
     path("api/", include((ensembles_router.urls, "ensembles"), namespace="ensembles")),
     path("api/", include("comments.urls")),

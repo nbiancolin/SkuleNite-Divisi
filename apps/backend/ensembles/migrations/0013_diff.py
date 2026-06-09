@@ -5,24 +5,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0012_remove_arrangementversion_uuid'),
+        ("ensembles", "0012_remove_arrangementversion_uuid"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Diff',
+            name="Diff",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('file_name', models.CharField()),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('generated', models.BooleanField(default=False)),
-                ('from_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='diff_as_source', to='ensembles.arrangementversion')),
-                ('to_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='diff_as_target', to='ensembles.arrangementversion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("file_name", models.CharField()),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("generated", models.BooleanField(default=False)),
+                (
+                    "from_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="diff_as_source",
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
+                (
+                    "to_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="diff_as_target",
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
             ],
             options={
-                'unique_together': {('from_version', 'to_version')},
+                "unique_together": {("from_version", "to_version")},
             },
         ),
     ]

@@ -21,9 +21,9 @@ import {
   Divider,
   Tabs,
 } from '@mantine/core';
-import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight, IconAlertCircle, IconMessageCircle } from '@tabler/icons-react';
 import { apiService, type Ensemble, type EnsemblePartBook, type PartName, type Arrangement } from '../../services/apiService';
-import { usePageTitle } from '../../context/PageTitleContext';
+import { usePageTitle } from '../../context/usePageTitle';
 
 const ArrangementsPage = () => {
   const { slug = "NA" } = useParams(); // Get ensemble slug from URL
@@ -292,8 +292,9 @@ const ArrangementsPage = () => {
                   <Table.Tr>
                     <Table.Th>Movement #</Table.Th>
                     <Table.Th>Title</Table.Th>
-                    <Table.Th>Composer</Table.Th>
                     <Table.Th>Latest Version</Table.Th>
+                    <Table.Th>Commit</Table.Th>
+                    <Table.Th>Comments</Table.Th>
                     <Table.Th>Actions</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
@@ -309,11 +310,6 @@ const ArrangementsPage = () => {
                         <Text fw={500}><a href={`/app/arrangements/${arrangement.id}/`}>{arrangement.title}</a></Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text c="dimmed" size="sm">
-                          {arrangement.composer || '—'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
                         <Badge
                           variant="light"
                           color={
@@ -327,6 +323,38 @@ const ArrangementsPage = () => {
                         >
                           v{arrangement.latest_version_num}
                         </Badge>
+                      </Table.Td>
+                      <Table.Td>
+                        {arrangement.has_unversioned_latest_commit ? (
+                          <Tooltip label="Latest commit has not been turned into a version yet">
+                            <Badge
+                              variant="light"
+                              color="orange"
+                              size="sm"
+                              leftSection={<IconAlertCircle size={12} />}
+                            >
+                              Unversioned commit
+                            </Badge>
+                          </Tooltip>
+                        ) : (
+                          <Text c="dimmed" size="sm">—</Text>
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        {arrangement.has_unresolved_comments_on_latest_version ? (
+                          <Tooltip label="Latest version has unresolved comments">
+                            <Badge
+                              variant="light"
+                              color="orange"
+                              size="sm"
+                              leftSection={<IconMessageCircle size={12} />}
+                            >
+                              Unresolved comments
+                            </Badge>
+                          </Tooltip>
+                        ) : (
+                          <Text c="dimmed" size="sm">—</Text>
+                        )}
                       </Table.Td>
                       <Table.Td>
                         <Group gap="xs">
