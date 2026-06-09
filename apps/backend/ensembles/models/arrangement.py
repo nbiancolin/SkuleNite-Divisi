@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 from django.db import models
 
 from ensembles.lib.slug import generate_unique_slug
-from ensembles.models import Ensemble
+from ensembles.models.ensemble import Ensemble
 from ensembles.models.constants import STYLE_CHOICES
 
 if TYPE_CHECKING:
