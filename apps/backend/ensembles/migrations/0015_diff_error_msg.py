@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0014_remove_diff_generated_diff_status'),
+        ("ensembles", "0014_remove_diff_generated_diff_status"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='diff',
-            name='error_msg',
+            model_name="diff",
+            name="error_msg",
             field=models.CharField(blank=True, null=True),
         ),
     ]

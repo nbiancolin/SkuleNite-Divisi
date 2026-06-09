@@ -1,5 +1,6 @@
 from django.utils.text import slugify
 
+
 def generate_unique_slug(model_class, value, instance=None, queryset=None):
     """
     Generates a unique slug for a model instance.

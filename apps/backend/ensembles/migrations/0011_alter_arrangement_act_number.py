@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0010_arrangementversion_num_measures_per_line_part_and_more'),
+        ("ensembles", "0010_arrangementversion_num_measures_per_line_part_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='arrangement',
-            name='act_number',
+            model_name="arrangement",
+            name="act_number",
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

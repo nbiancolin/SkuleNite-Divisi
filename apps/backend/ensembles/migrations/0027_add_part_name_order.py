@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0026_ensemble_latest_part_book_revision_and_more'),
+        ("ensembles", "0026_ensemble_latest_part_book_revision_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='partname',
-            name='order',
+            model_name="partname",
+            name="order",
             field=models.PositiveIntegerField(blank=True, null=True),
         ),
     ]

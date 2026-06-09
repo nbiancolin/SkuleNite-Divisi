@@ -1,12 +1,11 @@
+from io import BytesIO
+from typing import Literal, TypedDict
+
+from pypdf import PdfReader, PdfWriter
 from reportlab.lib import pagesizes
 from reportlab.pdfgen import canvas
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from io import BytesIO
-from pypdf import PdfWriter, PdfReader
 
-from ensembles.models.constants import STYLE_CHOICES
-
-from typing import TypedDict
+from ensembles.lib.part_book_pdf import render_part_book_html
 
 
 class TocEntry(TypedDict):
@@ -48,56 +47,17 @@ def generate_cover_page(
     title_font: str = "",  # for future, to allow for a custom font on the title
 ) -> BytesIO:
     """
-    Generate a Cover page for a divisi app ensemble book
-
-    :param export_date: the day the book was exported. Taken in as a string so the format can be customized
-    :type export_date: str
-    :param copyright: Copyright Text to display on the bottom
-    :type copyright: str
-    :param part_name: Part name of part
-    :type part_name: str
-    :param show_title: Ensemble/show title
-    :type show_title: str
-    :param show_subtitle: Ensemble/show subtitle
-    :type show_subtitle: str
-    :param logo: (not implementted) path to a logo to display on the front page
-    :param selected_style: selected style. "jazz" if jazz, "broadway" if broadway.
-    :type selected_style: str
-    :return: PDF object in memory. Write out afterwards
-    :rtype: BytesIO
+    Generate a Cover page for a divisi app ensemble book (HTML template + WeasyPrint).
     """
-
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
-    width, height = pagesizes.LETTER
-
-    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
-
-    c.setFont(font, 32)
-    c.drawCentredString(width / 2, height / 2 + 40, show_title)
-
-    if show_subtitle:
-        c.setFont(font, 16)
-        c.drawCentredString(width / 2, height / 2, show_subtitle)
-        c.setFont(font, 14)
-        c.drawCentredString(width / 2, height / 2 - 40, f"Rev: {export_date}")
-
-    else:
-        c.setFont(font, 14)
-        c.drawCentredString(width / 2, height / 2, f"Rev: {export_date}")
-
-    c.setFont(font, 20)
-    c.drawCentredString(width / 2, height / 2 + 100, part_name)
-
-    if copyright:
-        c.setFont(font, 12)
-        c.drawCentredString(width / 2, 80, copyright)
-
-    c.showPage()
-    c.save()
-
-    buffer.seek(0)
-    return buffer
+    return render_part_book_html(
+        "part_book/cover.html",
+        selected_style=selected_style,
+        export_date=export_date,
+        part_name=part_name,
+        show_title=show_title,
+        show_subtitle=show_subtitle,
+        copyright=copyright,
+    )
 
 
 class PartBookInfo(TypedDict):
@@ -117,41 +77,15 @@ def generate_table_of_contents(
     table_contents_data: list[TocEntry],  # (title, version label, page #)
     selected_style: str = "broadway",
 ) -> BytesIO:
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
-    width, height = pagesizes.LETTER
-
-    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
-
-    c.setFont(font, 32)
-    c.drawCentredString(width / 2, height - 100, show_title)
-    if show_subtitle:
-        c.setFont(font, 28)
-        c.drawCentredString(width / 2, height - 120, show_subtitle)
-
-    c.setFont(font, 16)
-    c.drawString(60, height - 60, part_name)
-
-    y = height - 160
-
-    c.setFont(font, 12)
-    while y > 160 and len(table_contents_data) > 0:
-        entry = table_contents_data.pop()
-        # lhs = f"<b>{entry['show_number']}: {entry['title']}</b> <i>({entry['version_label']})</i>"
-        lhs = f"{entry['show_number']}: {entry['title']} (v{entry['version_label']})"
-        rhs = str(entry["page"])
-        c.drawString(width * 1 / 5, y, lhs)
-        c.drawRightString(width * 4 / 5, y, rhs)
-        y += 20
-
-    c.setFont(font, 12)
-    c.drawCentredString(width / 2, 80, f"Rev. {export_date}")
-
-    c.showPage()
-    c.save()
-
-    buffer.seek(0)
-    return buffer
+    return render_part_book_html(
+        "part_book/toc.html",
+        selected_style=selected_style,
+        show_title=show_title,
+        show_subtitle=show_subtitle,
+        part_name=part_name,
+        export_date=export_date,
+        entries=list(table_contents_data),
+    )
 
 
 def generate_tacet_page(
@@ -164,44 +98,30 @@ def generate_tacet_page(
     part_name: str,
     selected_style: str = "broadway",
 ) -> BytesIO:
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=pagesizes.LETTER)
-    width, height = pagesizes.LETTER
-
-    font = "Inkpen2ScriptStd" if selected_style == "jazz" else "palatinolinotype_roman"
-
-    c.setFont(font, 32)
-    # TODO[SC-279]: If title length is longer than a certain amount, bring it lower so it stays below the "show_title" text
-    c.drawCentredString(width / 2, height - 80, song_title)
-
-    if song_subtitle:
-        c.setFont(font, 28)
-        c.drawCentredString(width / 2, height - 120, song_subtitle)
-
-    c.setFont(font, 32)  # not underlined
-    text_width = stringWidth(show_number, font, 32)
-
-    c.drawRightString(width - 60, height - 60, show_number)
-    c.drawBoundary(
-        None, (width - 60) - (text_width + 15), (height - 60) - 12, text_width + 30, 50
+    return render_part_book_html(
+        "part_book/tacet.html",
+        selected_style=selected_style,
+        show_title=show_title,
+        show_number=show_number,
+        export_date=export_date,
+        song_title=song_title,
+        song_subtitle=song_subtitle,
+        part_name=part_name,
     )
 
-    c.setFont(font, 12)  # make it underlined somehow?
-    c.drawRightString((width - 60) - (text_width + 15) - 10, height - 60, show_title)
 
-    c.drawString(60, height - 60, part_name)
-
-    c.setFont(font, 32)
-    c.drawCentredString(width / 2, height / 2 + 40, "TACET")
-
-    c.setFont(font, 12)
-    c.drawCentredString(width / 2, 80, f"Rev. {export_date}")
-
-    c.showPage()
-    c.save()
-
-    buffer.seek(0)
-    return buffer
+def generate_page_turn_page(
+    part_name: str, show_title: str, export_date: str, show_number: str | None, **kwargs
+) -> BytesIO:
+    if not show_number:
+        show_number = ""
+    return render_part_book_html(
+        "part_book/page_turn.html",
+        part_name=part_name,
+        show_title=show_title,
+        show_number=show_number,
+        export_date=export_date,
+    )
 
 
 def count_pdf_pages(pdf: BytesIO | str) -> int:
@@ -227,7 +147,7 @@ def overlay_page_numbers(
     """
     Overlay page numbers on every page in writer.
     """
-    #TODO[SC-280]: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
+    # TODO[SC-280]: This does a terrible job with page numbers. Ignoring it for now as i don't have time to fix it but eventually fix
     for i, page in enumerate(writer.pages):
         packet = BytesIO()
         c = canvas.Canvas(packet, pagesize=pagesizes.LETTER)
@@ -248,25 +168,66 @@ def overlay_page_numbers(
         page.merge_page(overlay)
 
 
+def _should_add_blank_page(current_page_position: bool, num_pages: int) -> bool:
+    """
+    current_page_position:
+    True: pdf will start on RHS (odd)
+    False: pdf will start on LHS (even)
+
+    return:
+    True: insert a blank (V.S.) Page
+    False: do not insert a blank page
+    """
+
+    match num_pages:
+        case 1:
+            # just append it, we dont really care
+            return False
+        case 2:
+            # we could optimize this probably but who cares, ease of reading > saving a couple sheets of paper
+            return current_page_position  # always start on LHS
+        # case 4:
+        #     return False # TODO: could try this
+        case _:
+            return not current_page_position  # Start on RHS
+
+
 def merge_pdfs(
     *,
     cover_pdf: BytesIO | None,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
-    # TODO[SC-281]: Allow setting which pdfs to start on a blank page
-    start_on_odd_page: bool = True,
-    overwrite_page_numbers: bool = False, #TODO[SC-280]: Fix this, its janky rn
+    page_turn_page: BytesIO
+    | None = None,  # If this is not passed in, generate one w/o any focused txt
+    page_merge_strategy: Literal["optimize"]
+    | Literal["odd"]
+    | Literal["raw"] = "optimize",
+    overwrite_page_numbers: bool = False,  # TODO[SC-280]: Fix this, its janky rn
     first_content_page_number: int = 1,
 ) -> MergedPdfResult:
     """
     Merge PDFs and compute TOC page numbers.
 
+    page_merge_strategy:
+    - `optimize`: use custom divisi logic to try and line up pages well
+    - `odd`: Ensure that every song starts on an odd page
+    - `raw`: Just append the pdfs and no blank pages
+
     content_pdfs:
         List of (toc_entry, pdf) where toc_entry.page will be filled in.
     """
 
+    assert page_merge_strategy in ["optimize", "odd", "raw"], (
+        f"Invalid page merge strategy: {page_merge_strategy}"
+    )
+
     writer = PdfWriter()
     current_page = 0
     toc_entries: list[TocEntry] = []
+
+    if not page_turn_page:
+        page_turn_page = generate_page_turn_page(
+            part_name="", show_title="", show_number="", export_date=""
+        )
 
     # Cover page
     if cover_pdf:
@@ -277,11 +238,24 @@ def merge_pdfs(
     # Main content
     for entry, pdf in content_pdfs:
         reader = PdfReader(pdf)
+        num_pages = len(reader.pages)
 
-        # Ensure odd-page start if requested
-        if start_on_odd_page and current_page % 2 == 1:
-            add_blank_page(writer)
-            current_page += 1
+        match page_merge_strategy:
+            case "optimize":
+                # curr page is odd = RHS
+                if _should_add_blank_page(
+                    current_page_position=((current_page + 1) % 2 == 1),
+                    num_pages=num_pages,
+                ):
+                    writer.append(page_turn_page)
+                    current_page += 1
+
+            case "odd":
+                if current_page % 2 == 1:
+                    add_blank_page(writer)
+                    current_page += 1
+            case "raw":
+                pass
 
         # Record TOC page (1-based, after cover)
         entry = entry.copy()
@@ -319,11 +293,18 @@ def generate_full_part_book(
     cover -> toc -> content
     """
 
+    from ensembles.lib.pdf import generate_page_turn_page
+
+    page_turn_kwargs = toc_kwargs | {
+        "show_number": ""
+    }  # TODO: Assess if we even need this..
+    page_turn = generate_page_turn_page(**page_turn_kwargs)
     # Pass 1: merge content only (no cover) to get TOC page numbers and content PDF
     pass1 = merge_pdfs(
         cover_pdf=None,
         content_pdfs=content_pdfs,
         overwrite_page_numbers=False,
+        page_turn_page=page_turn,
     )
 
     # TOC page numbers must account for: cover (1) + blank (1) + toc (1) + blank (1) = 4 pages before content

@@ -1,21 +1,15 @@
-import pytest
 from decimal import Decimal
-from unittest.mock import patch
-from rest_framework.exceptions import ValidationError
+
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils.dateparse import parse_datetime
 
 from ensembles.serializers import (
-    ArrangementVersionSerializer,
     ArrangementSerializer,
-    EnsembleSerializer,
+    ArrangementVersionSerializer,
     CreateArrangementVersionMsczSerializer,
+    EnsembleSerializer,
 )
-from ensembles.factories import (
-    ArrangementFactory,
-    ArrangementVersionFactory,
-)
-
 
 # -------------------------------------------------------------------
 # Arrangement / Ensemble serializer tests
@@ -59,6 +53,8 @@ def test_arrangement_serializer_includes_latest_version(
         "style",
         "latest_version",
         "latest_version_num",
+        "has_unversioned_latest_commit",
+        "has_unresolved_comments_on_latest_version",
     ]
     _, latest = arrangement_versions
     data = ArrangementSerializer(arrangement).data
@@ -75,6 +71,63 @@ def test_arrangement_serializer_includes_latest_version(
         assert field in data
         assert data[field] == getattr(arrangement, field)
 
+    assert data["has_unversioned_latest_commit"] is False
+    assert data["has_unresolved_comments_on_latest_version"] is False
+
+
+@pytest.mark.django_db
+def test_arrangement_serializer_has_unversioned_latest_commit(arrangement, user):
+    from ensembles.models.commit import Commit
+
+    Commit.create_new_commit(
+        arrangement,
+        created_by_user=user,
+        create_kwargs={"file_name": "test.mscz", "message": "draft"},
+    )
+
+    data = ArrangementSerializer(arrangement).data
+    assert data["has_unversioned_latest_commit"] is True
+
+
+@pytest.mark.django_db
+def test_arrangement_serializer_has_unresolved_comments_on_latest_version(
+    arrangement, arrangement_versions, user
+):
+    from comments.models import ArrangementVersionCommentThread
+
+    _, latest = arrangement_versions
+    ArrangementVersionCommentThread.objects.create(
+        arrangement_version=latest,
+        created_by=user,
+        page_number=1,
+        x=0.5,
+        y=0.5,
+        status=ArrangementVersionCommentThread.Status.OPEN,
+    )
+
+    data = ArrangementSerializer(arrangement).data
+    assert data["has_unresolved_comments_on_latest_version"] is True
+
+
+@pytest.mark.django_db
+def test_arrangement_serializer_ignores_resolved_comments_on_latest_version(
+    arrangement, arrangement_versions, user
+):
+    from comments.models import ArrangementVersionCommentThread
+
+    _, latest = arrangement_versions
+    ArrangementVersionCommentThread.objects.create(
+        arrangement_version=latest,
+        created_by=user,
+        page_number=1,
+        x=0.5,
+        y=0.5,
+        status=ArrangementVersionCommentThread.Status.RESOLVED,
+    )
+
+    data = ArrangementSerializer(arrangement).data
+    assert data["has_unresolved_comments_on_latest_version"] is False
+
 
 @pytest.mark.django_db
 def test_ensemble_serializer_includes_arrangements(ensemble):
@@ -87,6 +140,7 @@ def test_ensemble_serializer_includes_arrangements(ensemble):
 # CreateArrangementVersionMsczSerializer tests
 # -------------------------------------------------------------------
 
+
 @pytest.mark.django_db
 def test_create_arrangement_version_mscz_serializer_valid(arrangement):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
@@ -97,6 +151,7 @@ def test_create_arrangement_version_mscz_serializer_valid(arrangement):
     }
     serializer = CreateArrangementVersionMsczSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
+
 
 @pytest.mark.django_db
 def test_create_arrangement_version_mscz_serializer_invalid_version_type(arrangement):
@@ -112,7 +167,9 @@ def test_create_arrangement_version_mscz_serializer_invalid_version_type(arrange
 
 
 @pytest.mark.django_db
-def test_create_arrangement_version_mscz_serializer_formatting_steps_unknown_key(arrangement):
+def test_create_arrangement_version_mscz_serializer_formatting_steps_unknown_key(
+    arrangement,
+):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,
@@ -126,7 +183,9 @@ def test_create_arrangement_version_mscz_serializer_formatting_steps_unknown_key
 
 
 @pytest.mark.django_db
-def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(arrangement):
+def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(
+    arrangement,
+):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,
@@ -138,11 +197,18 @@ def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(arr
     assert serializer.is_valid(), serializer.errors
     assert serializer.validated_data["formatting_steps"]["apply_mss_style"] is False
     assert serializer.validated_data["formatting_steps"]["apply_score_metadata"] is True
-    assert serializer.validated_data["formatting_steps"]["apply_scrub_existing_line_breaks"] is False
+    assert (
+        serializer.validated_data["formatting_steps"][
+            "apply_scrub_existing_line_breaks"
+        ]
+        is False
+    )
 
 
 @pytest.mark.django_db
-def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_steps(arrangement):
+def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_steps(
+    arrangement,
+):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,
@@ -156,8 +222,14 @@ def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_st
     }
     serializer = CreateArrangementVersionMsczSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
-    assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_prep"] is True
-    assert serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_cleanup"] is True
+    assert (
+        serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_prep"]
+        is True
+    )
+    assert (
+        serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_cleanup"]
+        is True
+    )
 
 
 @pytest.mark.django_db
@@ -191,7 +263,9 @@ def test_create_arrangement_version_mscz_serializer_staff_spacing_override_requi
 
 
 @pytest.mark.django_db
-def test_create_arrangement_version_mscz_serializer_staff_spacing_override_ok(arrangement):
+def test_create_arrangement_version_mscz_serializer_staff_spacing_override_ok(
+    arrangement,
+):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
     data = {
         "file": fake_file,

@@ -4,19 +4,27 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0019_arrangement_mvt_no'),
+        ("ensembles", "0019_arrangement_mvt_no"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='arrangement',
-            options={'ordering': ['mvt_no']},
+            name="arrangement",
+            options={"ordering": ["mvt_no"]},
         ),
         migrations.AddField(
-            model_name='arrangementversion',
-            name='audio_state',
-            field=models.CharField(choices=[('N', 'None'), ('P', 'Processing'), ('C', 'Complete'), ('E', 'Error')], default='N', max_length=1),
+            model_name="arrangementversion",
+            name="audio_state",
+            field=models.CharField(
+                choices=[
+                    ("N", "None"),
+                    ("P", "Processing"),
+                    ("C", "Complete"),
+                    ("E", "Error"),
+                ],
+                default="N",
+                max_length=1,
+            ),
         ),
     ]

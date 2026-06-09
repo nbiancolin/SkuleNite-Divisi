@@ -45,6 +45,11 @@ def default_formatting_steps() -> dict[str, bool]:
     return dict(DEFAULT_FORMATTING_STEPS)
 
 
+def score_metadata_only_formatting_steps() -> dict[str, bool]:
+    """Only embed show title/number/version in the MSCZ; no layout or style changes."""
+    return {key: key == "apply_score_metadata" for key in FORMATTING_STEP_KEYS}
+
+
 def merge_formatting_step_defaults(params: dict) -> None:
     """Ensure every apply_* key exists on params (mutates)."""
     for key in FORMATTING_STEP_KEYS:

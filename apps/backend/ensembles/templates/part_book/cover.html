@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Cover — {{ show_title }}</title>
+</head>
+<body class="{{ style_class }}">
+  <div class="page cover">
+    <div class="part-name">{{ part_name }}</div>
+    <div class="show-title">{{ show_title }}</div>
+    {% if show_subtitle %}
+      <div class="show-subtitle">{{ show_subtitle }}</div>
+      <div class="revision">Rev: {{ export_date }}</div>
+    {% else %}
+      <div class="revision revision--solo">Rev: {{ export_date }}</div>
+    {% endif %}
+    {% if copyright %}
+      <div class="copyright">{{ copyright }}</div>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -1,7 +1,7 @@
+import datetime
+
 from django.contrib import admin, messages
 from django.http import HttpRequest
-
-import datetime
 
 from .models import UploadSession
 

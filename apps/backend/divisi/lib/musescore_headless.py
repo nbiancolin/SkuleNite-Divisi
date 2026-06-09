@@ -1,5 +1,5 @@
-from django.conf import settings
 import requests
+from django.conf import settings
 
 
 def _get_host() -> str:
@@ -43,5 +43,5 @@ def render_all_parts_pdf(input_path: str) -> bytes:
         )
 
     r.raise_for_status()
-    
+
     return r.content

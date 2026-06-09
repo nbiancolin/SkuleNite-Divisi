@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0004_arrangement_composer_arrangement_default_style_and_more'),
+        ("ensembles", "0004_arrangement_composer_arrangement_default_style_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='arrangement',
-            name='piece_number',
+            model_name="arrangement",
+            name="piece_number",
             field=models.IntegerField(blank=True, default=1, null=True),
         ),
     ]

@@ -1,14 +1,12 @@
-from django.db import models
-from django.core.files.storage import default_storage
-
 import os
 from logging import getLogger
-
-from ensembles.models.arrangement import Arrangement
-from ensembles.formatting_steps_constants import default_formatting_steps
-
 from typing import TYPE_CHECKING
 
+from django.core.files.storage import default_storage
+from django.db import models
+
+from ensembles.formatting_steps_constants import default_formatting_steps
+from ensembles.models.arrangement import Arrangement
 
 if TYPE_CHECKING:
     from ensembles.models.part import PartAsset
@@ -23,14 +21,15 @@ class ArrangementVersion(models.Model):
 
     if TYPE_CHECKING:
         from django.db.models.manager import RelatedManager
+
         parts: RelatedManager["PartAsset"]
 
     file_name = models.CharField(max_length=128)
     version_label = models.CharField(max_length=10, default="0.0.0")  # 1.0.0 or 1.2.3
     timestamp = models.DateTimeField(auto_now_add=True)
     is_latest = models.BooleanField(default=False)
-    
-    #TODO[SC-241]: Convert these fields to a state field like Audio Status
+
+    # TODO[SC-241]: Convert these fields to a state field like Audio Status
     is_processing = models.BooleanField(default=True)
     error_on_export = models.BooleanField(default=False)
 
@@ -40,8 +39,9 @@ class ArrangementVersion(models.Model):
         COMPLETE = "C", "complete"
         ERROR = "E", "error"
 
-
-    audio_state = models.CharField(max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE)
+    audio_state = models.CharField(
+        max_length=1, choices=AudioStatus.choices, default=AudioStatus.NONE
+    )
 
     num_measures_per_line_score = models.IntegerField()
     num_measures_per_line_part = models.IntegerField()
@@ -84,7 +84,7 @@ class ArrangementVersion(models.Model):
     def score_pdf_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
         return f"ensembles/{self.arrangement.ensemble.slug}/{self.arrangement.slug}/{self.version_label}/processed/{filename_without_ext}.pdf"
-    
+
     @property
     def audio_file_key(self) -> str:
         filename_without_ext = os.path.splitext(self.file_name)[0]
@@ -120,7 +120,7 @@ class ArrangementVersion(models.Model):
     @property
     def audio_file_url(self) -> str:
         return default_storage.url(self.audio_file_key)
-    
+
     @property
     def combined_parts_pdf_url(self) -> str:
         return default_storage.url(self.combined_parts_pdf_key)
@@ -170,12 +170,12 @@ class ArrangementVersion(models.Model):
 
         if self.combined_parts_pdf_key:
             keys_to_delete.append(self.combined_parts_pdf_key)
-        
+
         # Also delete all part PDFs
         for part in self.parts.all():
             if part.file_key not in keys_to_delete:
                 keys_to_delete.append(part.file_key)
-        
+
         logger.warning("Deleting ArrangementVersion")
 
         for key in keys_to_delete:
@@ -205,7 +205,7 @@ class ArrangementVersion(models.Model):
     @property
     def ensemble_slug(self):
         return self.arrangement.ensemble_slug
-    
+
     @property
     def ensemble(self):
         return self.arrangement.ensemble

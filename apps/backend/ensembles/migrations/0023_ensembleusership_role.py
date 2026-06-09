@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0022_ensemble_invite_token'),
+        ("ensembles", "0022_ensemble_invite_token"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ensembleusership',
-            name='role',
-            field=models.CharField(choices=[('M', 'member'), ('A', 'admin')], default='M', max_length=1),
+            model_name="ensembleusership",
+            name="role",
+            field=models.CharField(
+                choices=[("M", "member"), ("A", "admin")], default="M", max_length=1
+            ),
         ),
     ]
