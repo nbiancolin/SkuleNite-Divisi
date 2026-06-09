@@ -8,6 +8,7 @@ from django.db.models.expressions import RawSQL
 
 from ensembles.lib.slug import generate_unique_slug
 from ensembles.models.constants import STYLE_CHOICES
+from ensembles.models.ensemble_template import EnsembleTemplate
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement import Arrangement
@@ -23,6 +24,7 @@ class Ensemble(models.Model):
 
         arrangements: RelatedManager["Arrangement"]
         part_names: RelatedManager["PartName"]
+        templates: RelatedManager["EnsembleTemplate"]
 
     name = models.CharField(max_length=30)
     slug = models.SlugField(unique=True)
@@ -40,6 +42,10 @@ class Ensemble(models.Model):
         blank=True,
     )
     invite_token = models.CharField(max_length=64, unique=True, null=True, blank=True)
+
+    @property
+    def has_template(self):
+        return EnsembleTemplate.get_latest_for_ensemble(ensemble=self) is not None
 
     @property
     def num_arrangements(self):

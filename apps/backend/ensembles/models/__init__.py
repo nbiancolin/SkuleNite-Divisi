@@ -8,6 +8,7 @@ from ensembles.models.export_failure_log import ExportFailureLog
 from ensembles.models.part import PartAsset, PartBook, PartBookEntry, PartName
 from ensembles.models.part_name_alias import PartNameAlias
 from ensembles.models.user_score_version import UserScoreVersion
+from ensembles.models.ensemble_template import EnsembleTemplate
 
 # holdover from an old migration, can't delete this without squashing migrations (or editing old migrations, both of which I dont want to deal with in prod)
 
