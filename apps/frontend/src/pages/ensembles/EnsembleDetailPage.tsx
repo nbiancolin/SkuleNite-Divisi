@@ -31,7 +31,7 @@ import { apiService } from '../../services/apiService';
 import { useParams, Link } from 'react-router-dom';
 import { usePageTitle } from '../../context/usePageTitle';
 
-import type { Ensemble, PartName } from '../../services/apiService';
+import type { Ensemble, PartBookLayout, PartName } from '../../services/apiService';
 import { ScoreTitlePreview, type PreviewStyleName } from '../../components/ScoreTitlePreview';
 import { PartNameMatrixEditor } from './PartNameMatrixEditor';
 import { EnsemblePartBooksSection } from './EnsemblePartBooksSection';
@@ -54,6 +54,8 @@ export default function EnsembleDisplay() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [selectedStyleDraft, setSelectedStyleDraft] = useState<PreviewStyleName>("broadway");
+  const [defaultPartBookLayoutDraft, setDefaultPartBookLayoutDraft] =
+    useState<PartBookLayout>("double_sided");
 
   const [saving, setSaving] = useState(false);
 
@@ -86,6 +88,7 @@ export default function EnsembleDisplay() {
       setEnsemble(data);
       setNameDraft(data?.name || '');
       setSelectedStyleDraft(data.default_style);
+      setDefaultPartBookLayoutDraft(data.default_part_book_layout ?? "double_sided");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -160,6 +163,7 @@ export default function EnsembleDisplay() {
       const body = JSON.stringify({
         name: nameDraft,
         default_style: selectedStyleDraft,
+        default_part_book_layout: defaultPartBookLayoutDraft,
       });
 
       const resp = await fetch(url, {
@@ -291,9 +295,21 @@ export default function EnsembleDisplay() {
                   arranger={"arranger"}
                   mvtNo={"1"}
                 />
+              <Select
+                label="Default part book layout"
+                description="Used for all parts unless a part has its own saved override."
+                value={defaultPartBookLayoutDraft}
+                onChange={(value) =>
+                  setDefaultPartBookLayoutDraft((value as PartBookLayout) ?? "double_sided")
+                }
+                data={[
+                  { value: "double_sided", label: "Double-sided" },
+                  { value: "single_sided", label: "Single-sided" },
+                ]}
+              />
               <Group>
                 <Button onClick={handleSaveEnsemble} loading={saving}>Save</Button>
-                <Button variant="outline" onClick={() => { setEditing(false); setNameDraft(ensemble.name); setSelectedStyleDraft(ensemble.default_style); }}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setEditing(false); setNameDraft(ensemble.name); setSelectedStyleDraft(ensemble.default_style); setDefaultPartBookLayoutDraft(ensemble.default_part_book_layout ?? "double_sided"); }}>Cancel</Button>
               </Group>
             </Stack>
           </Card>

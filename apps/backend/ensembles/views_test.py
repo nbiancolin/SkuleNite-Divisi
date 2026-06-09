@@ -988,3 +988,116 @@ def test_part_names_include_arrangement_ids(ensemble, user, client):
     flute_entry = next(p for p in part_names if p["id"] == part.id)
     assert flute_entry["arrangement_ids"] == [arr.id]
     assert flute_entry["arrangements"] == ["Song A"]
+
+
+@pytest.mark.django_db
+def test_ensemble_includes_part_book_layout_fields(ensemble, user, client):
+    from ensembles.factories import PartAssetFactory, PartNameFactory
+
+    ensemble.owner = user
+    ensemble.default_part_book_layout = "single_sided"
+    ensemble.save()
+
+    arr = ArrangementFactory(ensemble=ensemble)
+    v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
+    part = PartNameFactory(
+        ensemble=ensemble,
+        display_name="Piano",
+        part_book_layout_override="double_sided",
+    )
+    PartAssetFactory(arrangement_version=v, part_name=part)
+
+    url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
+    r = client.get(url)
+    assert r.status_code == 200
+    data = r.json()
+    assert data["default_part_book_layout"] == "single_sided"
+
+    piano_entry = next(p for p in data["part_names"] if p["id"] == part.id)
+    assert piano_entry["part_book_layout_override"] == "double_sided"
+    assert piano_entry["effective_part_book_layout"] == "double_sided"
+
+
+@pytest.mark.django_db
+def test_update_part_book_layout_as_admin(ensemble, user, client):
+    from ensembles.models import PartName
+
+    ensemble.owner = user
+    ensemble.save()
+
+    part1 = PartName.objects.create(ensemble=ensemble, display_name="Piano")
+    part2 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
+
+    url = reverse(
+        "ensembles:ensemble-update-part-book-layout", kwargs={"slug": ensemble.slug}
+    )
+    r = client.post(
+        url,
+        data={
+            "part_layouts": [
+                {"id": part1.id, "part_book_layout_override": "single_sided"},
+                {"id": part2.id, "part_book_layout_override": None},
+            ]
+        },
+        content_type="application/json",
+    )
+    assert r.status_code == 200, r.content
+
+    part1.refresh_from_db()
+    part2.refresh_from_db()
+    assert part1.part_book_layout_override == "single_sided"
+    assert part2.part_book_layout_override is None
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.ensemble.generate_part_book.delay")
+def test_generate_single_part_book_with_one_off_layout(
+    mock_delay, ensemble, user, client
+):
+    from ensembles.models import PartName
+
+    ensemble.owner = user
+    ensemble.save()
+    part = PartName.objects.create(ensemble=ensemble, display_name="Piano")
+    next_revision = ensemble.latest_part_book_revision + 1
+
+    url = reverse(
+        "ensembles:ensemble-generate-part-book", kwargs={"slug": ensemble.slug}
+    )
+    r = client.post(
+        url,
+        data={"part_name_id": part.id, "layout": "single_sided"},
+        content_type="application/json",
+    )
+    assert r.status_code == 202, r.content
+
+    mock_delay.assert_called_once_with(
+        ensemble.id,
+        part.id,
+        next_revision,
+        one_off_layout="single_sided",
+        solo=True,
+    )
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.ensemble.generate_books_for_ensemble.delay")
+def test_generate_part_books_with_layout_overrides(mock_delay, ensemble, user, client):
+    from ensembles.models import PartName
+
+    ensemble.owner = user
+    ensemble.save()
+    part = PartName.objects.create(ensemble=ensemble, display_name="Piano")
+
+    url = reverse(
+        "ensembles:ensemble-generate-part-books", kwargs={"slug": ensemble.slug}
+    )
+    r = client.post(
+        url,
+        data={"layout_overrides": {str(part.id): "single_sided"}},
+        content_type="application/json",
+    )
+    assert r.status_code == 202, r.content
+    mock_delay.assert_called_once_with(
+        ensemble.id, layout_overrides={part.id: "single_sided"}
+    )

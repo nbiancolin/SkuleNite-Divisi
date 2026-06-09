@@ -94,6 +94,8 @@ export interface EnsembleUsership {
   date_joined: string;
 }
 
+export type PartBookLayout = "single_sided" | "double_sided";
+
 export interface EnsemblePartBook {
   id: number;
   part_name_id: number;
@@ -102,6 +104,7 @@ export interface EnsemblePartBook {
   created_at: string | null;
   finalized_at: string | null;
   is_rendered: boolean;
+  layout?: PartBookLayout | null;
   download_url: string | null;
 }
 
@@ -111,6 +114,8 @@ export interface PartName {
   order: number | null;
   arrangements?: string[];
   arrangement_ids?: number[];
+  part_book_layout_override?: PartBookLayout | null;
+  effective_part_book_layout?: PartBookLayout;
 }
 
 export interface PartNameMatrixArrangement {
@@ -153,6 +158,7 @@ export interface Ensemble {
   latest_part_book_revision?: number;
   part_books?: EnsemblePartBook[];
   default_style: PreviewStyleName;
+  default_part_book_layout?: PartBookLayout;
 }
 
 export interface EditableArrangementData {

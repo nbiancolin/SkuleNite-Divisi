@@ -24,7 +24,12 @@ from ensembles.serializers import (
     EnsemblePartNameRenameSerializer,
     EnsembleSerializer,
 )
-from ensembles.tasks.part_books import generate_books_for_ensemble
+from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES
+from ensembles.tasks.part_books import (
+    VALID_LAYOUTS,
+    generate_books_for_ensemble,
+    generate_part_book,
+)
 
 
 class EnsembleViewSet(viewsets.ModelViewSet):
@@ -318,13 +323,164 @@ class EnsembleViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    def _parse_layout_overrides(self, raw_overrides) -> dict[int, str] | Response:
+        if raw_overrides is None:
+            return {}
+        if not isinstance(raw_overrides, dict):
+            return Response(
+                {"detail": "layout_overrides must be an object mapping part name IDs to layouts."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        parsed: dict[int, str] = {}
+        for key, value in raw_overrides.items():
+            try:
+                part_id = int(key)
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": f"Invalid part name ID in layout_overrides: {key}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if value is not None and value not in VALID_LAYOUTS:
+                return Response(
+                    {"detail": f"Invalid layout '{value}'. Must be one of: {sorted(VALID_LAYOUTS)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if value is not None:
+                parsed[part_id] = value
+        return parsed
+
     @action(detail=True, methods=["post"])
     def generate_part_books(self, request, slug=None):
         ensemble = self.get_object()
-        generate_books_for_ensemble.delay(ensemble.id)
+        layout_overrides = self._parse_layout_overrides(
+            request.data.get("layout_overrides")
+        )
+        if isinstance(layout_overrides, Response):
+            return layout_overrides
+        generate_books_for_ensemble.delay(ensemble.id, layout_overrides=layout_overrides)
         return Response(
             {"detail": "Export of Part Books triggered"},
             status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="generate-part-book")
+    def generate_single_part_book(self, request, slug=None):
+        ensemble = self.get_object()
+        user = request.user
+
+        if not user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can generate part books."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        part_name_id = request.data.get("part_name_id")
+        if not part_name_id:
+            return Response(
+                {"detail": "part_name_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            part_name = PartName.objects.get(id=part_name_id, ensemble=ensemble)
+        except PartName.DoesNotExist:
+            return Response(
+                {"detail": "Part name not found for this ensemble."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        one_off_layout = request.data.get("layout")
+        if one_off_layout is not None and one_off_layout not in VALID_LAYOUTS:
+            return Response(
+                {"detail": f"Invalid layout '{one_off_layout}'. Must be one of: {sorted(VALID_LAYOUTS)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if ensemble.part_books_generating:
+            return Response(
+                {"detail": "Part books are already generating."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        ensemble.part_books_generating = True
+        revision = ensemble.latest_part_book_revision + 1
+        ensemble.save(update_fields=["part_books_generating"])
+
+        generate_part_book.delay(
+            ensemble.id,
+            part_name.id,
+            revision,
+            one_off_layout=one_off_layout,
+            solo=True,
+        )
+        ensemble.latest_part_book_revision = revision
+        ensemble.save(update_fields=["latest_part_book_revision"])
+
+        return Response(
+            {
+                "detail": f"Export of part book for {part_name.display_name} triggered",
+                "revision": revision,
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="update-part-book-layout")
+    def update_part_book_layout(self, request, slug=None):
+        ensemble = self.get_object()
+        user = request.user
+
+        if not user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can update part book layout."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        part_layouts = request.data.get("part_layouts", [])
+        if not isinstance(part_layouts, list):
+            return Response(
+                {
+                    "detail": "part_layouts must be a list of objects with 'id' and 'part_book_layout_override' fields."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        valid_layouts = {choice[0] for choice in PART_BOOK_LAYOUT_CHOICES}
+        part_ids = [item.get("id") for item in part_layouts if item.get("id")]
+        if not part_ids:
+            return Response(
+                {"detail": "No part IDs provided."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        parts = PartName.objects.filter(id__in=part_ids, ensemble=ensemble)
+        if parts.count() != len(part_ids):
+            return Response(
+                {
+                    "detail": "One or more part IDs are invalid or do not belong to this ensemble."
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        layout_by_id = {}
+        for item in part_layouts:
+            part_id = item.get("id")
+            if part_id is None:
+                continue
+            override = item.get("part_book_layout_override")
+            if override is not None and override not in valid_layouts:
+                return Response(
+                    {"detail": f"Invalid layout '{override}'."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            layout_by_id[part_id] = override
+
+        for part in parts:
+            if part.id in layout_by_id:
+                part.part_book_layout_override = layout_by_id[part.id]
+                part.save(update_fields=["part_book_layout_override"])
+
+        return Response(
+            {"detail": "Part book layout updated successfully."},
+            status=status.HTTP_200_OK,
         )
 
     @action(detail=True, methods=["post"], url_path="update-part-order")
