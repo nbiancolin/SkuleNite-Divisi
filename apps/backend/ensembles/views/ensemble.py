@@ -1,3 +1,4 @@
+from comments.models import ArrangementVersionCommentThread
 from django.conf import settings
 from django.db.models import Count, Exists, OuterRef, Prefetch, Q
 from django.db.models.expressions import RawSQL
@@ -6,7 +7,6 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from comments.models import ArrangementVersionCommentThread
 from ensembles.lib.part_name_matrix import build_part_name_matrix
 from ensembles.models import (
     Arrangement,
