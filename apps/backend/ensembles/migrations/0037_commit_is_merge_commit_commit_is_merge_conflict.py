@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0036_alter_arrangementversion_staff_spacing_strategy_and_more'),
+        ("ensembles", "0036_alter_arrangementversion_staff_spacing_strategy_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='commit',
-            name='is_merge_commit',
+            model_name="commit",
+            name="is_merge_commit",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='commit',
-            name='is_merge_conflict',
+            model_name="commit",
+            name="is_merge_conflict",
             field=models.BooleanField(default=False),
         ),
     ]

@@ -1,15 +1,12 @@
+from unittest.mock import patch
+
 import pytest
-import zipfile
-import io
-from unittest.mock import patch, MagicMock
-from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 
-from ensembles.models import ArrangementVersion, ExportFailureLog
-from ensembles.factories import ArrangementVersionFactory, ArrangementFactory
 from ensembles.formatting_steps_constants import score_metadata_only_formatting_steps
+from ensembles.models import ExportFailureLog
 from ensembles.tasks import apply_metadata_and_export_mscz, export_arrangement_version
-
 
 """Tests for the export_arrangement_version task"""
 
@@ -163,9 +160,7 @@ def test_score_metadata_only_formatting_steps():
 @pytest.mark.django_db
 @patch("ensembles.tasks.export.export_arrangement_version")
 @patch("ensembles.tasks.export.format_arrangement_version")
-def test_apply_metadata_and_export_mscz(
-    mock_format, mock_export, arrangement_versions
-):
+def test_apply_metadata_and_export_mscz(mock_format, mock_export, arrangement_versions):
     v1, _ = arrangement_versions
     mock_export.return_value = {"status": "success", "written": []}
 

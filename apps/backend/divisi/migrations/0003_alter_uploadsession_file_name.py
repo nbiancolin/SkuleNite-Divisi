@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('divisi', '0002_uploadsession_file_name'),
+        ("divisi", "0002_uploadsession_file_name"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='uploadsession',
-            name='file_name',
+            model_name="uploadsession",
+            name="file_name",
             field=models.CharField(max_length=255),
         ),
     ]

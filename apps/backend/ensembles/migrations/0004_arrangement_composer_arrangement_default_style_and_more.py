@@ -4,27 +4,40 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0003_ensemble_date_created'),
+        ("ensembles", "0003_ensemble_date_created"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangement',
-            name='composer',
+            model_name="arrangement",
+            name="composer",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='arrangement',
-            name='default_style',
-            field=models.CharField(choices=[('jazz', 'Jazz'), ('broadway', 'Broadway'), ('classical', 'Classical')], default='broadway'),
+            model_name="arrangement",
+            name="default_style",
+            field=models.CharField(
+                choices=[
+                    ("jazz", "Jazz"),
+                    ("broadway", "Broadway"),
+                    ("classical", "Classical"),
+                ],
+                default="broadway",
+            ),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='ensemble',
-            name='default_style',
-            field=models.CharField(choices=[('jazz', 'Jazz'), ('broadway', 'Broadway'), ('classical', 'Classical')], default='broadway'),
+            model_name="ensemble",
+            name="default_style",
+            field=models.CharField(
+                choices=[
+                    ("jazz", "Jazz"),
+                    ("broadway", "Broadway"),
+                    ("classical", "Classical"),
+                ],
+                default="broadway",
+            ),
             preserve_default=False,
         ),
     ]

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Page Turn — {{ show_title }}</title>
+</head>
+<body class="{{ style_class }}">
+  <div class="page page-turn">
+    <div class="top-row">
+      <div class="part-name">{{ part_name }}</div>
+      <div class="show-meta">
+        <div class="show-title">{{ show_title }}</div>
+      </div>
+    </div>
+    <div class="page-turn-content">
+      <div class="page-turn-image"><img src="arrow.png" alt="Page Turn Arrow"></div>
+      <p class="page-turn-label">This page left intentionally blank to facilitate page turns</p>
+    </div>
+    <div class="revision">Rev. {{ export_date }}</div>
+  </div>
+</body>
+</html>

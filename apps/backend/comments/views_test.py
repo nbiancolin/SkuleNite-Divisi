@@ -1,7 +1,13 @@
 import pytest
 
 from comments.models import ArrangementVersionCommentThread
-from ensembles.factories import ArrangementFactory, ArrangementVersionFactory, EnsembleFactory, EnsembleUsershipFactory, UserFactory
+from ensembles.factories import (
+    ArrangementFactory,
+    ArrangementVersionFactory,
+    EnsembleFactory,
+    EnsembleUsershipFactory,
+    UserFactory,
+)
 
 
 @pytest.mark.django_db
@@ -17,7 +23,12 @@ def test_member_can_create_reply_resolve_and_reopen_comment_thread(client):
 
     create_thread_response = client.post(
         f"/api/arrangementversions/{version.id}/comments/threads/",
-        data={"page_number": 1, "x": 0.25, "y": 0.5, "body": "Please adjust articulation."},
+        data={
+            "page_number": 1,
+            "x": 0.25,
+            "y": 0.5,
+            "body": "Please adjust articulation.",
+        },
         content_type="application/json",
     )
     assert create_thread_response.status_code == 201, create_thread_response.content

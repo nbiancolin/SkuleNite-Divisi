@@ -4,15 +4,14 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0007_alter_arrangementversion_unique_together'),
+        ("ensembles", "0007_alter_arrangementversion_unique_together"),
     ]
 
     operations = [
         migrations.RenameField(
-            model_name='arrangement',
-            old_name='default_style',
-            new_name='style',
+            model_name="arrangement",
+            old_name="default_style",
+            new_name="style",
         ),
     ]

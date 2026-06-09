@@ -1,29 +1,40 @@
-import pytest
 from io import BytesIO
 from unittest.mock import patch
 
+import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
+from musescore_score_diff.merge import MergeConflictException
 
-from ensembles.models import ArrangementVersion, Commit, EnsembleUsership, UserScoreVersion
 from ensembles.factories import (
     ArrangementFactory,
     ArrangementVersionFactory,
     EnsembleUsershipFactory,
     UserFactory,
 )
-from musescore_score_diff.merge import MergeConflictException
+from ensembles.models import (
+    ArrangementVersion,
+    Commit,
+    EnsembleUsership,
+    UserScoreVersion,
+)
 
 
 @pytest.mark.django_db
 @patch("ensembles.serializers.default_storage.save")
-def test_upload_new_commit_sets_created_by_on_second_upload(mock_save, arrangement, user, client):
+def test_upload_new_commit_sets_created_by_on_second_upload(
+    mock_save, arrangement, user, client
+):
     """Follow-up commits must record the authenticated user as created_by (regression)."""
-    url = reverse("ensembles:arrangement-upload-new-commit", kwargs={"slug": arrangement.slug})
+    url = reverse(
+        "ensembles:arrangement-upload-new-commit", kwargs={"slug": arrangement.slug}
+    )
     r1 = client.post(
         url,
         data={
-            "file": SimpleUploadedFile("first.mscz", b"x", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "first.mscz", b"x", content_type="application/octet-stream"
+            ),
             "message": "first",
         },
         format="multipart",
@@ -32,7 +43,9 @@ def test_upload_new_commit_sets_created_by_on_second_upload(mock_save, arrangeme
     r2 = client.post(
         url,
         data={
-            "file": SimpleUploadedFile("second.mscz", b"y", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "second.mscz", b"y", content_type="application/octet-stream"
+            ),
             "message": "second",
         },
         format="multipart",
@@ -59,7 +72,9 @@ def test_download_latest_commit_mscz_sets_user_score_version(
     client.post(
         upload_url,
         data={
-            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "score.mscz", b"x", content_type="application/octet-stream"
+            ),
         },
         format="multipart",
     )
@@ -81,14 +96,18 @@ def test_download_latest_commit_mscz_sets_user_score_version(
 
 @pytest.mark.django_db
 @patch("ensembles.serializers.default_storage.save")
-def test_check_score_version_ok_when_user_has_latest(mock_save, arrangement, user, client):
+def test_check_score_version_ok_when_user_has_latest(
+    mock_save, arrangement, user, client
+):
     upload_url = reverse(
         "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
     )
     client.post(
         upload_url,
         data={
-            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "score.mscz", b"x", content_type="application/octet-stream"
+            ),
         },
         format="multipart",
     )
@@ -103,14 +122,18 @@ def test_check_score_version_ok_when_user_has_latest(mock_save, arrangement, use
 
 @pytest.mark.django_db
 @patch("ensembles.serializers.default_storage.save")
-def test_check_score_version_error_when_never_downloaded(mock_save, arrangement, user, client):
+def test_check_score_version_error_when_never_downloaded(
+    mock_save, arrangement, user, client
+):
     upload_url = reverse(
         "ensembles:arrangement-upload-new-commit", kwargs={"slug": arrangement.slug}
     )
     client.post(
         upload_url,
         data={
-            "file": SimpleUploadedFile("score.mscz", b"x", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "score.mscz", b"x", content_type="application/octet-stream"
+            ),
         },
         format="multipart",
     )
@@ -126,7 +149,9 @@ def test_check_score_version_error_when_never_downloaded(mock_save, arrangement,
     assert data["user_download_commit"] is None
 
 
-def _post_commit(client, arrangement, name: str, b: bytes = b"x", *, force: bool = False):
+def _post_commit(
+    client, arrangement, name: str, b: bytes = b"x", *, force: bool = False
+):
     upload_url = reverse(
         "ensembles:arrangement-by-id-upload-new-commit", kwargs={"id": arrangement.id}
     )
@@ -225,7 +250,15 @@ def test_upload_stale_merge_conflict_does_not_update_user_score_version(
 @patch("ensembles.serializers.default_storage.delete")
 @patch("musescore_score_diff.merge.three_way_merge_mscz")
 def test_upload_stale_unexpected_merge_error_returns_complicated_merge(
-    mock_merge, mock_delete, mock_save, mock_open, mock_exists, arrangement, ensemble, user, client
+    mock_merge,
+    mock_delete,
+    mock_save,
+    mock_open,
+    mock_exists,
+    arrangement,
+    ensemble,
+    user,
+    client,
 ):
     mock_open.side_effect = lambda *_a, **_k: BytesIO(b"x")
     mock_merge.side_effect = RuntimeError("merge blew up")
@@ -260,7 +293,9 @@ def test_check_score_version_error_when_stale(mock_save, arrangement, user, clie
     client.post(
         upload_url,
         data={
-            "file": SimpleUploadedFile("first.mscz", b"x", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "first.mscz", b"x", content_type="application/octet-stream"
+            ),
         },
         format="multipart",
     )
@@ -269,7 +304,9 @@ def test_check_score_version_error_when_stale(mock_save, arrangement, user, clie
     client.post(
         upload_url,
         data={
-            "file": SimpleUploadedFile("second.mscz", b"y", content_type="application/octet-stream"),
+            "file": SimpleUploadedFile(
+                "second.mscz", b"y", content_type="application/octet-stream"
+            ),
         },
         format="multipart",
     )
@@ -344,7 +381,9 @@ def test_delete_latest_commit_leaves_user_score_version_on_parent_unchanged(
     EnsembleUsershipFactory(ensemble=ensemble, user=other_user)
     other_client = client.__class__()
     other_client.force_authenticate(user=other_user)
-    assert _post_commit(other_client, arrangement, "second.mscz", b"y").status_code == 200
+    assert (
+        _post_commit(other_client, arrangement, "second.mscz", b"y").status_code == 200
+    )
     tip = Commit.latest_for_arrangement(arrangement)
 
     usv = UserScoreVersion.objects.get(user=user, arrangement=arrangement)
@@ -385,7 +424,10 @@ def test_upload_after_deleted_tip_requires_download_before_merge(
 
     r = _post_commit(client, arrangement, "third.mscz", b"z")
     assert r.status_code == 400
-    assert r.json()["client_error"] == "Download the latest score before uploading your changes."
+    assert (
+        r.json()["client_error"]
+        == "Download the latest score before uploading your changes."
+    )
     assert Commit.objects.filter(arrangement=arrangement).count() == 1
 
 
@@ -433,6 +475,7 @@ def test_arrangements_view_lists_correct_order_numerically(ensemble, client):
     assert data[1]["mvt_no"] == "2"
     assert data[2]["mvt_no"] == "10"
 
+
 @pytest.mark.django_db
 def test_arrangements_view_lists_correct_order_with_dashes(ensemble, client):
     arr1 = ArrangementFactory(ensemble=ensemble, mvt_no="1-1")
@@ -448,6 +491,7 @@ def test_arrangements_view_lists_correct_order_with_dashes(ensemble, client):
     assert data[0]["mvt_no"] == "1-1"
     assert data[1]["mvt_no"] == "1-2"
     assert data[2]["mvt_no"] == "2-1"
+
 
 @pytest.mark.django_db
 def test_arrangements_view_lists_correct_order_with_ms(ensemble, client):
@@ -469,13 +513,15 @@ def test_arrangements_view_lists_correct_order_with_ms(ensemble, client):
 @pytest.mark.django_db
 @patch("ensembles.tasks.export_arrangement_version.delay")
 def test_trigger_audio_arrangement_version(mock_export, arrangement, client):
-# def test_trigger_audio_arrangement_version(arrangement, client):
+    # def test_trigger_audio_arrangement_version(arrangement, client):
     version = ArrangementVersionFactory(arrangement=arrangement, is_latest=True)
     assert version.audio_state == ArrangementVersion.AudioStatus.NONE
 
     mock_export.return_value = {"status": "success"}
 
-    url = reverse("ensembles:arrangementversion-trigger-audio-export", kwargs={"pk": version.pk})
+    url = reverse(
+        "ensembles:arrangementversion-trigger-audio-export", kwargs={"pk": version.pk}
+    )
 
     r = client.post(url)
 
@@ -495,8 +541,10 @@ def test_remove_user_from_ensemble(ensemble, user, client):
 
     url = reverse("ensembles:ensemble-remove-user", kwargs={"slug": ensemble.slug})
 
-    r = client.post(url, data={"user_id": new_ship.user.id}, content_type="application/json")
-    
+    r = client.post(
+        url, data={"user_id": new_ship.user.id}, content_type="application/json"
+    )
+
     assert r.status_code == 200, r.content
     assert not EnsembleUsership.objects.filter(user=new_ship.user).exists()
 
@@ -505,15 +553,15 @@ def test_remove_user_from_ensemble(ensemble, user, client):
 def test_part_order_set_on_creation(ensemble):
     """Test that new PartName objects get order set automatically"""
     from ensembles.models import PartName
-    
+
     # Create first part - should get order 0
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
     assert part1.order == 0
-    
+
     # Create second part - should get order 1
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet")
     assert part2.order == 1
-    
+
     # Create third part - should get order 2
     part3 = PartName.objects.create(ensemble=ensemble, display_name="Saxophone")
     assert part3.order == 2
@@ -523,11 +571,11 @@ def test_part_order_set_on_creation(ensemble):
 def test_part_order_preserved_when_existing(ensemble):
     """Test that existing PartName objects keep their order when updated"""
     from ensembles.models import PartName
-    
+
     # Create part with explicit order
     part = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=5)
     assert part.order == 5
-    
+
     # Update display name - order should remain
     part.display_name = "Flute I"
     part.save()
@@ -539,17 +587,21 @@ def test_part_order_preserved_when_existing(ensemble):
 def test_update_part_order_as_admin(ensemble, user, client):
     """Test that admins can update part order"""
     from ensembles.models import PartName
-    
+
     ensemble.owner = user
     ensemble.save()
-    
+
     # Create parts
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet", order=1)
-    part3 = PartName.objects.create(ensemble=ensemble, display_name="Saxophone", order=2)
-    
-    url = reverse("ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug})
-    
+    part3 = PartName.objects.create(
+        ensemble=ensemble, display_name="Saxophone", order=2
+    )
+
+    url = reverse(
+        "ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug}
+    )
+
     # Reorder: swap part1 and part2
     data = {
         "part_orders": [
@@ -558,15 +610,15 @@ def test_update_part_order_as_admin(ensemble, user, client):
             {"id": part3.id, "order": 2},
         ]
     }
-    
+
     r = client.post(url, data=data, content_type="application/json")
     assert r.status_code == 200, r.content
-    
+
     # Verify order was updated
     part1.refresh_from_db()
     part2.refresh_from_db()
     part3.refresh_from_db()
-    
+
     assert part1.order == 1
     assert part2.order == 0
     assert part3.order == 2
@@ -575,32 +627,34 @@ def test_update_part_order_as_admin(ensemble, user, client):
 @pytest.mark.django_db
 def test_update_part_order_as_non_admin(ensemble, user, client):
     """Test that non-admins cannot update part order"""
-    from ensembles.models import PartName, EnsembleUsership
-    
     # Create another user who is not an admin
     from ensembles.factories import UserFactory
+    from ensembles.models import EnsembleUsership, PartName
+
     non_admin = UserFactory()
-    
+
     # Make them a member (not admin)
     EnsembleUsership.objects.create(ensemble=ensemble, user=non_admin)
-    
+
     # Create parts
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet", order=1)
-    
-    url = reverse("ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug})
-    
+
+    url = reverse(
+        "ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug}
+    )
+
     data = {
         "part_orders": [
             {"id": part1.id, "order": 1},
             {"id": part2.id, "order": 0},
         ]
     }
-    
+
     # Login as non-admin
     client.force_login(non_admin)
     r = client.post(url, data=data, content_type="application/json")
-    
+
     assert r.status_code == 403
     assert "admin" in r.json()["detail"].lower()
 
@@ -609,21 +663,23 @@ def test_update_part_order_as_non_admin(ensemble, user, client):
 def test_update_part_order_invalid_part_id(ensemble, user, client):
     """Test that updating order with invalid part ID fails"""
     from ensembles.models import PartName
-    
+
     ensemble.owner = user
     ensemble.save()
-    
+
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
-    
-    url = reverse("ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug})
-    
+
+    url = reverse(
+        "ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug}
+    )
+
     # Try to update with invalid part ID
     data = {
         "part_orders": [
             {"id": 99999, "order": 0},  # Invalid ID
         ]
     }
-    
+
     r = client.post(url, data=data, content_type="application/json")
     assert r.status_code == 400
     assert "invalid" in r.json()["detail"].lower()
@@ -632,26 +688,33 @@ def test_update_part_order_invalid_part_id(ensemble, user, client):
 @pytest.mark.django_db
 def test_update_part_order_wrong_ensemble(ensemble, user, client):
     """Test that updating order with part from different ensemble fails"""
-    from ensembles.models import PartName
     from ensembles.factories import EnsembleFactory
-    
+    from ensembles.models import PartName
+
     ensemble.owner = user
     ensemble.save()
-    
+
     other_ensemble = EnsembleFactory()
-    part1 = PartName.objects.create(ensemble=other_ensemble, display_name="Flute", order=0)
-    
-    url = reverse("ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug})
-    
+    part1 = PartName.objects.create(
+        ensemble=other_ensemble, display_name="Flute", order=0
+    )
+
+    url = reverse(
+        "ensembles:ensemble-update-part-order", kwargs={"slug": ensemble.slug}
+    )
+
     data = {
         "part_orders": [
             {"id": part1.id, "order": 0},  # Part from different ensemble
         ]
     }
-    
+
     r = client.post(url, data=data, content_type="application/json")
     assert r.status_code == 400
-    assert "invalid" in r.json()["detail"].lower() or "belong" in r.json()["detail"].lower()
+    assert (
+        "invalid" in r.json()["detail"].lower()
+        or "belong" in r.json()["detail"].lower()
+    )
 
 
 @pytest.mark.django_db
@@ -667,24 +730,26 @@ def test_part_names_serialized_with_order(ensemble, user, client):
     v = ArrangementVersionFactory(arrangement=arr, is_latest=True)
 
     # Create parts in reverse order
-    part3 = PartName.objects.create(ensemble=ensemble, display_name="Saxophone", order=2)
+    part3 = PartName.objects.create(
+        ensemble=ensemble, display_name="Saxophone", order=2
+    )
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute", order=0)
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Clarinet", order=1)
     for part in (part1, part2, part3):
         PartAssetFactory(arrangement_version=v, part_name=part)
-    
+
     url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
     client.force_login(user)
     r = client.get(url)
-    
+
     assert r.status_code == 200
     data = r.json()
-    
+
     # Check that part_names are included and ordered correctly
     assert "part_names" in data
     part_names = data["part_names"]
     assert len(part_names) == 3
-    
+
     # Should be ordered by order field
     assert part_names[0]["id"] == part1.id
     assert part_names[0]["order"] == 0
@@ -715,14 +780,14 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
     part3.save()
     for part in (part1, part2, part3):
         PartAssetFactory(arrangement_version=v, part_name=part)
-    
+
     url = reverse("ensembles:ensemble-detail", kwargs={"slug": ensemble.slug})
     client.force_login(user)
     r = client.get(url)
-    
+
     assert r.status_code == 200
     data = r.json()
-    
+
     part_names = data["part_names"]
     # Parts with order should come first
     assert part_names[0]["id"] == part1.id
@@ -735,7 +800,6 @@ def test_part_names_with_null_order_sorted_last(ensemble, user, client):
 @pytest.mark.django_db
 def test_part_name_matrix(ensemble, user, client):
     from ensembles.factories import PartAssetFactory, PartNameFactory
-    from ensembles.models import PartName
 
     ensemble.owner = user
     ensemble.save()
@@ -870,7 +934,7 @@ def test_rename_part_name_duplicate_rejected(ensemble, user, client):
 
 @pytest.mark.django_db
 def test_rename_part_name_as_non_admin(ensemble, user, client):
-    from ensembles.models import PartName, EnsembleUsership
+    from ensembles.models import EnsembleUsership, PartName
 
     part = PartName.objects.create(ensemble=ensemble, display_name="Flute")
     non_admin = UserFactory()
@@ -888,7 +952,7 @@ def test_rename_part_name_as_non_admin(ensemble, user, client):
 
 @pytest.mark.django_db
 def test_merge_part_names_as_non_admin(ensemble, user, client):
-    from ensembles.models import PartName, EnsembleUsership
+    from ensembles.models import EnsembleUsership, PartName
 
     part1 = PartName.objects.create(ensemble=ensemble, display_name="Flute")
     part2 = PartName.objects.create(ensemble=ensemble, display_name="Flute I")

@@ -1,9 +1,8 @@
-from django.db import models
-from django.core.files.storage import default_storage
-
+import logging
 import uuid
 
-import logging
+from django.core.files.storage import default_storage
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +50,7 @@ class UploadSession(models.Model):
         super().delete(**kwargs)
 
 
-
-#TODO[SC-276] Now that we have the new part models, we definitelty dont need this I don't think. Remove at some point
+# TODO[SC-276] Now that we have the new part models, we definitelty dont need this I don't think. Remove at some point
 class ProcessedFile(models.Model):
     session = models.ForeignKey(
         UploadSession, on_delete=models.CASCADE, related_name="files"

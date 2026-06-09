@@ -1,16 +1,15 @@
-from rest_framework import status, viewsets
-from rest_framework.response import Response
-from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
+import logging
 
 from django.core.files.storage import default_storage
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from divisi.models import UploadSession
 from divisi.serializers import FormatMsczFileSerializer
-
-import logging
 
 logger = logging.getLogger("Divisi-Views")
 
@@ -20,6 +19,7 @@ class PartFormatterViewSet(viewsets.ViewSet):
     ViewSet for part formatter endpoints.
     These endpoints do not require authentication or CSRF tokens.
     """
+
     permission_classes = [AllowAny]
 
     @method_decorator(csrf_exempt)
@@ -47,8 +47,8 @@ class PartFormatterViewSet(viewsets.ViewSet):
         default_storage.save(key, uploaded_file)
         file_url = default_storage.url(key)
 
-        #TODO[SC-277]: Have it extract the title from the file and display it on the FE
-        #update Jan 6 - Part formatter can extract the title from the file, just need to process it and tell it to do that
+        # TODO[SC-277]: Have it extract the title from the file and display it on the FE
+        # update Jan 6 - Part formatter can extract the title from the file, just need to process it and tell it to do that
 
         return Response(
             {

@@ -6,34 +6,70 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0020_alter_arrangement_options_and_more'),
+        ("ensembles", "0020_alter_arrangement_options_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='ensemble',
-            name='owner',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='owned_ensembles', to=settings.AUTH_USER_MODEL),
+            model_name="ensemble",
+            name="owner",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="owned_ensembles",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='arrangementversion',
-            name='audio_state',
-            field=models.CharField(choices=[('N', 'none'), ('P', 'processing'), ('C', 'complete'), ('E', 'error')], default='N', max_length=1),
+            model_name="arrangementversion",
+            name="audio_state",
+            field=models.CharField(
+                choices=[
+                    ("N", "none"),
+                    ("P", "processing"),
+                    ("C", "complete"),
+                    ("E", "error"),
+                ],
+                default="N",
+                max_length=1,
+            ),
         ),
         migrations.CreateModel(
-            name='EnsembleUsership',
+            name="EnsembleUsership",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('date_joined', models.DateTimeField(auto_now_add=True)),
-                ('ensemble', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='userships', to='ensembles.ensemble')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ensemble_userships', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("date_joined", models.DateTimeField(auto_now_add=True)),
+                (
+                    "ensemble",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="userships",
+                        to="ensembles.ensemble",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ensemble_userships",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-date_joined'],
-                'unique_together': {('user', 'ensemble')},
+                "ordering": ["-date_joined"],
+                "unique_together": {("user", "ensemble")},
             },
         ),
     ]

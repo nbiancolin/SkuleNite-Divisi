@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0008_rename_default_style_arrangement_style'),
+        ("ensembles", "0008_rename_default_style_arrangement_style"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='error_on_export',
+            model_name="arrangementversion",
+            name="error_on_export",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='arrangementversion',
-            name='is_processing',
+            model_name="arrangementversion",
+            name="is_processing",
             field=models.BooleanField(default=True),
         ),
     ]

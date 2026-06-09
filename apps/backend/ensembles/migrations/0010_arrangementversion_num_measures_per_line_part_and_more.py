@@ -4,21 +4,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0009_arrangementversion_error_on_export_and_more'),
+        ("ensembles", "0009_arrangementversion_error_on_export_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='arrangementversion',
-            name='num_measures_per_line_part',
+            model_name="arrangementversion",
+            name="num_measures_per_line_part",
             field=models.IntegerField(default=6),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='arrangementversion',
-            name='num_measures_per_line_score',
+            model_name="arrangementversion",
+            name="num_measures_per_line_score",
             field=models.IntegerField(default=8),
             preserve_default=False,
         ),

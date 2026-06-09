@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0011_alter_arrangement_act_number'),
+        ("ensembles", "0011_alter_arrangement_act_number"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='arrangementversion',
-            name='uuid',
+            model_name="arrangementversion",
+            name="uuid",
         ),
     ]

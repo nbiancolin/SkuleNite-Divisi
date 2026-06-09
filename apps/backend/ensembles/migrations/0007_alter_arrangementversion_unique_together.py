@@ -4,14 +4,13 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0006_arrangementversion_file_name_arrangementversion_uuid'),
+        ("ensembles", "0006_arrangementversion_file_name_arrangementversion_uuid"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='arrangementversion',
+            name="arrangementversion",
             unique_together=set(),
         ),
     ]

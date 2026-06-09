@@ -1,14 +1,14 @@
-from django.db import models
-from django.core.files.storage import default_storage
-from ensembles.models.arrangement_version import ArrangementVersion
-
 from logging import getLogger
+
+from django.core.files.storage import default_storage
+from django.db import models
+
+from ensembles.models.arrangement_version import ArrangementVersion
 
 logger = getLogger("app")
 
 
-
-#TODO[SC-283]: Remove
+# TODO[SC-283]: Remove
 class Diff(models.Model):
     from_version = models.ForeignKey(
         ArrangementVersion, on_delete=models.CASCADE, related_name="diff_as_source"

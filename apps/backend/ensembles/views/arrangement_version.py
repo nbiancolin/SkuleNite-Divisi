@@ -24,7 +24,8 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             return ArrangementVersion.objects.none()
 
         return ArrangementVersion.objects.filter(
-            Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
+            Q(arrangement__ensemble__owner=user)
+            | Q(arrangement__ensemble__userships__user=user)
         ).distinct()
 
     @action(detail=False, methods=["post"])
@@ -63,7 +64,9 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             "score_pdf_url": None,
             "mp3_link": request.build_absolute_uri(version.audio_file_url),
             "combined_parts_pdf_url": None,
-            "download_all_parts_url": request.build_absolute_uri(version.combined_parts_pdf_url),
+            "download_all_parts_url": request.build_absolute_uri(
+                version.combined_parts_pdf_url
+            ),
             "parts": [],
         }
 
@@ -93,14 +96,23 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                         response_data["score_parts_pdf_link"] = part_data["file_url"]
         else:
             if default_storage.exists(version.score_parts_pdf_key):
-                response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_parts_pdf_url)
+                response_data["score_parts_pdf_link"] = request.build_absolute_uri(
+                    version.score_parts_pdf_url
+                )
             elif default_storage.exists(version.score_pdf_key):
-                response_data["score_pdf_url"] = request.build_absolute_uri(version.score_pdf_url)
-                response_data["score_parts_pdf_link"] = request.build_absolute_uri(version.score_pdf_url)
+                response_data["score_pdf_url"] = request.build_absolute_uri(
+                    version.score_pdf_url
+                )
+                response_data["score_parts_pdf_link"] = request.build_absolute_uri(
+                    version.score_pdf_url
+                )
 
-        if version.combined_parts_pdf_key and default_storage.exists(version.combined_parts_pdf_key):
+        if version.combined_parts_pdf_key and default_storage.exists(
+            version.combined_parts_pdf_key
+        ):
             response_data["combined_parts_pdf_url"] = request.build_absolute_uri(
-                version.combined_parts_pdf_url or default_storage.url(version.combined_parts_pdf_key)
+                version.combined_parts_pdf_url
+                or default_storage.url(version.combined_parts_pdf_key)
             )
 
         return Response(response_data)
@@ -121,7 +133,9 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        file_url = version.combined_parts_pdf_url or default_storage.url(version.combined_parts_pdf_key)
+        file_url = version.combined_parts_pdf_url or default_storage.url(
+            version.combined_parts_pdf_key
+        )
         return Response(
             {
                 "file_url": request.build_absolute_uri(file_url),
@@ -142,7 +156,9 @@ class ArrangementVersionViewSet(viewsets.ModelViewSet):
             case ArrangementVersion.AudioStatus.PROCESSING:
                 return Response({}, status=status.HTTP_102_PROCESSING)
             case ArrangementVersion.AudioStatus.COMPLETE:
-                return Response({"mp3_link": request.build_absolute_uri(version.audio_file_url)})
+                return Response(
+                    {"mp3_link": request.build_absolute_uri(version.audio_file_url)}
+                )
             case ArrangementVersion.AudioStatus.ERROR:
                 return Response({"error": "Error on export of audio file"}, status=500)
 

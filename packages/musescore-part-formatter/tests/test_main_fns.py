@@ -128,6 +128,48 @@ def test_mscz_formatter_works_individual_cases(case):
                 )
                 _assert_no_layout_breaks_in_any_measure(matches[0])
 
+def _work_title_from_mscz(mscz_path: str) -> str | None:
+    with zipfile.ZipFile(mscz_path, "r") as zf:
+        mscx_names = [n for n in zf.namelist() if n.endswith(".mscx") and "Excerpts" not in n]
+        assert mscx_names, f"No score .mscx in {mscz_path}"
+        root = ET.fromstring(zf.read(mscx_names[0]))
+    score = root.find("Score")
+    assert score is not None
+    for tag in score.findall("metaTag"):
+        if tag.attrib.get("name") == "workTitle":
+            return tag.text
+    return None
+
+
+def test_format_mscz_sets_work_title_meta_tag():
+    input_path = "tests/test-data/New-Test-Score.mscz"
+    params: FormattingParams = {
+        "selected_style": "broadway",
+        "show_number": "1",
+        "show_title": "TEST Show",
+        "work_title": "My Arrangement",
+        "version_num": "1.0.0",
+        "num_measures_per_line_part": 6,
+        "num_measures_per_line_score": 4,
+        "num_lines_per_page": 7,
+        "apply_mss_style": False,
+        "apply_rehearsal_line_breaks": False,
+        "apply_double_bar_line_breaks": False,
+        "apply_measure_count_line_breaks": False,
+        "apply_line_break_balancing": False,
+        "apply_broadway_vbox_header": False,
+        "apply_part_name_in_header": False,
+    }
+    with tempfile.NamedTemporaryFile(suffix=".mscz", delete=False) as tmp:
+        output_path = tmp.name
+    try:
+        assert format_mscz(input_path, output_path, params)
+        assert _work_title_from_mscz(output_path) == "My Arrangement"
+    finally:
+        if os.path.exists(output_path):
+            os.remove(output_path)
+
+
 def test_params_incorrect():
     pass
 

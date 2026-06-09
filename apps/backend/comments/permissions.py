@@ -8,6 +8,6 @@ def get_accessible_versions_for_user(user):
         return ArrangementVersion.objects.none()
 
     return ArrangementVersion.objects.filter(
-        Q(arrangement__ensemble__owner=user) | Q(arrangement__ensemble__userships__user=user)
+        Q(arrangement__ensemble__owner=user)
+        | Q(arrangement__ensemble__userships__user=user)
     ).distinct()
-

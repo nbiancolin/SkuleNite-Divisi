@@ -5,19 +5,33 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('ensembles', '0016_remove_part_version_delete_ensemblesetlistentry_and_more'),
+        ("ensembles", "0016_remove_part_version_delete_ensemblesetlistentry_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ExportFailureLog',
+            name="ExportFailureLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('error_msg', models.CharField()),
-                ('comments', models.CharField()),
-                ('arrangement_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='failure_log', to='ensembles.arrangementversion')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("error_msg", models.CharField()),
+                ("comments", models.CharField()),
+                (
+                    "arrangement_version",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="failure_log",
+                        to="ensembles.arrangementversion",
+                    ),
+                ),
             ],
         ),
     ]
