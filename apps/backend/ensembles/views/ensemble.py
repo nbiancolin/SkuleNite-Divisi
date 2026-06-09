@@ -17,6 +17,7 @@ from ensembles.models import (
     PartBook,
     PartName,
 )
+from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES
 from ensembles.serializers import (
     ArrangementSerializer,
     EnsembleListSerializer,
@@ -24,7 +25,6 @@ from ensembles.serializers import (
     EnsemblePartNameRenameSerializer,
     EnsembleSerializer,
 )
-from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES
 from ensembles.tasks.part_books import (
     VALID_LAYOUTS,
     generate_books_for_ensemble,
