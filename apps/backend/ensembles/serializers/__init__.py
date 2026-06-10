@@ -173,6 +173,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
     part_names = serializers.SerializerMethodField(read_only=True)
     part_books = serializers.SerializerMethodField(read_only=True)
     default_style = serializers.CharField(required=True)
+    default_part_book_layout = serializers.CharField(required=False)
 
     class Meta:
         model = Ensemble
@@ -189,6 +190,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
             "latest_part_book_revision",
             "part_books",
             "default_style",
+            "default_part_book_layout",
         ]
         read_only_fields = ["slug", "join_link", "is_admin", "userships"]
 
@@ -306,6 +308,8 @@ class EnsembleSerializer(serializers.ModelSerializer):
                     "arrangements": arrangement_titles_by_part_name_id.get(part.id, []),
                     "arrangement_ids": arrangement_ids_by_part_name_id.get(part.id, []),
                     "order": part.order,
+                    "part_book_layout_override": part.part_book_layout_override,
+                    "effective_part_book_layout": part.effective_part_book_layout(),
                 }
                 for part in parts
             ]
@@ -334,6 +338,7 @@ class EnsembleSerializer(serializers.ModelSerializer):
                 if book.finalized_at
                 else None,
                 "is_rendered": book.is_rendered,
+                "layout": book.layout,
                 "download_url": None,
             }
             # Avoid a storage existence check on list endpoints; this can be slow on remote storage.

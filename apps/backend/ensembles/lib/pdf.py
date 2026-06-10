@@ -7,6 +7,8 @@ from reportlab.pdfgen import canvas
 
 from ensembles.lib.part_book_pdf import render_part_book_html
 
+PartBookLayout = Literal["single_sided", "double_sided"]
+
 
 class TocEntry(TypedDict):
     """Data used to generate a table of contents"""
@@ -282,11 +284,24 @@ def merge_pdfs(
     }
 
 
+def _content_merge_strategy(layout: PartBookLayout) -> Literal["optimize", "raw"]:
+    if layout == "single_sided":
+        return "raw"
+    return "optimize"
+
+
+def _pages_before_content(layout: PartBookLayout) -> int:
+    if layout == "single_sided":
+        return 2  # cover + toc
+    return 4  # cover + blank + toc + blank
+
+
 def generate_full_part_book(
     *,
     cover_pdf: BytesIO,
     toc_kwargs: dict,
     content_pdfs: list[tuple[TocEntry, BytesIO | str]],
+    layout: PartBookLayout = "double_sided",
 ) -> BytesIO:
     """
     Full two-pass generation:
@@ -305,10 +320,10 @@ def generate_full_part_book(
         content_pdfs=content_pdfs,
         overwrite_page_numbers=False,
         page_turn_page=page_turn,
+        page_merge_strategy=_content_merge_strategy(layout),
     )
 
-    # TOC page numbers must account for: cover (1) + blank (1) + toc (1) + blank (1) = 4 pages before content
-    pages_before_content = 4
+    pages_before_content = _pages_before_content(layout)
     toc_entries_with_offset = [
         {**entry, "page": entry["page"] + pages_before_content}
         for entry in pass1["toc_entries"]
@@ -323,9 +338,11 @@ def generate_full_part_book(
     # Pass 2: final merge (cover already added here; pass1["pdf"] is content-only)
     writer = PdfWriter()
     writer.append(PdfReader(cover_pdf))
-    add_blank_page(writer)
+    if layout == "double_sided":
+        add_blank_page(writer)
     writer.append(PdfReader(toc_pdf))
-    add_blank_page(writer)
+    if layout == "double_sided":
+        add_blank_page(writer)
     writer.append(PdfReader(pass1["pdf"]))
 
     # overlay_page_numbers(writer=writer, start_page_number=5)

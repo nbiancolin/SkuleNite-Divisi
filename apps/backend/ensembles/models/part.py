@@ -10,8 +10,10 @@ from django.db.models import Max
 from django.utils import timezone
 
 from ensembles.lib.datetime_format import format_part_book_export_datetime
+from ensembles.lib.part_book_layout import resolve_part_book_layout
 from ensembles.lib.pdf import (
     PartBookInfo,
+    PartBookLayout,
     TocEntry,
     generate_cover_page,
     generate_full_part_book,
@@ -19,6 +21,7 @@ from ensembles.lib.pdf import (
 )
 from ensembles.lib.slug import generate_unique_slug
 from ensembles.models.arrangement_version import ArrangementVersion
+from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES
 
 logger = getLogger("app")
 
@@ -95,6 +98,15 @@ class PartName(models.Model):
     # Order for displaying parts in the ensemble (lower numbers appear first)
     # Defaults to None, which means it will be set based on creation order
     order = models.PositiveIntegerField(null=True, blank=True)
+    part_book_layout_override = models.CharField(
+        max_length=20,
+        choices=PART_BOOK_LAYOUT_CHOICES,
+        null=True,
+        blank=True,
+    )
+
+    def effective_part_book_layout(self) -> str:
+        return self.part_book_layout_override or self.ensemble.default_part_book_layout
 
     def get_arrangements(self) -> list:
         res = []
@@ -346,6 +358,12 @@ class PartBook(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     finalized_at = models.DateTimeField(null=True, blank=True)
+    layout = models.CharField(
+        max_length=20,
+        choices=PART_BOOK_LAYOUT_CHOICES,
+        null=True,
+        blank=True,
+    )
 
     @property
     def is_rendered(self) -> bool:
@@ -417,8 +435,15 @@ class PartBook(models.Model):
             "selected_style": self.ensemble.default_style,
         }
 
+        layout: PartBookLayout = self.layout or resolve_part_book_layout(
+            self.part_name
+        )
+
         buf = generate_full_part_book(
-            cover_pdf=cover_pdf, toc_kwargs=toc_kwargs, content_pdfs=book_data
+            cover_pdf=cover_pdf,
+            toc_kwargs=toc_kwargs,
+            content_pdfs=book_data,
+            layout=layout,
         )
 
         # write buf to filesystem (ensure parent dir exists for FileSystemStorage)

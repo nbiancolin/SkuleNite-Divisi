@@ -7,7 +7,7 @@ from django.db import models
 from django.db.models.expressions import RawSQL
 
 from ensembles.lib.slug import generate_unique_slug
-from ensembles.models.constants import STYLE_CHOICES
+from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES, STYLE_CHOICES
 
 if TYPE_CHECKING:
     from ensembles.models.arrangement import Arrangement
@@ -28,6 +28,11 @@ class Ensemble(models.Model):
     slug = models.SlugField(unique=True)
     date_created = models.DateTimeField(auto_now_add=True)
     default_style = models.CharField(max_length=10, choices=STYLE_CHOICES)
+    default_part_book_layout = models.CharField(
+        max_length=20,
+        choices=PART_BOOK_LAYOUT_CHOICES,
+        default="double_sided",
+    )
 
     part_books_generating = models.BooleanField(default=False)
     latest_part_book_revision = models.IntegerField(default=1)
