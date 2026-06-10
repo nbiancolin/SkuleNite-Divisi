@@ -17,13 +17,12 @@ import {
   ActionIcon,
   Tooltip,
   TextInput,
-  Collapse,
-  Divider,
   Tabs,
 } from '@mantine/core';
-import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconBook, IconDownload, IconChevronDown, IconChevronRight, IconAlertCircle, IconMessageCircle } from '@tabler/icons-react';
-import { apiService, type Ensemble, type EnsemblePartBook, type PartName, type Arrangement } from '../../services/apiService';
+import { IconMusic, IconArrowLeft, IconEdit, IconUpload, IconLink, IconCopy, IconCheck, IconAlertCircle, IconMessageCircle } from '@tabler/icons-react';
+import { apiService, type Ensemble, type PartName, type Arrangement } from '../../services/apiService';
 import { usePageTitle } from '../../context/usePageTitle';
+import { EnsemblePartBooksSection } from './EnsemblePartBooksSection';
 
 const ArrangementsPage = () => {
   const { slug = "NA" } = useParams(); // Get ensemble slug from URL
@@ -35,11 +34,9 @@ const ArrangementsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
-  const [partBookLoading, setPartBookLoading] = useState(false);
   const [partBookError, setPartBookError] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
-  const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
 
   const fetchData = useCallback(async (quiet = false) => {
     if (!slug) return;
@@ -100,26 +97,6 @@ const ArrangementsPage = () => {
     }
   };
 
-  const handleGeneratePartBooks = async () => {
-    if (!ensemble) return;
-
-    try {
-      setPartBookLoading(true);
-      setPartBookError(null);
-      await apiService.generatePartBooksForEnsemble(ensemble.slug);
-      // Backend triggers async generation; refetch ensemble so UI shows part_books_generating (polling will update when done)
-      const updated = await apiService.getEnsemble(ensemble.slug);
-      setEnsemble(updated);
-    } catch (err) {
-      if (err instanceof Error) {
-        setPartBookError(err.message);
-      }
-    } finally {
-      setPartBookLoading(false);
-    }
-  };
-
-
   if (loading) {
     return (
       <Container>
@@ -152,26 +129,17 @@ const ArrangementsPage = () => {
   }
 
   const partNames: PartName[] = (() => {
-    const raw = (ensemble as { part_names?: PartName[]; part_name?: PartName[] }).part_names
-      ?? (ensemble as { part_names?: PartName[]; part_name?: PartName[] }).part_name
+    const raw = ensemble.part_names
+      ?? (ensemble as { part_name?: PartName[] }).part_name
       ?? [];
     if (!Array.isArray(raw)) return [];
-    return raw
-      .map((p: PartName) => {
-        if (p && typeof p === 'object' && typeof p.id === 'number' && typeof p.display_name === 'string') {
-          return { id: p.id, display_name: p.display_name };
-        }
-        if (p && typeof p === 'object') {
-          const entries = Object.entries(p);
-          if (entries.length === 1) {
-            const [idStr, name] = entries[0];
-            const id = Number(idStr);
-            if (Number.isFinite(id) && typeof name === 'string') return { id, display_name: name };
-          }
-        }
-        return null;
-      })
-      .filter((x): x is PartName => x != null);
+    return raw.filter(
+      (p): p is PartName =>
+        p != null &&
+        typeof p === 'object' &&
+        typeof p.id === 'number' &&
+        typeof p.display_name === 'string'
+    );
   })();
 
   const breadcrumbItems = [
@@ -400,157 +368,12 @@ const ArrangementsPage = () => {
         </Tabs.Panel>
 
         <Tabs.Panel value="parts" pt="md">
-          <Card shadow="sm" radius="md" withBorder>
-            <Stack gap="sm">
-              <Group justify="space-between">
-                <Group gap="xs">
-                  <IconBook size={20} />
-                  <Text fw={500}>Parts & part books</Text>
-                  {ensemble.part_books_generating && (
-                    <Badge color="blue" variant="light">Generating…</Badge>
-                  )}
-                </Group>
-                {ensemble.is_admin && (
-                  <Button
-                    size="sm"
-                    variant="light"
-                    leftSection={<IconBook size={16} />}
-                    onClick={handleGeneratePartBooks}
-                    loading={partBookLoading}
-                    disabled={!!ensemble.part_books_generating || partNames.length === 0}
-                  >
-                    Generate part books
-                  </Button>
-                )}
-              </Group>
-              <Divider />
-              <div style={{ maxHeight: 400, overflowY: 'auto' }}>
-                {partNames.length === 0 ? (
-                  <Text size="sm" c="dimmed">
-                    No part names yet. Part names are added when you upload arrangement versions with parts.
-                  </Text>
-                ) : (
-                  <Stack gap={0} mt="xs">
-                    {partNames
-                      .slice()
-                      .sort((a, b) => {
-                        // Sort by order (nulls last), then by display_name for stable ordering
-                        if (a.order !== null && b.order !== null) {
-                          return a.order - b.order;
-                        }
-                        if (a.order !== null) return -1;
-                        if (b.order !== null) return 1;
-                        return a.display_name.localeCompare(b.display_name);
-                      })
-                      .map((part) => {
-                        const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])
-                          .filter((b) => b.part_display_name === part.display_name)
-                          .sort((a, b) => b.revision - a.revision);
-                        const latestBook = partBooks[0];
-                        const olderBooks = partBooks.slice(1);
-                        const latestRev = ensemble.latest_part_book_revision ?? 0;
-                        const isExpanded = expandedPartId === part.id;
-
-                        return (
-                          <div key={part.id}>
-                            <Card withBorder radius="sm" p="sm" mb="xs">
-                              <Group justify="space-between" wrap="nowrap">
-                                <Group gap="xs" style={{ minWidth: 0 }}>
-                                  <ActionIcon
-                                    variant="subtle"
-                                    size="sm"
-                                    onClick={() => setExpandedPartId(isExpanded ? null : part.id)}
-                                    disabled={olderBooks.length === 0}
-                                    title={olderBooks.length ? 'Older revisions' : undefined}
-                                  >
-                                    {olderBooks.length > 0 ? (
-                                      isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />
-                                    ) : (
-                                      <IconChevronRight size={16} style={{ opacity: 0.3 }} />
-                                    )}
-                                  </ActionIcon>
-                                  <Text size="sm" fw={600}>{part.display_name}</Text>
-                                  {latestBook && (
-                                    <>
-                                      <Badge size="xs" variant="light" color={latestBook.revision === latestRev ? 'teal' : 'gray'}>
-                                        r{latestBook.revision} {latestBook.revision === latestRev ? '(latest)' : ''}
-                                      </Badge>
-                                      {!latestBook.is_rendered && (
-                                        <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
-                                      )}
-                                    </>
-                                  )}
-                                  {!latestBook && (
-                                    <Text size="xs" c="dimmed">No part book</Text>
-                                  )}
-                                </Group>
-                                <Group>
-                                  {(part.arrangements) && (length <= 2)  && (
-                                    <>
-                                      {part.arrangements.map((arr) => ( 
-                                        <Text size="xs" c="dimmed">{arr} </Text>
-                                      ))}
-                                    </>
-                                  )}
-                                  {(part.arrangements) && (length >2) && (
-                                    <>
-                                      <Text size="xs" c="dimmed">{part.arrangements[0]}</Text>
-                                      <Text size="xs" c="dimmed">... {part.arrangements.length - 1} more</Text>
-                                    {part.arrangements.map((arr) => ( <Text size="xs" c="dimmed">{arr}</Text> ))}
-                                    </>
-                                  )}
-                                </Group>
-                                {latestBook?.is_rendered && latestBook.download_url && (
-                                  <Button
-                                    component="a"
-                                    href={latestBook.download_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    size="xs"
-                                    variant="light"
-                                    leftSection={<IconDownload size={14} />}
-                                  >
-                                    Download
-                                  </Button>
-                                )}
-                              </Group>
-                              <Collapse in={isExpanded && olderBooks.length > 0}>
-                                <Stack gap="xs" mt="sm" pl="md" style={{ borderLeft: '2px solid var(--mantine-color-default-border)' }}>
-                                  <Text size="xs" c="dimmed" fw={500}>Older revisions</Text>
-                                  {olderBooks.map((book) => (
-                                    <Group key={book.id} justify="space-between">
-                                      <Group gap="xs">
-                                        <Text size="sm">Revision {book.revision}</Text>
-                                        {!book.is_rendered && (
-                                          <Badge size="xs" variant="light" color="yellow">Rendering…</Badge>
-                                        )}
-                                      </Group>
-                                      {book.is_rendered && book.download_url && (
-                                        <Button
-                                          component="a"
-                                          href={book.download_url}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          size="xs"
-                                          variant="subtle"
-                                          leftSection={<IconDownload size={12} />}
-                                        >
-                                          Download
-                                        </Button>
-                                      )}
-                                    </Group>
-                                  ))}
-                                </Stack>
-                              </Collapse>
-                            </Card>
-                          </div>
-                        );
-                      })}
-                  </Stack>
-                )}
-              </div>
-            </Stack>
-          </Card>
+          <EnsemblePartBooksSection
+            ensemble={ensemble}
+            partNames={partNames}
+            onRefresh={() => fetchData(true)}
+            onError={(message) => setPartBookError(message)}
+          />
         </Tabs.Panel>
       </Tabs>
     </Stack>
