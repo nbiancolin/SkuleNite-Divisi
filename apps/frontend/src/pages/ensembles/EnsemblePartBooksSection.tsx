@@ -33,6 +33,7 @@ type Props = {
   partNames: PartName[];
   onRefresh: () => void;
   onError: (message: string) => void;
+  fillHeight?: boolean;
 };
 
 type SavedLayoutValue = "default" | PartBookLayout;
@@ -58,6 +59,7 @@ export function EnsemblePartBooksSection({
   partNames,
   onRefresh,
   onError,
+  fillHeight = false,
 }: Props) {
   const [expandedPartId, setExpandedPartId] = useState<number | null>(null);
   const [reorderingParts, setReorderingParts] = useState(false);
@@ -154,7 +156,16 @@ export function EnsemblePartBooksSection({
     });
 
   return (
-    <Card withBorder radius="md" p="lg">
+    <Card
+      withBorder
+      radius="md"
+      p="lg"
+      style={
+        fillHeight
+          ? { height: "100%", display: "flex", flexDirection: "column", minHeight: 0 }
+          : undefined
+      }
+    >
       <Group mb="md" justify="space-between">
         <Group gap="xs">
           <IconBook size={20} />
@@ -194,7 +205,13 @@ export function EnsemblePartBooksSection({
           No part books yet. Add part names above, then generate.
         </Text>
       ) : (
-        <div style={{ maxHeight: 480, overflowY: "auto" }}>
+        <div
+          style={
+            fillHeight
+              ? { flex: 1, minHeight: 0, overflowY: "auto" }
+              : { maxHeight: 480, overflowY: "auto" }
+          }
+        >
           <Stack gap={0}>
             {sortedParts.map((part, index, sortedPartsList) => {
               const partBooks: EnsemblePartBook[] = (ensemble.part_books ?? [])

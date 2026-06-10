@@ -37,6 +37,8 @@ const ArrangementsPage = () => {
   const [partBookError, setPartBookError] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>("arrangements");
+  const isPartsTab = activeTab === "parts";
 
   const fetchData = useCallback(async (quiet = false) => {
     if (!slug) return;
@@ -169,7 +171,18 @@ const ArrangementsPage = () => {
   );
 
   return (
-    <Stack gap="lg">
+    <Stack
+      gap="lg"
+      style={
+        isPartsTab
+          ? {
+              minHeight: "calc(100dvh - 92px)",
+              display: "flex",
+              flexDirection: "column",
+            }
+          : undefined
+      }
+    >
       <Breadcrumbs>{breadcrumbItems}</Breadcrumbs>
 
       <Group justify="space-between" align="flex-end">
@@ -240,7 +253,16 @@ const ArrangementsPage = () => {
         </Alert>
       )}
 
-      <Tabs defaultValue="arrangements" mt="md">
+      <Tabs
+        value={activeTab}
+        onChange={setActiveTab}
+        mt="md"
+        style={
+          isPartsTab
+            ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
+            : undefined
+        }
+      >
         <Tabs.List>
           <Tabs.Tab value="arrangements">
             Arrangements
@@ -367,12 +389,21 @@ const ArrangementsPage = () => {
           )}
         </Tabs.Panel>
 
-        <Tabs.Panel value="parts" pt="md">
+        <Tabs.Panel
+          value="parts"
+          pt="md"
+          style={
+            isPartsTab
+              ? { flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }
+              : undefined
+          }
+        >
           <EnsemblePartBooksSection
             ensemble={ensemble}
             partNames={partNames}
             onRefresh={() => fetchData(true)}
             onError={(message) => setPartBookError(message)}
+            fillHeight
           />
         </Tabs.Panel>
       </Tabs>
