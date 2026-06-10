@@ -368,7 +368,7 @@ export function EnsemblePartBooksSection({
                         </Stack>
                       </Group>
                       <Group gap="xs" wrap="nowrap">
-                        {isAdmin && (
+                        {(isAdmin || latestBook) && (
                           <Button
                             size="xs"
                             variant="light"
@@ -399,52 +399,52 @@ export function EnsemblePartBooksSection({
                     <Collapse in={isExpanded}>
                       <Stack gap="sm" mt="sm" pl="md">
                         {isAdmin && (
-                          <>
-                            <Stack gap={4}>
-                              <Text size="xs" fw={500}>
-                                Saved layout for this part
-                              </Text>
-                              <SegmentedControl
-                                size="xs"
-                                value={savedLayoutValue}
-                                disabled={savingLayoutPartId === part.id}
-                                onChange={(value) =>
-                                  handleSavedLayoutChange(
-                                    part,
-                                    value as SavedLayoutValue
-                                  )
-                                }
-                                data={[
-                                  { value: "default", label: "Use default" },
-                                  { value: "single_sided", label: "Single-sided" },
-                                  { value: "double_sided", label: "Double-sided" },
-                                ]}
-                              />
-                            </Stack>
-                            <Stack gap={4}>
-                              <Text size="xs" fw={500}>
-                                Layout for this generation
-                              </Text>
-                              <SegmentedControl
-                                size="xs"
-                                value={getOneOffLayout(part.id)}
-                                onChange={(value) =>
-                                  setOneOffLayouts((prev) => ({
-                                    ...prev,
-                                    [part.id]: value as OneOffLayoutValue,
-                                  }))
-                                }
-                                data={[
-                                  {
-                                    value: "saved",
-                                    label: `Use saved (${layoutLabel(effectiveLayout)})`,
-                                  },
-                                  { value: "single_sided", label: "Single-sided" },
-                                  { value: "double_sided", label: "Double-sided" },
-                                ]}
-                              />
-                            </Stack>
-                          </>
+                          <Stack gap={4}>
+                            <Text size="xs" fw={500}>
+                              Saved layout for this part
+                            </Text>
+                            <SegmentedControl
+                              size="xs"
+                              value={savedLayoutValue}
+                              disabled={savingLayoutPartId === part.id}
+                              onChange={(value) =>
+                                handleSavedLayoutChange(
+                                  part,
+                                  value as SavedLayoutValue
+                                )
+                              }
+                              data={[
+                                { value: "default", label: "Use default" },
+                                { value: "single_sided", label: "Single-sided" },
+                                { value: "double_sided", label: "Double-sided" },
+                              ]}
+                            />
+                          </Stack>
+                        )}
+                        {(isAdmin || latestBook) && (
+                          <Stack gap={4}>
+                            <Text size="xs" fw={500}>
+                              Layout for this generation
+                            </Text>
+                            <SegmentedControl
+                              size="xs"
+                              value={getOneOffLayout(part.id)}
+                              onChange={(value) =>
+                                setOneOffLayouts((prev) => ({
+                                  ...prev,
+                                  [part.id]: value as OneOffLayoutValue,
+                                }))
+                              }
+                              data={[
+                                {
+                                  value: "saved",
+                                  label: `Use saved (${layoutLabel(effectiveLayout)})`,
+                                },
+                                { value: "single_sided", label: "Single-sided" },
+                                { value: "double_sided", label: "Double-sided" },
+                              ]}
+                            />
+                          </Stack>
                         )}
 
                         {olderBooks.length > 0 && (

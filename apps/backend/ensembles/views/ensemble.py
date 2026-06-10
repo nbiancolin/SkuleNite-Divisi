@@ -352,6 +352,11 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def generate_part_books(self, request, slug=None):
         ensemble = self.get_object()
+        if not request.user.is_ensemble_admin(ensemble):
+            return Response(
+                {"detail": "Only ensemble admins can generate part books."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         layout_overrides = self._parse_layout_overrides(
             request.data.get("layout_overrides")
         )
@@ -371,13 +376,6 @@ class EnsembleViewSet(viewsets.ModelViewSet):
     )
     def generate_single_part_book(self, request, slug=None):
         ensemble = self.get_object()
-        user = request.user
-
-        if not user.is_ensemble_admin(ensemble):
-            return Response(
-                {"detail": "Only ensemble admins can generate part books."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
 
         part_name_id = request.data.get("part_name_id")
         if not part_name_id:
@@ -392,6 +390,14 @@ class EnsembleViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "Part name not found for this ensemble."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not request.user.is_ensemble_admin(ensemble) and not PartBook.objects.filter(
+            ensemble=ensemble, part_name=part_name
+        ).exists():
+            return Response(
+                {"detail": "Only ensemble admins can generate part books."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         one_off_layout = request.data.get("layout")

@@ -1082,6 +1082,59 @@ def test_generate_single_part_book_with_one_off_layout(
 
 @pytest.mark.django_db
 @patch("ensembles.views.ensemble.generate_books_for_ensemble.delay")
+def test_generate_part_books_as_non_admin(mock_delay, ensemble, user, client):
+    from ensembles.factories import UserFactory
+    from ensembles.models import EnsembleUsership
+
+    non_admin = UserFactory()
+    EnsembleUsership.objects.create(ensemble=ensemble, user=non_admin)
+
+    url = reverse(
+        "ensembles:ensemble-generate-part-books", kwargs={"slug": ensemble.slug}
+    )
+    client.force_login(non_admin)
+    r = client.post(url, data={}, content_type="application/json")
+    assert r.status_code == 403
+    mock_delay.assert_not_called()
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.ensemble.generate_part_book.delay")
+def test_generate_single_part_book_as_non_admin(mock_delay, ensemble, user, client):
+    from ensembles.factories import UserFactory
+    from ensembles.models import EnsembleUsership, PartBook, PartName
+
+    non_admin = UserFactory()
+    EnsembleUsership.objects.create(ensemble=ensemble, user=non_admin)
+    part = PartName.objects.create(ensemble=ensemble, display_name="Piano")
+    PartBook.objects.create(
+        ensemble=ensemble,
+        part_name=part,
+        revision=ensemble.latest_part_book_revision,
+    )
+    next_revision = ensemble.latest_part_book_revision + 1
+
+    url = reverse(
+        "ensembles:ensemble-generate-part-book", kwargs={"slug": ensemble.slug}
+    )
+    client.force_login(non_admin)
+    r = client.post(
+        url,
+        data={"part_name_id": part.id, "layout": "double_sided"},
+        content_type="application/json",
+    )
+    assert r.status_code == 202, r.content
+    mock_delay.assert_called_once_with(
+        ensemble.id,
+        part.id,
+        next_revision,
+        one_off_layout="double_sided",
+        solo=True,
+    )
+
+
+@pytest.mark.django_db
+@patch("ensembles.views.ensemble.generate_books_for_ensemble.delay")
 def test_generate_part_books_with_layout_overrides(mock_delay, ensemble, user, client):
     from ensembles.models import PartName
 
