@@ -1,12 +1,17 @@
 import logging
 import sys
 import xml.etree.ElementTree as ET
-import zipfile
 import os
 import shutil
 from copy import deepcopy
 from typing import List, Tuple
 import tempfile
+
+from mscx_utils import (
+    extract_mscz_main_mscx,
+    mscx_path_from_extract_dir,
+    write_mscz_from_dir,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +21,6 @@ from .utils import (
     install_union_layout_into_score,
     highlight_measure,
     make_highlight_end_empty_measure,
-    mscx_path_from_extract_dir,
-    pick_main_mscx_arc_from_namelist,
     _make_empty_measure,
     _effective_measure_duration,
 )
@@ -265,15 +268,6 @@ def compare_musescore_files(file1_path: str, file2_path: str, output_path: str|N
         tree2.write(rhs_output, encoding="UTF-8", xml_declaration=True)
 
 
-def _extract_mscz_main_mscx(mscz_path: str, extract_dir: str) -> tuple[str, str]:
-    """Extract one .mscz into ``extract_dir`` and return (main arc, path on disk)."""
-    with zipfile.ZipFile(mscz_path, "r") as zip_ref:
-        namelist = zip_ref.namelist()
-        main_arc = pick_main_mscx_arc_from_namelist(namelist)
-        zip_ref.extractall(extract_dir)
-    return main_arc, mscx_path_from_extract_dir(extract_dir, main_arc)
-
-
 def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None = None, unified_diff: bool = True, diffs = None) -> str:
     """
     Compare two .mscz files by extracting and diffing each archive's main score .mscx.
@@ -290,8 +284,8 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
         os.makedirs(right_dir)
         os.makedirs(out_dir)
 
-        left_arc, left_mscx = _extract_mscz_main_mscx(file1_path, left_dir)
-        right_arc, right_mscx = _extract_mscz_main_mscx(file2_path, right_dir)
+        left_arc, left_mscx = extract_mscz_main_mscx(file1_path, left_dir)
+        right_arc, right_mscx = extract_mscz_main_mscx(file2_path, right_dir)
 
         if left_arc != right_arc:
             logger.warning(
@@ -313,12 +307,7 @@ def compare_mscz_files(file1_path: str, file2_path: str, output_path: str|None =
         )
         logger.debug("Processed main score: %s", left_arc)
 
-        with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for root, _, files in os.walk(out_dir):
-                for filename in files:
-                    full_path = os.path.join(root, filename)
-                    arcname = os.path.relpath(full_path, out_dir).replace(os.sep, "/")
-                    zipf.write(full_path, arcname)
+        write_mscz_from_dir(out_dir, output_path)
 
     logger.info("Diff .mscz file created: %s", output_path)
     return output_path
