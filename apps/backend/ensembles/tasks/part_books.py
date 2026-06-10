@@ -2,18 +2,27 @@ from logging import getLogger
 
 from celery import shared_task
 
+from ensembles.lib.part_book_layout import resolve_part_book_layout
 from ensembles.lib.part_name_matrix import part_names_with_latest_part_assets
 from ensembles.models import (
     Ensemble,
     PartBook,
     PartName,
 )
+from ensembles.models.constants import PART_BOOK_LAYOUT_CHOICES
 
 logger = getLogger("part_book_tasks")
 
 
+VALID_LAYOUTS = {choice[0] for choice in PART_BOOK_LAYOUT_CHOICES}
+
+
 @shared_task
-def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int] = {}):
+def generate_books_for_ensemble(
+    ensemble_id: int,
+    custom_versions: dict[int, int] = {},
+    layout_overrides: dict[int, str] | None = None,
+):
     """
     Generate all part books for a given ensemble
 
@@ -45,9 +54,19 @@ def generate_books_for_ensemble(ensemble_id: int, custom_versions: dict[int, int
             "detail": "No part names with uploaded parts in latest arrangement versions",
         }
 
+    layout_overrides = layout_overrides or {}
+
     try:
         for part_name_id in part_name_ids:
-            generate_part_book(ensemble_id, part_name_id, revision)
+            one_off_layout = layout_overrides.get(part_name_id)
+            if one_off_layout is not None and one_off_layout not in VALID_LAYOUTS:
+                raise ValueError(f"Invalid layout override: {one_off_layout}")
+            generate_part_book(
+                ensemble_id,
+                part_name_id,
+                revision,
+                one_off_layout=one_off_layout,
+            )
 
         ensemble.latest_part_book_revision = revision
         ensemble.part_books_generating = False
@@ -72,6 +91,8 @@ def generate_part_book(
     part_name_id: int,
     revision: int,
     custom_versions: dict[int, int] = {},
+    one_off_layout: str | None = None,
+    solo: bool = False,
 ):
     """
     Generate a part book for a specific part in an ensemble
@@ -83,8 +104,15 @@ def generate_part_book(
     :param custom_versions: dict[arrangement_id, arrangement_version_id]. If you want to use a custom version for any arrangements, pass it in here. Currently not supported
     :type custom_versions: dict[int, int]
     """
-    ensemble = Ensemble.objects.get(id=ensemble_id)
-    part_name = PartName.objects.get(id=part_name_id)
+    ensemble = Ensemble.objects.select_related().get(id=ensemble_id)
+    part_name = PartName.objects.select_related("ensemble").get(id=part_name_id)
+
+    if one_off_layout is not None and one_off_layout not in VALID_LAYOUTS:
+        raise ValueError(f"Invalid layout: {one_off_layout}")
+
+    resolved_layout = resolve_part_book_layout(
+        part_name, one_off_layout=one_off_layout
+    )
 
     # First, get parent (previous revision) if any
     parent = None
@@ -96,6 +124,7 @@ def generate_part_book(
         part_name_id=part_name_id,
         revision=revision,
         parent=parent,
+        layout=resolved_layout,
     )
 
     try:
@@ -105,13 +134,17 @@ def generate_part_book(
         part_book.render()
 
         # If all part books for this revision are now finalized, clear the generating flag
-        part_name_count = part_names_with_latest_part_assets(ensemble).count()
-        finalized_count = PartBook.objects.filter(
-            ensemble_id=ensemble_id, revision=revision, finalized_at__isnull=False
-        ).count()
-        if finalized_count >= part_name_count:
+        if solo:
             ensemble.part_books_generating = False
             ensemble.save(update_fields=["part_books_generating"])
+        else:
+            part_name_count = part_names_with_latest_part_assets(ensemble).count()
+            finalized_count = PartBook.objects.filter(
+                ensemble_id=ensemble_id, revision=revision, finalized_at__isnull=False
+            ).count()
+            if finalized_count >= part_name_count:
+                ensemble.part_books_generating = False
+                ensemble.save(update_fields=["part_books_generating"])
 
         return {"status": "success", "file_key": part_book.pdf_file_key}
 

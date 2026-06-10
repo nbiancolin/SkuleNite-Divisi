@@ -1,4 +1,5 @@
 import { API_BASE_URL, getHeadersWithCsrf } from "./client";
+import type { PartBookLayout } from "./types";
 
 export const ensembleApi = {
   async getEnsembles() {
@@ -112,11 +113,24 @@ export const ensembleApi = {
     return response.json();
   },
 
-  async generatePartBooksForEnsemble(slug: string) {
+  async generatePartBooksForEnsemble(
+    slug: string,
+    layoutOverrides?: Record<number, PartBookLayout>
+  ) {
+    const body =
+      layoutOverrides && Object.keys(layoutOverrides).length > 0
+        ? JSON.stringify({
+            layout_overrides: Object.fromEntries(
+              Object.entries(layoutOverrides).map(([id, layout]) => [String(id), layout])
+            ),
+          })
+        : undefined;
+
     const response = await fetch(`${API_BASE_URL}/ensembles/${slug}/generate_part_books/`, {
       method: "POST",
       headers: getHeadersWithCsrf(),
       credentials: "include",
+      body,
     });
 
     if (!response.ok) {
@@ -130,6 +144,71 @@ export const ensembleApi = {
       throw new Error(`Failed to generate part books (status: ${response.status}) - ${errorDetails}`);
     }
 
+    return response.json();
+  },
+
+  async generatePartBookForPart(
+    slug: string,
+    partNameId: number,
+    layout?: PartBookLayout
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/ensembles/${slug}/generate-part-book/`,
+      {
+        method: "POST",
+        headers: getHeadersWithCsrf(),
+        credentials: "include",
+        body: JSON.stringify({
+          part_name_id: partNameId,
+          ...(layout ? { layout } : {}),
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to generate part book (status: ${response.status}) - ${errorDetails}`
+      );
+    }
+
+    return response.json();
+  },
+
+  async updatePartBookLayout(
+    slug: string,
+    partLayouts: Array<{
+      id: number;
+      part_book_layout_override: PartBookLayout | null;
+    }>
+  ) {
+    const response = await fetch(
+      `${API_BASE_URL}/ensembles/${slug}/update-part-book-layout/`,
+      {
+        method: "POST",
+        headers: getHeadersWithCsrf(),
+        body: JSON.stringify({ part_layouts: partLayouts }),
+        credentials: "include",
+      }
+    );
+    if (!response.ok) {
+      let errorDetails = "";
+      try {
+        const errorData = await response.json();
+        errorDetails = errorData.detail || JSON.stringify(errorData);
+      } catch {
+        errorDetails = await response.text();
+      }
+      throw new Error(
+        `Failed to update part book layout (status: ${response.status}) - ${errorDetails}`
+      );
+    }
     return response.json();
   },
 
