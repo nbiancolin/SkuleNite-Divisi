@@ -13,6 +13,7 @@ from .models import (
     PartAsset,
     PartBook,
     PartName,
+    PartNameAlias
     UserScoreVersion,
 )
 from .tasks import export_arrangement_version, prep_and_export_mscz
@@ -46,6 +47,7 @@ class EnsembleAdmin(admin.ModelAdmin):
 
 class ArrangementAdmin(admin.ModelAdmin):
     list_display = ("title", "ensemble", "latest_version")
+    list_filter = ("ensemble",)
 
 
 class ArrangementVersionAdmin(admin.ModelAdmin, PdfObjMixin):
@@ -157,6 +159,9 @@ class PartNameAdmin(admin.ModelAdmin):
 class PartBookAdmin(admin.ModelAdmin, PdfObjMixin):
     pass
 
+class PartNameAliasAdmin(admin.ModelAdmin):
+    list_filter = ("ensemble",)
+    
 
 class CommitAdmin(admin.ModelAdmin):
     list_display = (
@@ -267,5 +272,6 @@ admin.site.register(EnsembleUsership, EnsembleUsershipAdmin)
 admin.site.register(PartAsset, PartAssetAdmin)
 admin.site.register(PartName, PartNameAdmin)
 admin.site.register(PartBook, PartBookAdmin)
+admin.site.register(PartNameAlias, PartNameAliasAdmin)
 admin.site.register(Commit, CommitAdmin)
 admin.site.register(UserScoreVersion, UserScoreVersionAdmin)
