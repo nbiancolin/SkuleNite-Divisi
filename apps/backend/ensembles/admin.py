@@ -13,7 +13,7 @@ from .models import (
     PartAsset,
     PartBook,
     PartName,
-    PartNameAlias
+    PartNameAlias,
     UserScoreVersion,
 )
 from .tasks import export_arrangement_version, prep_and_export_mscz
