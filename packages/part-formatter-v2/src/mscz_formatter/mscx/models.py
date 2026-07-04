@@ -57,6 +57,12 @@ class RenderedMeasure:
 class Line:
     measures: list[RenderedMeasure]
 
+    # How many RenderedMeasures long it is
+    rm_count: int
+
+    # How conceptually long the line is (ie, how many bars in that line (counting MM rests))
+    c_count: int
+
     @property
     def width(self):
         return sum(m.width for m in self.measures)
@@ -69,6 +75,11 @@ class Line:
         #use "is_valid" for balancing
         return self.width <= MAX_LINE_WIDTH
     
+    def add_measure(self, m: RenderedMeasure):
+        self.measures.append(m)
+        self.rm_count += 1
+        self.c_count += m.mm_rest_span if m.is_mm_rest else 1 # noqa
+        
 @dataclass
 class Page:
     lines: list[Line]
