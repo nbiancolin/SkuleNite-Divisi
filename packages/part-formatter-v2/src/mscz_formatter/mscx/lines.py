@@ -4,15 +4,31 @@ File for formatting measures into lines
 from mscz_formatter.mscx.models import Line, RenderedMeasure
 
 from typing import TYPE_CHECKING
-from logging import getLogger
 
 if TYPE_CHECKING:
     from mscz_formatter.mscx.load import MusescoreFileData
 
-#TODO[SC-XX]: allow for this to be set by the user
+# TODO[SC-XX]: allow for this to be set by the user
 MEASURES_PER_LINE = 6
+# Hard-coded fallback when mpl does not divide evenly (see formatting-rules.md)
+ALTERNATE_LINE_LENGTH = 4
 
-LOGGER = getLogger(__name__)
+
+def _new_line() -> Line:
+    return Line(measures=[], rm_count=0, c_count=0)
+
+
+def _flush_line(lines: list[Line], line: Line) -> Line:
+    if line.measures:
+        lines.append(line)
+    return _new_line()
+
+
+def _conceptual_length_fits(c_count: int) -> bool:
+    return (
+        c_count % MEASURES_PER_LINE == 0
+        or c_count % ALTERNATE_LINE_LENGTH == 0
+    )
 
 
 def generate_optimal_line(rendered_measures: list[RenderedMeasure]) -> tuple[Line, int]:
@@ -50,98 +66,67 @@ def generate_optimal_line(rendered_measures: list[RenderedMeasure]) -> tuple[Lin
     return (res, i +1)
 
 
+def new_generate_lines(rendered_measures: list[RenderedMeasure]) -> list[Line]:
+    res = []
+    offset = 0
+    while len(rendered_measures) != offset:
+        line, idx = generate_optimal_line(rendered_measures[offset:])
+        offset += idx
+
+
 
 def generate_lines(rendered_measures: list[RenderedMeasure]) -> list[Line]:
     res: list[Line] = []
-
     i = 0
-    c_counter = 0
     ub = len(rendered_measures)
-
-    curr_line = Line(measures=[], rm_count=0, c_count=0)
+    curr_line = _new_line()
 
     while i < ub:
         m = rendered_measures[i]
+
         if m.is_mm_rest:
-            if len(curr_line.measures) == 0:
-                try:
-                    next_measure = rendered_measures[i +1]
-                except Exception as e:
-                    # at end of show, don't add line break
-                    LOGGER.warning(f"Encountered key error, this is likely because we hit the end of the mscx: {e}")
-                    break
-            
-                if next_measure.is_mm_rest:
+            span = m.mm_rest_span or 0
+            if not curr_line.measures:
+                if i + 1 < ub and rendered_measures[i + 1].is_mm_rest:
                     curr_line.add_measure(m)
-                    curr_line.add_measure(next_measure)
-
+                    curr_line.add_measure(rendered_measures[i + 1])
                     i += 2
-
-                    #line break
-                    res.append(curr_line)
-                    curr_line = Line(measures=[], rm_count=0, c_count=0)
-                
-                elif m.mm_rest_span % MEASURES_PER_LINE == 0:
+                elif span % MEASURES_PER_LINE == 0:
                     curr_line.add_measure(m)
-
                     i += 1
-                    # line break
-                    res.append(curr_line)
-                    curr_line = Line(measures=[], rm_count=0, c_count=0)
-
+                    curr_line = _flush_line(res, curr_line)
                 else:
-                    #don't add break
                     curr_line.add_measure(m)
                     i += 1
-                    #continue
-            # Else: not on a new line
+            elif curr_line.c_count % MEASURES_PER_LINE == 0:
+                curr_line.add_measure(m)
+                i += 1
+                if _conceptual_length_fits(curr_line.c_count):
+                    curr_line = _flush_line(res, curr_line)
+            elif _conceptual_length_fits(curr_line.c_count + span):
+                curr_line.add_measure(m)
+                i += 1
+                curr_line = _flush_line(res, curr_line)
             else:
-                if (curr_line.c_count + m.mm_rest_span) % MEASURES_PER_LINE == 0 or (curr_line.c_count + m.mm_rest_span) % 4 == 0:
-                    curr_line.add_measure(m)
-                    i += 1
-                    #line break
-                    res.append(curr_line)
-                    curr_line = Line(measures=[], rm_count=0, c_count=0)
-                else:
-                    # add line break before and start this on ne line (we can balance it later)
-                    res.append(curr_line)
-                    if len(curr_line.measures) != 0:
-                        # add line break
-                        res.append(curr_line)
-                        curr_line = Line(measures=[], rm_count=0, c_count=0)
-
-                    curr_line.add_measure(m)
-                    i += 1
-        
-        # Else: Not a MM Rest
+                curr_line = _flush_line(res, curr_line)
+                curr_line.add_measure(m)
+                i += 1
+        elif m.has_rehearsal_mark:
+            curr_line = _flush_line(res, curr_line)
+            curr_line.add_measure(m)
+            i += 1
+        elif m.has_double_bar:
+            curr_line.add_measure(m)
+            i += 1
+            if _conceptual_length_fits(curr_line.c_count):
+                curr_line = _flush_line(res, curr_line)
         else:
-            # if line is double bar or rehearsal mark, add line breaks
-            if m.has_rehearsal_mark:
-                # line break then add on new line
-                res.append(curr_line)
-                curr_line = Line(measures=[], rm_count=0, c_count=0)
+            curr_line.add_measure(m)
+            i += 1
+            if curr_line.c_count % MEASURES_PER_LINE == 0:
+                curr_line = _flush_line(res, curr_line)
 
-                curr_line.add_measure(m)
-                i += 1
-            
-            elif m.has_double_bar:
-                curr_line.add_measure(m)
-                i += 1
-
-                if curr_line.c_count % MEASURES_PER_LINE == 0 or curr_line.c_count % 4 == 0:
-                    # add the line break
-                    res.append(curr_line)
-                    curr_line = Line(measures=[], rm_count=0, c_count=0)
-
-
-            # if length of line is mpl, then add line break, otherwise continue
-            else:
-                curr_line.add_measure(m)
-                i += 1
-                if curr_line.c_count % MEASURES_PER_LINE == 0:
-                    res.append(curr_line)
-                    curr_line = Line(measures=[], rm_count=0, c_count=0)
-
+    _flush_line(res, curr_line)
     return res
 
 
