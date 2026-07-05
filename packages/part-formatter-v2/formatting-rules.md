@@ -40,8 +40,15 @@ for a given RenderedMeasure:
 
 
 ### Line Break Balancing:
-        
+- 
 
 
 
 ## Page Breaks
+Adding page breaks is essental, especially for longer charts. We only need to worry about page breaks if the chart is longer than 3 pages
+We need to ensure that there is a valid page turn at the end of every odd #'ed page. This means that its ok if a page has very few lines on it (we can balance lines across 2 pages, but the page turn needs to b valid)
+What is a valid page turn?
+- there needs to be a rest (ideally mm rest) either before or after the page break (ideally after)
+- if the mm rest is after, we add text "V.S. Time"
+- if the rest (mm or otherwise) if before, we add text "V.S. Play"
+- if the rest (not mm) is after the page break, add text "V.S. Fast"

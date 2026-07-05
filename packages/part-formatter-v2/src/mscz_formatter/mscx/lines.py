@@ -31,49 +31,6 @@ def _conceptual_length_fits(c_count: int) -> bool:
     )
 
 
-def generate_optimal_line(rendered_measures: list[RenderedMeasure]) -> tuple[Line, int]:
-    """ 
-    Second attempt to see if we can do this better
-    Build a preliminary optimal line from the start of rendered_measres
-    """
-
-    res = Line(measures=[], rm_count=0, c_count=0)
-    i = 0
-    while i < len(rendered_measures):
-        m = rendered_measures[i]
-        if m.is_mm_rest and res.c_count == 0:
-            if rendered_measures[i +1].is_mm_rest and rendered_measures[i +1].mm_rest_span % MEASURES_PER_LINE == 0:
-                res.add_measure(m)
-                res.add_measure(rendered_measures[i +1])
-                i += 1
-                break
-            else:
-                res.add_measure(m)
-                break
-        if m.is_mm_rest is False: 
-            res.add_measure(m)
-            if res.rm_count == MEASURES_PER_LINE:
-                #done
-                break
-            else:
-                i += 1
-                continue
-
-                
-            
-
-
-    return (res, i +1)
-
-
-def new_generate_lines(rendered_measures: list[RenderedMeasure]) -> list[Line]:
-    res = []
-    offset = 0
-    while len(rendered_measures) != offset:
-        line, idx = generate_optimal_line(rendered_measures[offset:])
-        offset += idx
-
-
 
 def generate_lines(rendered_measures: list[RenderedMeasure]) -> list[Line]:
     res: list[Line] = []
