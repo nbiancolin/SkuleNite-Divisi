@@ -49,6 +49,43 @@ Adding page breaks is essental, especially for longer charts. We only need to wo
 We need to ensure that there is a valid page turn at the end of every odd #'ed page. This means that its ok if a page has very few lines on it (we can balance lines across 2 pages, but the page turn needs to b valid)
 What is a valid page turn?
 - there needs to be a rest (ideally mm rest) either before or after the page break (ideally after)
+- note that there is no minimum restriction for how long a page must be? a page can be fully empty if need be
+
+Need some sort of greedy algorithm for detemrining the "cost" of a page, and when the optimal page turn should be.
+
+
+Other instructions surrounding page breaks:
 - if the mm rest is after, we add text "V.S. Time"
 - if the rest (mm or otherwise) if before, we add text "V.S. Play"
 - if the rest (not mm) is after the page break, add text "V.S. Fast"
+
+
+
+### Page Break Plan:
+
+Use Djikstra Algo for finding optimal page turn
+
+1: Pre-compute all valid pages 
+2: DP step
+
+```
+func Solve(startLine, pageNum):
+    if startLine == n:
+        return 0
+
+    if (startLine, pageNumber) in memo
+        return memo[(startLine, pageNumber)]
+
+    bestScore = -1
+    bestEnd = None
+
+    for endLine = startLine to n -1
+        if valid[startLine][endLine] == False:
+            break
+        
+        score = 0
+        nextStart = nedLine -1
+        # Only score page turns after even pagesn
+        
+
+```
