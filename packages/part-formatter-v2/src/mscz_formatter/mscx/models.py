@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 
 MAX_LINE_WIDTH = 900000 #idk what it acc is
-MAX_PAGE_HEIGHT = 1000 # idk
+MAX_PAGE_HEIGHT = 143424 # idk - round this to a nicer number
 TITLE_BOX_OFFSET = 1000 # idk
 
 @dataclass
@@ -76,16 +76,16 @@ class Line:
         return self.width <= MAX_LINE_WIDTH
     
     @classmethod
-    def page_turn_quality(cls, line: "Line") -> int:
-        """
-        2 - MM rest
-        1 - 1 measure rest
-        0 - no rest
-        """
-        assert line.measures.__len__() > 0
-        if line.measures[0].is_mm_rest:
-            return 2
-        return 1 if line.
+    # def page_turn_quality(cls, line: "Line") -> int:
+    #     """
+    #     2 - MM rest
+    #     1 - 1 measure rest
+    #     0 - no rest
+    #     """
+    #     assert line.measures.__len__() > 0
+    #     if line.measures[0].is_mm_rest:
+    #         return 2
+    #     return 1 if line.
 
 
     
@@ -103,7 +103,9 @@ class Page:
 
     @property
     def height(self):
-        return sum(l.height for l in self.lines)
+        res = sum(l.height for l in self.lines)
+        return res + TITLE_BOX_OFFSET if self.is_first_page else res
+        
 
     def is_valid(self):
         offset = 0
