@@ -62,6 +62,14 @@ def load_mscx_file(mscx_path: str) -> tuple[dict[int, ET.Element], list[SourceMe
 
         is_hidden_by_mm_rest = remaining_mm_rest_measures > 0 and not is_mm_rest_span
 
+        # is_rest calculation - TODO Check this
+        is_rest: bool = False
+        m_rests = m.findall("Rest")
+        if len(m_rests) == 1 and m_rests[0].attrib["durationType"] == "measure":
+            is_rest = True
+        else:
+            is_rest = False
+
         ordered_source_measures.append(
             SourceMeasure(
                 num=measure_num,
@@ -69,6 +77,7 @@ def load_mscx_file(mscx_path: str) -> tuple[dict[int, ET.Element], list[SourceMe
                 is_mm_rest_span=is_mm_rest_span,
                 is_hidden_by_mm_rest=is_hidden_by_mm_rest,
                 mm_rest_count=mm_rest_len if is_mm_rest_span else None,
+                is_rest=is_rest
             )
         )
 

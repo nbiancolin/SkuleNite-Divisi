@@ -11,6 +11,9 @@ class SourceMeasure:
     num: int
     hash_key: int
 
+    # If the measure is not a MM rest but it is a single bar of rest
+    is_rest: bool
+
     is_mm_rest_span: bool = False
     is_hidden_by_mm_rest: bool = False
     mm_rest_count: int | None = None
@@ -51,6 +54,11 @@ class RenderedMeasure:
     # hashes of all the measures inside the mm rest measure
     mm_rest_hashes: list[int]
     mm_rest_span: int | None = None
+
+    @property
+    def is_rest(self) -> bool:
+        return self.source_measure.is_rest
+
 
 
 @dataclass
