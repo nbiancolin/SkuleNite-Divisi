@@ -1,54 +1,54 @@
-# Dynamic Programming approach to solving page turns
-from collections.abc import Callable
+from functools import lru_cache
+from math import inf
 
-from mscz_formatter.mscx.models import Page, Line
-from mscz_formatter.mscx.models import MAX_PAGE_HEIGHT
-
-
-def get_whitespace_penalty(page: Page, next_line: Line) -> float:
-    """Want to prefer pages that are full over those that are empty"""
-    fullness = page.height / MAX_PAGE_HEIGHT
-    return 1.0 - fullness
+from mscz_formatter.mscx.lib.page_cost import page_cost
+from mscz_formatter.mscx.models import Line, Page
 
 
-def get_good_page_turn_boost(page: Page, next_line: Line) -> float:
-    """
-    Want to prefer pages that have good page turns:
+def add_page_breaks(lines: list[Line]) -> list[Page]:
+    @lru_cache(maxsize=None)
+    def solve(start_idx: int) -> tuple[float, list[Page]]:
+        # Base case: no lines remaining
+        if start_idx >= len(lines):
+            return 0, []
 
-    Highest prio (1)
-    - a MM rest at the start of the next line
-    (or) a MM rest at the end of this line
+        best_cost = inf
+        best_pages = []
 
-    Lower prio but still better than nothing: (0.5)
-    - a full measure of rest at the start of the next line
-    (or) a full measure of rest at the end of this line
+        current_lines = []
 
-    Even lower prio
-    - half a measure (or some amont of rest) a start/end (0.1)
-    """
-    next_line_measure = next_line.measures[0]
-    end_of_page_measure = page.lines[-1].measures[-1]
+        # Try every possible page starting at start_idx
+        for end_idx in range(start_idx, len(lines)):
+            current_lines.append(lines[end_idx])
 
+            candidate_page = Page(
+                lines=current_lines.copy(),
+                is_first_page=(start_idx == 0),
+            )
 
-    if end_of_page_measure.is_mm_rest or next_line_measure.is_mm_rest:
-        return 1
-    if end_of_page_measure.is_rest or next_line_measure.is_rest:
-        return 0.5
-    #TODO: Add the "half measure" of rest feature later. Benefit outweights evelopment cost rn
-    return 0.
-    
+            # Once a page overflows, all larger pages will overflow too
+            if not candidate_page.is_valid():
+                break
 
-MULTIPLIERS_AND_FUNCTIONS: list[tuple[int, Callable[[Page, Line], float]]] = [
-    (10, get_whitespace_penalty),
-    (100, get_good_page_turn_boost),
-]
+            # This is the first line of the following page, if one exists
+            next_line = None
+            if end_idx + 1 < len(lines):
+                next_line = lines[end_idx + 1]
 
-def page_cost(page: Page, next_line: Line | None) -> float:
-    if next_line is None:
-        return 0. #TODO: Should this be INF? instead of 0?
+            current_page_cost = page_cost(
+                candidate_page,
+                next_line,
+            )
 
-    cost = 0
-    for multiplier, func in MULTIPLIERS_AND_FUNCTIONS:
-        cost += multiplier * func(page, next_line)
-    
-    return cost
+            remaining_cost, remaining_pages = solve(end_idx + 1)
+
+            total_cost = current_page_cost + remaining_cost
+
+            if total_cost < best_cost:
+                best_cost = total_cost
+                best_pages = [candidate_page] + remaining_pages
+
+        return best_cost, best_pages
+
+    _, pages = solve(0)
+    return pages
