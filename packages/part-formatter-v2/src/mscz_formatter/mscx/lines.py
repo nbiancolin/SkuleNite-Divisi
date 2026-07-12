@@ -1,92 +1,74 @@
 """
-File for formatting measures into lines
+File for formatting measures into lines via dynamic programming.
 """
+from functools import lru_cache
+from math import inf
+
+from mscz_formatter.mscx.lib.line_cost import (
+    ALTERNATE_LINE_LENGTH,
+    MAX_LINE_C_COUNT,
+    MEASURES_PER_LINE,
+    line_cost,
+    line_is_candidate,
+)
 from mscz_formatter.mscx.models import Line, RenderedMeasure
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from mscz_formatter.mscx.load import MusescoreFileData
-
-# TODO[SC-XX]: allow for this to be set by the user
-MEASURES_PER_LINE = 6
-# Hard-coded fallback when mpl does not divide evenly (see formatting-rules.md)
-ALTERNATE_LINE_LENGTH = 4
-
-
-def _new_line() -> Line:
-    return Line(measures=[], rm_count=0, c_count=0)
+# Re-export for callers / tests
+__all__ = [
+    "ALTERNATE_LINE_LENGTH",
+    "MEASURES_PER_LINE",
+    "add_line_breaks",
+    "generate_lines",
+    "balance_and_validate_lines",
+]
 
 
-def _flush_line(lines: list[Line], line: Line) -> Line:
-    if line.measures:
-        lines.append(line)
-    return _new_line()
+def add_line_breaks(measures: list[RenderedMeasure]) -> list[Line]:
+    @lru_cache(maxsize=None)
+    def solve(start_idx: int) -> tuple[float, tuple[Line, ...]]:
+        if start_idx >= len(measures):
+            return 0.0, ()
+
+        best_cost = inf
+        best_lines: tuple[Line, ...] = ()
+
+        current = Line(measures=[], rm_count=0, c_count=0)
+
+        for end_idx in range(start_idx, len(measures)):
+            current.add_measure(measures[end_idx])
+
+            # Width / absolute length only grow — stop extending
+            if not current.is_valid() or current.c_count > MAX_LINE_C_COUNT:
+                break
+
+            if not line_is_candidate(current):
+                continue
+
+            candidate = Line(
+                measures=current.measures.copy(),
+                rm_count=current.rm_count,
+                c_count=current.c_count,
+            )
+
+            next_measure = (
+                measures[end_idx + 1] if end_idx + 1 < len(measures) else None
+            )
+            current_cost = line_cost(candidate, next_measure)
+            remaining_cost, remaining_lines = solve(end_idx + 1)
+            total_cost = current_cost + remaining_cost
+
+            if total_cost < best_cost:
+                best_cost = total_cost
+                best_lines = (candidate,) + remaining_lines
+
+        return best_cost, best_lines
+
+    _, lines = solve(0)
+    return list(lines)
 
 
-def _conceptual_length_fits(c_count: int) -> bool:
-    return (
-        c_count % MEASURES_PER_LINE == 0
-        or c_count % ALTERNATE_LINE_LENGTH == 0
-    )
-
-
-
-def generate_lines(rendered_measures: list[RenderedMeasure]) -> list[Line]:
-    res: list[Line] = []
-    i = 0
-    ub = len(rendered_measures)
-    curr_line = _new_line()
-
-    while i < ub:
-        m = rendered_measures[i]
-
-        if m.is_mm_rest:
-            span = m.mm_rest_span or 0
-            if not curr_line.measures:
-                if i + 1 < ub and rendered_measures[i + 1].is_mm_rest:
-                    curr_line.add_measure(m)
-                    curr_line.add_measure(rendered_measures[i + 1])
-                    i += 2
-                elif span % MEASURES_PER_LINE == 0:
-                    curr_line.add_measure(m)
-                    i += 1
-                    curr_line = _flush_line(res, curr_line)
-                else:
-                    curr_line.add_measure(m)
-                    i += 1
-            elif curr_line.c_count % MEASURES_PER_LINE == 0:
-                curr_line.add_measure(m)
-                i += 1
-                if _conceptual_length_fits(curr_line.c_count):
-                    curr_line = _flush_line(res, curr_line)
-            elif _conceptual_length_fits(curr_line.c_count + span):
-                curr_line.add_measure(m)
-                i += 1
-                curr_line = _flush_line(res, curr_line)
-            else:
-                curr_line = _flush_line(res, curr_line)
-                curr_line.add_measure(m)
-                i += 1
-        elif m.has_rehearsal_mark:
-            curr_line = _flush_line(res, curr_line)
-            curr_line.add_measure(m)
-            i += 1
-        elif m.has_double_bar:
-            curr_line.add_measure(m)
-            i += 1
-            if _conceptual_length_fits(curr_line.c_count):
-                curr_line = _flush_line(res, curr_line)
-        else:
-            curr_line.add_measure(m)
-            i += 1
-            if curr_line.c_count % MEASURES_PER_LINE == 0:
-                curr_line = _flush_line(res, curr_line)
-
-    _flush_line(res, curr_line)
-    return res
-
-
+# Backwards-compatible alias
+generate_lines = add_line_breaks
 
 
 def balance_and_validate_lines(lines: list[Line]):

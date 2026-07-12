@@ -15,7 +15,7 @@ def _measure(
         width=100,
         height=10,
         source_measure_hash=num,
-        source_measure=SourceMeasure(num=num, hash_key=num),
+        source_measure=SourceMeasure(num=num, hash_key=num, is_rest=False),
         has_double_bar=has_double_bar,
         has_existing_line_break=False,
         has_rehearsal_mark=has_rehearsal_mark,

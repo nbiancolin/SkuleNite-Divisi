@@ -82,21 +82,7 @@ class Line:
     def is_valid(self):
         #use "is_valid" for balancing
         return self.width <= MAX_LINE_WIDTH
-    
-    @classmethod
-    # def page_turn_quality(cls, line: "Line") -> int:
-    #     """
-    #     2 - MM rest
-    #     1 - 1 measure rest
-    #     0 - no rest
-    #     """
-    #     assert line.measures.__len__() > 0
-    #     if line.measures[0].is_mm_rest:
-    #         return 2
-    #     return 1 if line.
 
-
-    
     def add_measure(self, m: RenderedMeasure):
         self.measures.append(m)
         self.rm_count += 1
