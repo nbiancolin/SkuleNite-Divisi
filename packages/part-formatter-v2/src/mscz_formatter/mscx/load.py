@@ -9,15 +9,18 @@ from mscz_formatter.mscx.models import SourceMeasure, RenderedMeasure
 
 
 class MusescoreFileData(TypedDict):
+    tree: ET.ElementTree
     measures_by_hash: dict[int, ET.Element]
     source_measures: list[SourceMeasure]
     rendered_measures: list[RenderedMeasure]
 
 
+def _load_xml_tree(path: str) -> ET.ElementTree:
+    return ET.parse(path, ET.XMLParser())
+
+
 def _load_xml_file(path: str) -> ET.Element:
-    parser = ET.XMLParser()
-    tree = ET.parse(path, parser)
-    return tree.getroot()
+    return _load_xml_tree(path).getroot()
 
 
 def measure_is_mm_rest_start(m: ET.Element) -> int:
@@ -37,11 +40,14 @@ def measure_is_mm_rest_start(m: ET.Element) -> int:
     return 0
 
 
-def load_mscx_file(mscx_path: str) -> tuple[dict[int, ET.Element], list[SourceMeasure]]:
+def load_mscx_file(
+    mscx_path: str,
+) -> tuple[ET.ElementTree, dict[int, ET.Element], list[SourceMeasure]]:
     """
-    Load in mscx file, return list of measures
+    Load in mscx file, return the parse tree plus measure metadata.
     """
-    root = _load_xml_file(mscx_path)
+    tree = _load_xml_tree(mscx_path)
+    root = tree.getroot()
     score = root.find("Score")
     if score is None:
         raise ValueError("No <Score> tag found in the XML.")
@@ -90,7 +96,7 @@ def load_mscx_file(mscx_path: str) -> tuple[dict[int, ET.Element], list[SourceMe
                 measure_num += 1
 
     measures_by_hash = {hash(m): m for m in ordered_xml_measures}
-    return measures_by_hash, ordered_source_measures
+    return tree, measures_by_hash, ordered_source_measures
 
 
 def load_mpos_file(
@@ -151,9 +157,10 @@ def load_mpos_file(
 
 
 def load_in(mscx_path: str, mpos_path: str) -> MusescoreFileData:
-    measures_by_hash, ordered_source_measures = load_mscx_file(mscx_path)
+    tree, measures_by_hash, ordered_source_measures = load_mscx_file(mscx_path)
     rendered_measures = load_mpos_file(mpos_path, measures_by_hash, ordered_source_measures)
     return MusescoreFileData(
+        tree=tree,
         measures_by_hash=measures_by_hash,
         source_measures=ordered_source_measures,
         rendered_measures=rendered_measures,

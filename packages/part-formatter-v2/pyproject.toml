@@ -16,6 +16,9 @@ license = { file = "LICENSE" }
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 
+[project.scripts]
+mscz-formatter = "mscz_formatter.main:main"
+
 [project.urls]
 Homepage = "https://github.com/nbiancolin/SkuleNite-Divisi"
 Issues = "https://github.com/nbiancolin/SkuleNie-Divisi/issues"

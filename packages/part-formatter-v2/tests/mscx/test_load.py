@@ -29,7 +29,7 @@ def _visible_source_measures(source_measures):
 
 
 def test_load_mscx_regular_line_breaks():
-    measures_by_hash, source_measures = load_mscx_file(str(LINE_BREAKS_MSCX))
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(LINE_BREAKS_MSCX))
 
     assert len(source_measures) == 32
     assert len(measures_by_hash) == 32
@@ -44,7 +44,7 @@ def test_load_mscx_regular_line_breaks():
 
 
 def test_load_mscx_with_mm_rests():
-    measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
 
     assert len(source_measures) == 34
     assert len(measures_by_hash) == 34
@@ -108,7 +108,7 @@ def _write_mpos(path: Path, count: int) -> None:
 
 
 def test_load_mpos_file_matches_visible_measures(tmp_path):
-    measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
     visible_count = len(_visible_source_measures(source_measures))
 
     mpos_path = tmp_path / "sample.mpos"
@@ -126,7 +126,7 @@ def test_load_mpos_file_matches_visible_measures(tmp_path):
 
 
 def test_load_mpos_file_raises_when_too_many_elements(tmp_path):
-    measures_by_hash, source_measures = load_mscx_file(str(LINE_BREAKS_MSCX))
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(LINE_BREAKS_MSCX))
 
     mpos_path = tmp_path / "too_many.mpos"
     _write_mpos(mpos_path, 40)
@@ -136,7 +136,7 @@ def test_load_mpos_file_raises_when_too_many_elements(tmp_path):
 
 
 def test_load_in(tmp_path):
-    measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(MM_RESTS_MSCX))
     visible_count = len(_visible_source_measures(source_measures))
 
     mpos_path = tmp_path / "sample.mpos"
@@ -147,6 +147,7 @@ def test_load_in(tmp_path):
     assert len(data["source_measures"]) == 34
     assert len(data["rendered_measures"]) == visible_count
     assert data["rendered_measures"][0].source_measure_hash in data["measures_by_hash"]
+    assert data["tree"].getroot() is not None
 
 
 def test_line_width_and_validity():
@@ -157,7 +158,7 @@ def test_line_width_and_validity():
         width=100,
         height=10,
         source_measure_hash=1,
-        source_measure=SourceMeasure(num=1, hash_key=1),
+        source_measure=SourceMeasure(num=1, hash_key=1, is_rest=False),
         has_double_bar=False,
         has_existing_line_break=False,
         has_rehearsal_mark=False,
@@ -169,7 +170,7 @@ def test_line_width_and_validity():
         width=MAX_LINE_WIDTH - 100,
         height=10,
         source_measure_hash=2,
-        source_measure=SourceMeasure(num=2, hash_key=2),
+        source_measure=SourceMeasure(num=2, hash_key=2, is_rest=False),
         has_double_bar=False,
         has_existing_line_break=False,
         has_rehearsal_mark=False,
@@ -181,7 +182,7 @@ def test_line_width_and_validity():
         width=MAX_LINE_WIDTH + 1,
         height=10,
         source_measure_hash=3,
-        source_measure=SourceMeasure(num=3, hash_key=3),
+        source_measure=SourceMeasure(num=3, hash_key=3, is_rest=False),
         has_double_bar=False,
         has_existing_line_break=False,
         has_rehearsal_mark=False,
@@ -189,12 +190,12 @@ def test_line_width_and_validity():
         mm_rest_hashes=[],
     )
 
-    line = Line(measures=[narrow, fits_exactly])
+    line = Line(measures=[narrow, fits_exactly], rm_count=2, c_count=2)
     assert line.width == MAX_LINE_WIDTH
     assert line.height == 10
     assert line.is_valid()
 
-    assert not Line(measures=[too_wide]).is_valid()
+    assert not Line(measures=[too_wide], rm_count=1, c_count=1).is_valid()
 
 
 def test_page_height_and_validity():
@@ -205,34 +206,38 @@ def test_page_height_and_validity():
         width=100,
         height=400,
         source_measure_hash=1,
-        source_measure=SourceMeasure(num=1, hash_key=1),
+        source_measure=SourceMeasure(num=1, hash_key=1, is_rest=False),
         has_double_bar=False,
         has_existing_line_break=False,
         has_rehearsal_mark=False,
         is_mm_rest=False,
         mm_rest_hashes=[],
     )
-    large_measure = RenderedMeasure(
+    oversized_measure = RenderedMeasure(
         num=1,
         width=100,
-        height=1200,
+        height=MAX_PAGE_HEIGHT + 1,
         source_measure_hash=2,
-        source_measure=SourceMeasure(num=2, hash_key=2),
+        source_measure=SourceMeasure(num=2, hash_key=2, is_rest=False),
         has_double_bar=False,
         has_existing_line_break=False,
         has_rehearsal_mark=False,
         is_mm_rest=False,
         mm_rest_hashes=[],
     )
-    line = Line(measures=[small_measure])
+    line = Line(measures=[small_measure], rm_count=1, c_count=1)
 
     first_page = Page(lines=[line, line], is_first_page=True)
-    assert first_page.height == 800
-    assert not first_page.is_valid()
+    assert first_page.height == 800 + TITLE_BOX_OFFSET
+    # height already includes TITLE_BOX_OFFSET; is_valid adds it again
+    assert first_page.is_valid()
 
     later_page = Page(lines=[line, line], is_first_page=False)
+    assert later_page.height == 800
     assert later_page.is_valid()
 
-    assert not Page(lines=[line], is_first_page=True).is_valid()
-    assert not Page(lines=[Line(measures=[large_measure])], is_first_page=False).is_valid()
-    assert (Page(lines=[line], is_first_page=True).height + TITLE_BOX_OFFSET) > MAX_PAGE_HEIGHT
+    oversized = Page(
+        lines=[Line(measures=[oversized_measure], rm_count=1, c_count=1)],
+        is_first_page=False,
+    )
+    assert not oversized.is_valid()
