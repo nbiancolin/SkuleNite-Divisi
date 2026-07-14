@@ -16,13 +16,32 @@ def conceptual_length_fits(c_count: int) -> bool:
     )
 
 
+def _reasonable_break_before_rehearsal_mark(line: Line) -> bool:
+    """
+    Early break before an RM is only cheap when the line is already a
+    sensible chunk. Tiny leftovers (c=1 or 2) must stay expensive so the DP
+    prefers an earlier 4-break (or absorbing the RM) over mpl + orphan.
+
+    Ending on a double bar is also treated as reasonable (soft — a lone
+    pickup before an RM is fine either as its own line or continued).
+    """
+    c = line.c_count
+    if line.measures[-1].has_double_bar:
+        return True
+    return (
+        conceptual_length_fits(c)
+        or c >= ALTERNATE_LINE_LENGTH - 1  # allow 3+ (e.g. 3 then RM)
+        or any(m.is_mm_rest for m in line.measures)
+    )
+
+
 def get_length_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     """
     Prefer packing non-final lines to mpl.
 
-    Breaking early before an MM rest (when the line isn't mpl-aligned) is
-    allowed with only a mild penalty — that matches the "break before"
-    MM-rest rule.
+    Breaking early before an MM rest or rehearsal mark (when the line isn't
+    mpl-aligned) is allowed with only a mild penalty — that matches the
+    "break before" rules for those landmarks.
     """
     c = line.c_count
     if c == MEASURES_PER_LINE:
@@ -30,6 +49,15 @@ def get_length_penalty(line: Line, next_measure: RenderedMeasure) -> float:
 
     # Greedy-equivalent: flush before a mid-line MM rest when misaligned
     if next_measure.is_mm_rest and c % MEASURES_PER_LINE != 0:
+        return 0.2 * abs(c - MEASURES_PER_LINE) / MEASURES_PER_LINE
+
+    # Don't let mpl packing bury an RM (e.g. 5-bar MM rest + next is RM).
+    # Do NOT waive for 1–2 bar orphans before an RM — that causes 6+2
+    # instead of 4+4 (drum kit between rehearsal marks).
+    if (
+        next_measure.has_rehearsal_mark
+        and _reasonable_break_before_rehearsal_mark(line)
+    ):
         return 0.2 * abs(c - MEASURES_PER_LINE) / MEASURES_PER_LINE
 
     if conceptual_length_fits(c) and any(m.is_mm_rest for m in line.measures):
@@ -46,13 +74,17 @@ def get_rehearsal_mark_penalty(line: Line, next_measure: RenderedMeasure) -> flo
     """
     Rehearsal marks should start new lines.
     - Penalize RMs that appear mid-line
-    - Prefer breaking immediately before a rehearsal mark
+    - Prefer breaking immediately before a rehearsal mark when the
+      preceding line is a reasonable length (not a 1–2 bar orphan)
     """
     penalty = 0.0
     for i, m in enumerate(line.measures):
         if m.has_rehearsal_mark and i != 0:
             penalty += 1.0
-    if next_measure.has_rehearsal_mark:
+    if (
+        next_measure.has_rehearsal_mark
+        and _reasonable_break_before_rehearsal_mark(line)
+    ):
         penalty -= 1.0
     return penalty
 
@@ -94,10 +126,10 @@ def get_mm_rest_penalty(line: Line, next_measure: RenderedMeasure) -> float:
 MULTIPLIERS_AND_FUNCTIONS: list[
     tuple[float, Callable[[Line, RenderedMeasure], float]]
 ] = [
-    (10, get_length_penalty),
-    (100, get_rehearsal_mark_penalty),
-    (-50, get_double_bar_boost),
-    (80, get_mm_rest_penalty),
+    (15, get_length_penalty),
+    (30, get_rehearsal_mark_penalty),
+    (-25, get_double_bar_boost),
+    (30, get_mm_rest_penalty),
 ]
 
 

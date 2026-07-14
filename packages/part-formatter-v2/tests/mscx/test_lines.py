@@ -92,6 +92,50 @@ def test_rehearsal_mark_starts_new_line():
     assert lines[1].measures[0].has_rehearsal_mark
 
 
+def test_rehearsal_mark_after_near_mpl_mm_rest_starts_new_line():
+    """5-bar MM rest must not absorb the next bar just to reach mpl=6 when
+    that next bar has a rehearsal mark (violin M6*(5)+M7R bug)."""
+    measures = [
+        _measure(6, is_mm_rest=True, mm_rest_span=5),
+        _measure(7, has_rehearsal_mark=True),
+        _measure(8),
+        _measure(9),
+        _measure(10),
+        _measure(11),
+        _measure(12),
+    ]
+    lines = generate_lines(measures)
+
+    assert lines[0].c_count == 5
+    assert lines[0].measures[0].is_mm_rest
+    assert lines[1].measures[0].has_rehearsal_mark
+    assert lines[1].measures[0].num == 7
+
+
+def test_rehearsal_mark_after_eight_bars_prefers_four_and_four():
+    """8 bars between RMs should be 4+4, not mpl=6 then a 2-bar orphan
+    before the next RM (drum kit M2R..M9 / M10R case)."""
+    measures = [
+        _measure(1, has_double_bar=True),
+        _measure(2, has_rehearsal_mark=True),
+        *[_measure(i) for i in range(3, 10)],
+        _measure(10, has_rehearsal_mark=True),
+        *[_measure(i) for i in range(11, 16)],
+    ]
+    lines = generate_lines(measures)
+
+    # Find the line that starts at M2R; the next chunk before M10R should
+    # be another 4 (4+4), not 6+2.
+    m2_idx = next(
+        i for i, line in enumerate(lines) if line.measures[0].num == 2
+    )
+    assert lines[m2_idx].c_count == 4
+    assert lines[m2_idx + 1].c_count == 4
+    assert lines[m2_idx + 1].measures[-1].num == 9
+    assert lines[m2_idx + 2].measures[0].has_rehearsal_mark
+    assert lines[m2_idx + 2].measures[0].num == 10
+
+
 def test_mm_rest_mid_line_breaks_before_when_misaligned():
     measures = [_measure(i) for i in range(5)] + [
         _measure(5, is_mm_rest=True, mm_rest_span=2),
