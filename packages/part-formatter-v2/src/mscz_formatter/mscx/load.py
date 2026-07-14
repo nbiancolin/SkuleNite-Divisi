@@ -110,6 +110,7 @@ def load_mpos_file(
         raise ValueError("No <elements> tag found in the mpos file.")
 
     rendered_measures: list[RenderedMeasure] = []
+    outgoing_slur_tie_spans: list[int] = []
     source_measure_idx = 0
 
     for measure_num, elem in enumerate(elements.findall("element")):
@@ -135,6 +136,9 @@ def load_mpos_file(
                 mm_rest_hashes.append(ordered_source_measures[idx].hash_key)
                 idx += 1
 
+        outgoing_slur_tie_spans.append(
+            SourceMeasure.get_outgoing_slur_or_tie_span(etm)
+        )
         rendered_measures.append(
             RenderedMeasure(
                 num=measure_num,
@@ -152,6 +156,13 @@ def load_mpos_file(
         )
 
         source_measure_idx += 1 + len(mm_rest_hashes)
+
+    # Mark every bar a slur/tie still crosses: span=2 starting at i means
+    # breaking after i or i+1 both split the spanner.
+    for i, span in enumerate(outgoing_slur_tie_spans):
+        for j in range(span):
+            if i + j < len(rendered_measures):
+                rendered_measures[i + j].has_slur_or_tie_into_next = True
 
     return rendered_measures
 

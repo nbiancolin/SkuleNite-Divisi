@@ -35,6 +35,27 @@ class SourceMeasure:
     def get_has_line_break(cls, m: ET.Element):
         return m.find(".//LayoutBreak") is not None
 
+    @classmethod
+    def get_outgoing_slur_or_tie_span(cls, m: ET.Element) -> int:
+        """
+        Largest number of measures a Slur/Tie Spanner continues past this bar.
+
+        MuseScore encodes cross-bar ties/slurs with
+        ``<next><location><measures>N</measures>…`` where N >= 1.
+        Same-bar spanners only have ``<fractions>`` and return 0.
+        """
+        max_span = 0
+        for spanner in m.findall(".//Spanner"):
+            if spanner.get("type") not in ("Slur", "Tie"):
+                continue
+            measures_el = spanner.find("./next/location/measures")
+            if measures_el is None or not measures_el.text:
+                continue
+            span = int(measures_el.text)
+            if span > max_span:
+                max_span = span
+        return max_span
+
 
 
 @dataclass
@@ -58,6 +79,9 @@ class RenderedMeasure:
     # hashes of all the measures inside the mm rest measure
     mm_rest_hashes: list[int]
     mm_rest_span: int | None = None
+    # True when a slur/tie continues from this measure into the next;
+    # used to discourage line breaks across the barline.
+    has_slur_or_tie_into_next: bool = False
 
     @property
     def is_rest(self) -> bool:

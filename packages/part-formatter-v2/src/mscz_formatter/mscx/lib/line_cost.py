@@ -90,8 +90,21 @@ def get_rehearsal_mark_penalty(line: Line, next_measure: RenderedMeasure) -> flo
 
 
 def get_double_bar_boost(line: Line, next_measure: RenderedMeasure) -> float:
-    """Prefer ending a line on a double bar."""
-    if line.measures[-1].has_double_bar:
+    """Prefer ending a line on a double bar (unless a slur/tie crosses it)."""
+    last = line.measures[-1]
+    if last.has_double_bar and not last.has_slur_or_tie_into_next:
+        return 1.0
+    return 0.0
+
+
+def get_slur_tie_across_break_penalty(
+    line: Line, next_measure: RenderedMeasure
+) -> float:
+    """
+    Discourage breaking a line across a slur or tie that continues into the
+    next measure (see formatting-rules: slur across measures → avoid break).
+    """
+    if line.measures[-1].has_slur_or_tie_into_next:
         return 1.0
     return 0.0
 
@@ -130,6 +143,7 @@ MULTIPLIERS_AND_FUNCTIONS: list[
     (30, get_rehearsal_mark_penalty),
     (-25, get_double_bar_boost),
     (30, get_mm_rest_penalty),
+    (40, get_slur_tie_across_break_penalty),
 ]
 
 

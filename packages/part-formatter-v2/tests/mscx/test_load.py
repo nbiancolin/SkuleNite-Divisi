@@ -88,6 +88,168 @@ def test_source_measure_detects_nested_barline():
     assert SourceMeasure.get_has_double_bar(measure_with_barline)
 
 
+def _measure_with_spanner(spanner_xml: str) -> ET.Element:
+    measure = ET.fromstring(
+        f"""
+        <Measure>
+          <voice>
+            <Chord>
+              <durationType>quarter</durationType>
+              {spanner_xml}
+              <Note>
+                <pitch>60</pitch>
+                <tpc>14</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+        """
+    )
+    return measure
+
+
+def test_source_measure_detects_cross_bar_slur_and_tie():
+    same_bar_slur = _measure_with_spanner(
+        """
+        <Spanner type="Slur">
+          <Slur/>
+          <next>
+            <location>
+              <fractions>1/2</fractions>
+            </location>
+          </next>
+        </Spanner>
+        """
+    )
+    cross_bar_slur = _measure_with_spanner(
+        """
+        <Spanner type="Slur">
+          <Slur/>
+          <next>
+            <location>
+              <measures>1</measures>
+              <fractions>1/4</fractions>
+            </location>
+          </next>
+        </Spanner>
+        """
+    )
+    cross_bar_tie = ET.fromstring(
+        """
+        <Measure>
+          <voice>
+            <Chord>
+              <durationType>quarter</durationType>
+              <Note>
+                <Spanner type="Tie">
+                  <Tie/>
+                  <next>
+                    <location>
+                      <measures>2</measures>
+                    </location>
+                  </next>
+                </Spanner>
+                <pitch>60</pitch>
+                <tpc>14</tpc>
+              </Note>
+            </Chord>
+          </voice>
+        </Measure>
+        """
+    )
+    hairpin_cross_bar = _measure_with_spanner(
+        """
+        <Spanner type="HairPin">
+          <HairPin>
+            <subtype>0</subtype>
+          </HairPin>
+          <next>
+            <location>
+              <measures>1</measures>
+            </location>
+          </next>
+        </Spanner>
+        """
+    )
+
+    assert SourceMeasure.get_outgoing_slur_or_tie_span(same_bar_slur) == 0
+    assert SourceMeasure.get_outgoing_slur_or_tie_span(cross_bar_slur) == 1
+    assert SourceMeasure.get_outgoing_slur_or_tie_span(cross_bar_tie) == 2
+    assert SourceMeasure.get_outgoing_slur_or_tie_span(hairpin_cross_bar) == 0
+
+
+def test_load_mpos_marks_slur_or_tie_into_next(tmp_path):
+    """Multi-measure slur span propagates across intervening rendered bars."""
+    mscx_path = tmp_path / "slur.mscx"
+    mscx_path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+        <museScore>
+          <Score>
+            <Staff>
+              <Measure>
+                <voice>
+                  <Chord>
+                    <durationType>whole</durationType>
+                    <Spanner type="Slur">
+                      <Slur/>
+                      <next>
+                        <location>
+                          <measures>2</measures>
+                        </location>
+                      </next>
+                    </Spanner>
+                    <Note><pitch>60</pitch><tpc>14</tpc></Note>
+                  </Chord>
+                </voice>
+              </Measure>
+              <Measure>
+                <voice>
+                  <Chord>
+                    <durationType>whole</durationType>
+                    <Note><pitch>62</pitch><tpc>16</tpc></Note>
+                  </Chord>
+                </voice>
+              </Measure>
+              <Measure>
+                <voice>
+                  <Chord>
+                    <durationType>whole</durationType>
+                    <Spanner type="Slur">
+                      <prev>
+                        <location>
+                          <measures>-2</measures>
+                        </location>
+                      </prev>
+                    </Spanner>
+                    <Note><pitch>64</pitch><tpc>18</tpc></Note>
+                  </Chord>
+                </voice>
+              </Measure>
+              <Measure>
+                <voice>
+                  <Rest durationType="measure"/>
+                </voice>
+              </Measure>
+            </Staff>
+          </Score>
+        </museScore>
+        """,
+        encoding="utf-8",
+    )
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(mscx_path))
+    mpos_path = tmp_path / "slur.mpos"
+    _write_mpos(mpos_path, len(source_measures))
+
+    rendered = load_mpos_file(str(mpos_path), measures_by_hash, source_measures)
+
+    assert [m.has_slur_or_tie_into_next for m in rendered] == [
+        True,
+        True,
+        False,
+        False,
+    ]
+
+
 def test_load_mscx_raises_without_score(tmp_path):
     invalid = tmp_path / "invalid_no_score.mscx"
     invalid.write_text('<?xml version="1.0"?><museScore><notScore/></museScore>', encoding="utf-8")

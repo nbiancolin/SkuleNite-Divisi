@@ -9,6 +9,7 @@ def _measure(
     mm_rest_span: int | None = None,
     has_double_bar: bool = False,
     has_rehearsal_mark: bool = False,
+    has_slur_or_tie_into_next: bool = False,
 ) -> RenderedMeasure:
     return RenderedMeasure(
         num=num,
@@ -22,6 +23,7 @@ def _measure(
         is_mm_rest=is_mm_rest,
         mm_rest_hashes=[],
         mm_rest_span=mm_rest_span,
+        has_slur_or_tie_into_next=has_slur_or_tie_into_next,
     )
 
 
@@ -155,3 +157,34 @@ def test_mm_rest_mid_line_breaks_after_when_span_aligns_to_four():
 
     assert len(lines) == 1
     assert lines[0].c_count == 8
+
+
+def test_avoids_line_break_across_slur_or_tie():
+    """mpl would split after M6; a slur into M7 should prefer 4+4 instead."""
+    measures = [
+        *[_measure(i) for i in range(1, 6)],
+        _measure(6, has_slur_or_tie_into_next=True),
+        _measure(7),
+        _measure(8),
+    ]
+    lines = generate_lines(measures)
+
+    assert _line_c_counts(lines) == [4, 4]
+    assert lines[0].measures[-1].num == 4
+    assert not any(
+        line.measures[-1].has_slur_or_tie_into_next for line in lines[:-1]
+    )
+
+
+def test_slur_across_double_bar_overrides_double_bar_boost():
+    """Double bars normally invite a break; a slur across that barline wins."""
+    measures = [
+        *[_measure(i) for i in range(1, 6)],
+        _measure(6, has_double_bar=True, has_slur_or_tie_into_next=True),
+        _measure(7),
+        _measure(8),
+    ]
+    lines = generate_lines(measures)
+
+    assert _line_c_counts(lines) == [4, 4]
+    assert lines[0].measures[-1].num == 4

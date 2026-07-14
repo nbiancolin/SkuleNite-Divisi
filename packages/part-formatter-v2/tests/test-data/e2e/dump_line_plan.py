@@ -52,6 +52,8 @@ def _format_measure(m) -> str:
         label += "R"
     if m.has_double_bar:
         label += "D"
+    if m.has_slur_or_tie_into_next:
+        label += "S"
     return label
 
 
