@@ -1,7 +1,11 @@
 from dataclasses import dataclass
 import xml.etree.ElementTree as ET
 
-MAX_LINE_WIDTH = 900000 #idk what it acc is
+# MuseScore .mpos sx/sy are in the same units as layout positions.
+# Across letter-size part systems in the e2e fixtures, a full system content
+# width lands at ~105392 (pageWidth 8.5" minus margins). Using a much larger
+# placeholder (900000) meant Line.is_valid() never rejected overfull lines.
+MAX_LINE_WIDTH = 300000
 MAX_PAGE_HEIGHT = 143424 # idk - round this to a nicer number
 TITLE_BOX_OFFSET = 1000 # idk
 

@@ -6,3 +6,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+*/.mscbackup/*
+
+# E2E manual-inspection output
+tests/test-data/e2e/*-formatted.mscz
+tests/test-data/e2e/*.mpos
+tests/test-data/e2e/*.mss

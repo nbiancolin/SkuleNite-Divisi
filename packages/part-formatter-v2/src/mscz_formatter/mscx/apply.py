@@ -5,7 +5,7 @@ from __future__ import annotations
 import xml.etree.ElementTree as ET
 from logging import getLogger
 
-from mscz_formatter.mscx.models import Page
+from mscz_formatter.mscx.models import Page, RenderedMeasure
 
 LOGGER = getLogger("mscz_formatter")
 
@@ -44,6 +44,20 @@ def _set_break_on_measure(measure: ET.Element, subtype: str) -> None:
     _insert_before_voice(measure, _make_layout_break(subtype))
 
 
+def _break_target_hashes(measure: RenderedMeasure) -> list[int]:
+    """
+    Hashes of MSCX measures that need the layout break for this RenderedMeasure.
+
+    For a normal bar: just the source measure.
+    For an MM rest: both the visible span measure and the last hidden measure
+    covered by that rest (MuseScore keeps both in sync).
+    """
+    hashes = [measure.source_measure_hash]
+    if measure.is_mm_rest and measure.mm_rest_hashes:
+        hashes.append(measure.mm_rest_hashes[-1])
+    return hashes
+
+
 def apply_pages_to_staff(
     staff: ET.Element,
     pages: list[Page],
@@ -63,19 +77,24 @@ def apply_pages_to_staff(
             if not line.measures:
                 continue
             last = line.measures[-1]
-            measure = measures_by_hash.get(last.source_measure_hash)
-            if measure is None:
-                LOGGER.warning(
-                    "Missing measure for hash %s; skipping layout break",
-                    last.source_measure_hash,
-                )
-                continue
 
             is_last_line = line_idx == len(page.lines) - 1
             if is_last_line and not is_last_page:
-                _set_break_on_measure(measure, "page")
+                subtype = "page"
             elif not (is_last_page and is_last_line):
-                _set_break_on_measure(measure, "line")
+                subtype = "line"
+            else:
+                continue
+
+            for measure_hash in _break_target_hashes(last):
+                measure = measures_by_hash.get(measure_hash)
+                if measure is None:
+                    LOGGER.warning(
+                        "Missing measure for hash %s; skipping layout break",
+                        measure_hash,
+                    )
+                    continue
+                _set_break_on_measure(measure, subtype)
 
 
 def apply_layout_to_tree(
