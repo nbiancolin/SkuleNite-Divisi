@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 # Across letter-size part systems in the e2e fixtures, a full system content
 # width lands at ~105392 (pageWidth 8.5" minus margins). Using a much larger
 # placeholder (900000) meant Line.is_valid() never rejected overfull lines.
-MAX_LINE_WIDTH = 300000
+MAX_LINE_WIDTH = 112500
 MAX_PAGE_HEIGHT = 143424 # idk - round this to a nicer number
 TITLE_BOX_OFFSET = 1000 # idk
 
@@ -75,8 +75,8 @@ class RenderedMeasure:
     has_rehearsal_mark: bool
 
     is_mm_rest: bool
-    #only if is_mm_rest is true
-    # hashes of all the measures inside the mm rest measure
+    # Only if is_mm_rest: hashes of the N underlying MSCX measures covered by
+    # the synthetic multi-measure rest (leading rest + N-1 trailing), in order.
     mm_rest_hashes: list[int]
     mm_rest_span: int | None = None
     # True when a slur/tie continues from this measure into the next;

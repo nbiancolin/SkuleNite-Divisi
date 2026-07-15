@@ -40,6 +40,30 @@ def measure_is_mm_rest_start(m: ET.Element) -> int:
     return 0
 
 
+def _hidden_by_mm_rest_flags(ordered_xml_measures: list[ET.Element]) -> list[bool]:
+    """
+    MuseScore stores each multi-measure rest as:
+
+      [first underlying rest] [synthetic <multiMeasureRest>N</…>] [N-1 trailing underlyings]
+
+    Only the synthetic measure is drawn; all N underlying bars must be hidden when
+    pairing against .mpos elements. Older logic only hid the trailing bars, which
+    left the first underlying as a ghost rendered measure (e.g. M2R before M3*(8)R).
+    """
+    n = len(ordered_xml_measures)
+    hidden = [False] * n
+    for i, m in enumerate(ordered_xml_measures):
+        mm_rest_len = measure_is_mm_rest_start(m)
+        if mm_rest_len == 0:
+            continue
+        if i > 0:
+            hidden[i - 1] = True
+        for j in range(1, mm_rest_len):
+            if i + j < n:
+                hidden[i + j] = True
+    return hidden
+
+
 def load_mscx_file(
     mscx_path: str,
 ) -> tuple[ET.ElementTree, dict[int, ET.Element], list[SourceMeasure]]:
@@ -56,17 +80,14 @@ def load_mscx_file(
     staff = staves[0]  # noqa  -- only add layout breaks to the first staff
 
     ordered_xml_measures = list(staff.findall("Measure"))
+    hidden_flags = _hidden_by_mm_rest_flags(ordered_xml_measures)
     ordered_source_measures: list[SourceMeasure] = []
     measure_num = 1
-    remaining_mm_rest_measures = 0
 
-    for m in ordered_xml_measures:
+    for i, m in enumerate(ordered_xml_measures):
         mm_rest_len = measure_is_mm_rest_start(m)
         is_mm_rest_span = mm_rest_len != 0
-        if is_mm_rest_span:
-            remaining_mm_rest_measures = mm_rest_len
-
-        is_hidden_by_mm_rest = remaining_mm_rest_measures > 0 and not is_mm_rest_span
+        is_hidden_by_mm_rest = hidden_flags[i]
 
         # is_rest calculation - TODO Check this
         is_rest: bool = False
@@ -87,13 +108,10 @@ def load_mscx_file(
             )
         )
 
-        if not is_mm_rest_span and not is_hidden_by_mm_rest:
+        if is_mm_rest_span:
+            measure_num += mm_rest_len
+        elif not is_hidden_by_mm_rest:
             measure_num += 1
-
-        if remaining_mm_rest_measures > 0:
-            remaining_mm_rest_measures -= 1
-            if remaining_mm_rest_measures == 0:
-                measure_num += 1
 
     measures_by_hash = {hash(m): m for m in ordered_xml_measures}
     return tree, measures_by_hash, ordered_source_measures
@@ -129,11 +147,26 @@ def load_mpos_file(
         etm = measures_by_hash[sm.hash_key]
         is_mm_rest = sm.is_mm_rest_span
         mm_rest_hashes: list[int] = []
+        following_hidden = 0
 
         if is_mm_rest:
+            # MuseScore: [leading underlying] [synthetic] [N-1 trailing underlyings]
+            expected_underlyings = sm.mm_rest_count or 0
+            if (
+                source_measure_idx > 0
+                and ordered_source_measures[source_measure_idx - 1].is_hidden_by_mm_rest
+            ):
+                mm_rest_hashes.append(
+                    ordered_source_measures[source_measure_idx - 1].hash_key
+                )
             idx = source_measure_idx + 1
-            while idx < len(ordered_source_measures) and ordered_source_measures[idx].is_hidden_by_mm_rest:
+            while (
+                len(mm_rest_hashes) < expected_underlyings
+                and idx < len(ordered_source_measures)
+                and ordered_source_measures[idx].is_hidden_by_mm_rest
+            ):
                 mm_rest_hashes.append(ordered_source_measures[idx].hash_key)
+                following_hidden += 1
                 idx += 1
 
         outgoing_slur_tie_spans.append(
@@ -155,7 +188,9 @@ def load_mpos_file(
             )
         )
 
-        source_measure_idx += 1 + len(mm_rest_hashes)
+        # Skip only the synthetic + trailing underlyings; the leading underlying
+        # was already passed when we skipped hidden bars into this measure.
+        source_measure_idx += 1 + following_hidden
 
     # Mark every bar a slur/tie still crosses: span=2 starting at i means
     # breaking after i or i+1 both split the spanner.

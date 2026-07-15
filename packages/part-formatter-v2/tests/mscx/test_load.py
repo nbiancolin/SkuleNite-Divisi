@@ -54,18 +54,25 @@ def test_load_mscx_with_mm_rests():
 
     assert len(mm_spans) == 2
     assert {sm.mm_rest_count for sm in mm_spans} == {4, 8}
-    assert len(hidden) == 10
+    # Each MMR hides all N underlying bars (leading rest + N-1 trailing).
+    assert len(hidden) == 12
 
+    # [8]=leading rest, [9]=synthetic mmRest=4, [10-12]=trailing underlyings
+    assert source_measures[8].is_hidden_by_mm_rest
     assert source_measures[9].is_mm_rest_span and source_measures[9].mm_rest_count == 4
+    assert source_measures[9].num == 9
     assert all(source_measures[i].is_hidden_by_mm_rest for i in range(10, 13))
-    assert source_measures[13].num == 11
+    assert source_measures[13].num == 13
 
+    # [17]=leading rest, [18]=synthetic mmRest=8, [19-25]=trailing underlyings
+    assert source_measures[17].is_hidden_by_mm_rest
     assert source_measures[18].is_mm_rest_span and source_measures[18].mm_rest_count == 8
+    assert source_measures[18].num == 17
     assert all(source_measures[i].is_hidden_by_mm_rest for i in range(19, 26))
 
     visible = _visible_source_measures(source_measures)
-    assert len(visible) == 24
-    assert visible[-1].num == 24
+    assert len(visible) == 22
+    assert visible[-1].num == 32
 
 
 def test_measure_is_mm_rest_start():
@@ -281,10 +288,12 @@ def test_load_mpos_file_matches_visible_measures(tmp_path):
     assert len(rendered) == visible_count
     assert rendered[0].width == 1000.0
     assert rendered[0].source_measure.num == 1
-    assert rendered[9].is_mm_rest
-    assert rendered[9].mm_rest_span == 4
-    assert len(rendered[9].mm_rest_hashes) == 3
-    assert rendered[9].width == 1009.0
+    # First MMR is the 9th visible bar (after measures 1-8).
+    assert rendered[8].is_mm_rest
+    assert rendered[8].mm_rest_span == 4
+    assert rendered[8].source_measure.num == 9
+    assert len(rendered[8].mm_rest_hashes) == 4
+    assert rendered[8].width == 1008.0
 
 
 def test_load_mpos_file_raises_when_too_many_elements(tmp_path):
