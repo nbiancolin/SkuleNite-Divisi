@@ -67,9 +67,5 @@ def add_line_breaks(measures: list[RenderedMeasure]) -> list[Line]:
     return list(lines)
 
 
-# Backwards-compatible alias
+# Backwards-compatible alias for tests
 generate_lines = add_line_breaks
-
-
-def balance_and_validate_lines(lines: list[Line]):
-    pass

@@ -74,6 +74,26 @@ def get_length_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     return 5.0
 
 
+def get_short_line_penalty(line: Line, next_measure: RenderedMeasure) -> float:
+    """
+    soft preference for lines that arent 2 measures long
+    """
+    if line.c_count != line.rm_count:
+        if line.rm_count == 1:
+            return 0.5
+        return 0
+    if line.c_count == 1:
+        return 1.
+    if line.c_count == 2 or line.c_count == 3:
+        return 0.7
+    if line.c_count == 4:
+        return 0.1
+    if line.c_count == 5:
+        # return 0.5
+        return 0.2
+    return 0.
+
+
 def get_rehearsal_mark_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     """
     Soft preference for rehearsal marks starting lines (not required).
@@ -166,10 +186,11 @@ MULTIPLIERS_AND_FUNCTIONS: list[
 ] = [
     (15, get_length_penalty),
     (30, get_rehearsal_mark_penalty),
-    (-25, get_double_bar_boost),
-    (-25, get_paired_mm_rest_boost),
+    (-35, get_double_bar_boost),
+    (-35, get_paired_mm_rest_boost),
     (30, get_mm_rest_penalty),
     (40, get_slur_tie_across_break_penalty),
+    (100, get_short_line_penalty),
 ]
 
 

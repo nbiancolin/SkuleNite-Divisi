@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score>
+  <elements>
+    <element id="0" x="13464.6" y="32570.3" sx="18385.9" sy="3968.5" page="0">
+      </element>
+    <element id="1" x="31850.5" y="32570.3" sx="15047.4" sy="3968.5" page="0">
+      </element>
+    <element id="2" x="46897.9" y="32570.3" sx="13925.3" sy="3968.5" page="0">
+      </element>
+    <element id="3" x="60823.2" y="32570.3" sx="18930.4" sy="3968.5" page="0">
+      </element>
+    <element id="4" x="79753.6" y="32570.3" sx="15003.9" sy="3968.5" page="0">
+      </element>
+    <element id="5" x="94757.5" y="32570.3" sx="19138.6" sy="3968.5" page="0">
+      </element>
+    <element id="6" x="8503.93" y="66217.1" sx="21236.4" sy="3968.5" page="0">
+      </element>
+    <element id="7" x="29740.4" y="66217.1" sx="15476.4" sy="3968.5" page="0">
+      </element>
+    <element id="8" x="45216.8" y="66217.1" sx="17091.2" sy="3968.5" page="0">
+      </element>
+    <element id="9" x="62308.1" y="66217.1" sx="15906.6" sy="3968.5" page="0">
+      </element>
+    <element id="10" x="78214.6" y="66217.1" sx="15602.3" sy="3968.5" page="0">
+      </element>
+    <element id="11" x="93817" y="66217.1" sx="9528.47" sy="3968.5" page="0">
+      </element>
+    <element id="12" x="103345" y="66217.1" sx="10550.7" sy="3968.5" page="0">
+      </element>
+    <element id="13" x="8503.93" y="99863.8" sx="25879.3" sy="3968.5" page="0">
+      </element>
+    </elements>
+  <events>
+    <event elid="0" position="0">
+      </event>
+    <event elid="1" position="1500">
+      </event>
+    <event elid="2" position="13500">
+      </event>
+    <event elid="3" position="22500">
+      </event>
+    <event elid="4" position="24000">
+      </event>
+    <event elid="5" position="25500">
+      </event>
+    <event elid="6" position="27000">
+      </event>
+    <event elid="7" position="33000">
+      </event>
+    <event elid="8" position="34500">
+      </event>
+    <event elid="9" position="36000">
+      </event>
+    <event elid="10" position="37500">
+      </event>
+    <event elid="11" position="39000">
+      </event>
+    <event elid="12" position="40500">
+      </event>
+    <event elid="13" position="45000">
+      </event>
+    </events>
+  </score>
