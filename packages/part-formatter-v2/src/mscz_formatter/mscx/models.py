@@ -6,8 +6,16 @@ import xml.etree.ElementTree as ET
 # width lands at ~105392 (pageWidth 8.5" minus margins). Using a much larger
 # placeholder (900000) meant Line.is_valid() never rejected overfull lines.
 MAX_LINE_WIDTH = 112500
-MAX_PAGE_HEIGHT = 143424 # idk - round this to a nicer number
-TITLE_BOX_OFFSET = 1000 # idk
+# Printable page height in .mpos units (letter 11" minus typical margins).
+MAX_PAGE_HEIGHT = 130000
+# Extra first-page space for title/composer: first-system y is ~14k higher
+# than on later pages in broadway part fixtures (stars/bows/breathe).
+TITLE_BOX_OFFSET = 14000
+# .mpos `sy` is content bbox only. Pagination must add min system distance
+# (broadway minSystemDistance=8.5 spatium; spatium ≈ 1000 .mpos units).
+SPATIUM_MPOS_UNITS = 1000
+MIN_SYSTEM_DISTANCE_SPATIA = 8.5
+SYSTEM_DISTANCE = int(MIN_SYSTEM_DISTANCE_SPATIA * SPATIUM_MPOS_UNITS)
 
 @dataclass
 class SourceMeasure:
@@ -105,7 +113,11 @@ class Line:
 
     @property
     def height(self):
-        return max(m.height for m in self.measures)
+        """Vertical advance for this system: content bbox + min system distance."""
+        if not self.measures:
+            return 0.0
+        content = max(m.height for m in self.measures)
+        return content + SYSTEM_DISTANCE
 
     def is_valid(self):
         #use "is_valid" for balancing
@@ -123,13 +135,21 @@ class Page:
     # First pages have the title box which takes up more vertical space
     is_first_page: bool
 
+    # Intentionally empty odd page (full-page VBox + "V.S.") after a good
+    # rest on the facing even page, so the player can turn during the rest.
+    is_blank_vs: bool = False
+
     @property
     def height(self):
+        if self.is_blank_vs:
+            return MAX_PAGE_HEIGHT
         res = sum(l.height for l in self.lines)
         return res + TITLE_BOX_OFFSET if self.is_first_page else res
         
 
     def is_valid(self):
+        if self.is_blank_vs:
+            return not self.lines
         offset = 0
         if self.is_first_page:
             offset = TITLE_BOX_OFFSET

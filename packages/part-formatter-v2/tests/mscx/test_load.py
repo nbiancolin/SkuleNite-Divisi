@@ -15,6 +15,7 @@ from mscz_formatter.mscx.models import (
     SourceMeasure,
     MAX_LINE_WIDTH,
     MAX_PAGE_HEIGHT,
+    SYSTEM_DISTANCE,
     TITLE_BOX_OFFSET,
 )
 
@@ -363,7 +364,7 @@ def test_line_width_and_validity():
 
     line = Line(measures=[narrow, fits_exactly], rm_count=2, c_count=2)
     assert line.width == MAX_LINE_WIDTH
-    assert line.height == 10
+    assert line.height == 10 + SYSTEM_DISTANCE
     assert line.is_valid()
 
     assert not Line(measures=[too_wide], rm_count=1, c_count=1).is_valid()
@@ -399,12 +400,12 @@ def test_page_height_and_validity():
     line = Line(measures=[small_measure], rm_count=1, c_count=1)
 
     first_page = Page(lines=[line, line], is_first_page=True)
-    assert first_page.height == 800 + TITLE_BOX_OFFSET
+    assert first_page.height == 2 * (400 + SYSTEM_DISTANCE) + TITLE_BOX_OFFSET
     # height already includes TITLE_BOX_OFFSET; is_valid adds it again
     assert first_page.is_valid()
 
     later_page = Page(lines=[line, line], is_first_page=False)
-    assert later_page.height == 800
+    assert later_page.height == 2 * (400 + SYSTEM_DISTANCE)
     assert later_page.is_valid()
 
     oversized = Page(

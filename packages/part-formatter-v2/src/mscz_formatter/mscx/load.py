@@ -89,13 +89,18 @@ def load_mscx_file(
         is_mm_rest_span = mm_rest_len != 0
         is_hidden_by_mm_rest = hidden_flags[i]
 
-        # is_rest calculation - TODO Check this
-        is_rest: bool = False
-        m_rests = m.findall("Rest")
-        if len(m_rests) == 1 and m_rests[0].attrib["durationType"] == "measure":
-            is_rest = True
-        else:
-            is_rest = False
+        # Full-bar rests live under <voice>. MuseScore 4 stores durationType
+        # as a child element; older files may use an attribute.
+        def _duration_type(rest: ET.Element) -> str | None:
+            child = rest.find("durationType")
+            if child is not None and child.text:
+                return child.text.strip()
+            return rest.get("durationType")
+
+        measure_rests = [
+            r for r in m.findall(".//Rest") if _duration_type(r) == "measure"
+        ]
+        is_rest = bool(measure_rests) and m.find(".//Chord") is None
 
         ordered_source_measures.append(
             SourceMeasure(

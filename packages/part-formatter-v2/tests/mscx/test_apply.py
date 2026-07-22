@@ -126,3 +126,58 @@ def test_page_break_on_mm_rest_targets_visible_and_last_hidden():
     assert _line_break_subtype(hidden1) is None
     assert _line_break_subtype(hidden2) == "page"
     assert _line_break_subtype(next_bar) is None
+
+
+def test_blank_vs_page_inserts_vbox_with_page_break():
+    m1 = _measure_el()
+    m2 = _measure_el()
+    measures_by_hash = {1: m1, 2: m2}
+    staff = ET.Element("Staff")
+    staff.extend([m1, m2])
+
+    pages = [
+        Page(
+            lines=[Line(measures=[_rendered(1)], rm_count=1, c_count=1)],
+            is_first_page=True,
+        ),
+        Page(lines=[], is_first_page=False, is_blank_vs=True),
+        Page(
+            lines=[Line(measures=[_rendered(2)], rm_count=1, c_count=1)],
+            is_first_page=False,
+        ),
+    ]
+
+    apply_pages_to_staff(staff, pages, measures_by_hash)
+
+    assert _line_break_subtype(m1) == "page"
+    assert staff[1].tag == "VBox"
+    assert staff[1].find("./Text/text").text == "V.S."
+    assert staff[1].find("./LayoutBreak/subtype").text == "page"
+    assert staff[2] is m2
+    assert _line_break_subtype(m2) is None
+
+
+def test_blank_vs_frames_are_scrubbed_on_reapply():
+    m1 = _measure_el()
+    m2 = _measure_el()
+    measures_by_hash = {1: m1, 2: m2}
+    staff = ET.Element("Staff")
+    staff.extend([m1, m2])
+
+    pages = [
+        Page(
+            lines=[Line(measures=[_rendered(1)], rm_count=1, c_count=1)],
+            is_first_page=True,
+        ),
+        Page(lines=[], is_first_page=False, is_blank_vs=True),
+        Page(
+            lines=[Line(measures=[_rendered(2)], rm_count=1, c_count=1)],
+            is_first_page=False,
+        ),
+    ]
+
+    apply_pages_to_staff(staff, pages, measures_by_hash)
+    apply_pages_to_staff(staff, pages, measures_by_hash)
+
+    vboxes = [c for c in staff if c.tag == "VBox"]
+    assert len(vboxes) == 1

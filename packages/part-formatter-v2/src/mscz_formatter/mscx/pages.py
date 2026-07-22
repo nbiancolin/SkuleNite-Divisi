@@ -4,6 +4,10 @@ Page breaks via DP over page groups (singles + two-page spreads).
 Real page turns only happen at the end of odd pages. We search over groups
 whose trailing boundary is a turn (when more music follows), then split
 facing spreads at a height midpoint.
+
+When an even page can end on a good rest but continuing onto the facing odd
+page would force a bad later turn, we may emit that even page of music plus a
+blank odd page with a full-page "V.S." frame (volti subito).
 """
 from __future__ import annotations
 
@@ -24,7 +28,7 @@ from mscz_formatter.mscx.models import (
 FIRST_PAGE_BUDGET = MAX_PAGE_HEIGHT - 2 * TITLE_BOX_OFFSET
 LATER_PAGE_BUDGET = MAX_PAGE_HEIGHT
 
-GroupKind = Literal["single", "spread"]
+GroupKind = Literal["single", "spread", "music_plus_blank"]
 
 
 @dataclass(frozen=True)
@@ -40,6 +44,7 @@ class PageGroup:
     def capacity(self) -> float:
         if self.kind == "single":
             return FIRST_PAGE_BUDGET if self.is_first_page else LATER_PAGE_BUDGET
+        # spread and music_plus_blank occupy two page slots
         if self.is_first_page:
             return FIRST_PAGE_BUDGET + LATER_PAGE_BUDGET
         return 2 * LATER_PAGE_BUDGET
@@ -109,9 +114,19 @@ def _spread_is_partitionable(lines: list[Line], *, left_is_first: bool) -> bool:
     return _height_mid_split(lines, left_is_first=left_is_first) is not None
 
 
+def _blank_vs_page() -> Page:
+    return Page(lines=[], is_first_page=False, is_blank_vs=True)
+
+
 def _split_group(group: PageGroup) -> list[Page]:
     if group.kind == "single":
         return [_page(list(group.lines), group.is_first_page)]
+
+    if group.kind == "music_plus_blank":
+        return [
+            _page(list(group.lines), group.is_first_page),
+            _blank_vs_page(),
+        ]
 
     parts = _height_mid_split(
         list(group.lines),
@@ -133,6 +148,16 @@ def _group_total_cost(
 ) -> float:
     turn_end: Line | None = None
     turn_next: Line | None = next_line
+
+    if group.kind == "music_plus_blank":
+        # Blank odd page is the turn: no rest penalty after the frame.
+        return group_cost(
+            height=group.height,
+            capacity=group.capacity,
+            turn_end_line=None,
+            next_line=None,
+            turn_required=False,
+        )
 
     if group.turn_required:
         if (
@@ -249,7 +274,12 @@ def add_page_breaks(lines: list[Line]) -> list[Page]:
                 )
             return best_cost, best_groups
 
-        # --- Later pages: prefer facing spreads; also allow singles ---
+        # --- Later pages ---
+        # Facing spreads are even|odd pairs only (2|3, 4|5, …). Starting a
+        # "spread" on an odd page would straddle a real page turn without
+        # scoring it. Odd pages are singles; turn_required when more follows.
+        on_even = page_num % 2 == 0
+
         for end_idx in range(start_idx, n):
             chunk = lines[start_idx : end_idx + 1]
             chunk_h = sum(line.height for line in chunk)
@@ -258,21 +288,39 @@ def add_page_breaks(lines: list[Line]) -> list[Page]:
             if chunk_h > 2 * LATER_PAGE_BUDGET:
                 break
 
-            # Single page candidate (orphan last page, or forced turn page).
             if _lines_fit_page(chunk, is_first=False):
+                # Physical turns are only after odd pages.
+                turn_required = more_after and not on_even
                 consider(
                     PageGroup(
                         lines=tuple(chunk),
                         kind="single",
                         is_first_page=False,
-                        turn_required=more_after,
+                        turn_required=turn_required,
                     ),
                     end_idx,
                 )
 
-            # Facing spread (2 pages).
+                # Even page ending on a rest + blank odd "V.S." page. Occupies
+                # two page numbers so the next music starts after a free turn.
+                # Require the rest on this page (not only on the next line) so
+                # the player has turn time before the blank / V.S.
+                end_m = chunk[-1].measures[-1]
+                if on_even and more_after and (end_m.is_mm_rest or end_m.is_rest):
+                    consider(
+                        PageGroup(
+                            lines=tuple(chunk),
+                            kind="music_plus_blank",
+                            is_first_page=False,
+                            turn_required=False,
+                        ),
+                        end_idx,
+                    )
+
+            # Facing spread (even|odd only).
             if (
-                len(chunk) >= 2
+                on_even
+                and len(chunk) >= 2
                 and _spread_is_partitionable(chunk, left_is_first=False)
             ):
                 consider(

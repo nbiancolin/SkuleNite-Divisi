@@ -47,7 +47,9 @@ def get_bad_page_turn_penalty(end_line: Line, next_line: Line) -> float:
     return 1.0 - get_page_turn_quality(end_line, next_line)
 
 
-WHITESPACE_WEIGHT = 10.0
+# Prefer good rests at turns over packing; sparse pages are fine when the
+# turn is valid (formatting-rules: no minimum page fill).
+WHITESPACE_WEIGHT = 40.0
 TURN_WEIGHT = 100.0
 
 # Kept for callers that still score a single Page (tests / debugging).

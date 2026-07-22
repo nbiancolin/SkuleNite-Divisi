@@ -141,6 +141,14 @@ With these dataclasses, we take the ordered RenderedMeasures list, and start mak
 Now that we have these Page and Line classes, we can go backwards and update the mscx file to have line breaks as specified by our representation. and with our "is_valid" we know that these will fit!
 
 
+
+
+TODO before V1 (Delete this)
+- Make VS text centered and nicer
+- add back rule about multiple MM rests on a single line is allowed
+- test w fight!
+
+
 ---
 
 

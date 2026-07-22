@@ -1,13 +1,5 @@
 """
 End-to-end smoke test for the part formatter.
-
-Runs the full pipeline on ``bows.mscz`` with the sibling per-part ``.mpos``
-files, then writes a finished ``.mscz`` next to the fixtures so you can open
-it in MuseScore and inspect layout by eye.
-
-Usage::
-
-    pytest packages/part-formatter-v2/tests/e2e.py -s
 """
 
 from __future__ import annotations
@@ -46,11 +38,17 @@ BREATHE_E2E_DIR = E2E_DIR / "breathe"
 BREATHE_INPUT_MSCZ = BREATHE_E2E_DIR / "breathe.mscz"
 BREATHE_OUTPUT_MSCZ = BREATHE_E2E_DIR / "breathe-formatted.mscz"
 
+# stars
+STARS_E2E_DIR = E2E_DIR / "stars"
+STARS_INPUT_MSCZ = STARS_E2E_DIR / "stars.mscz"
+STARS_OUTPUT_MSCZ = STARS_E2E_DIR / "stars-formatted.mscz"
+
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "e2e_dir, part_mpos_key, input_mscz, output_mscz", [
-        (BOWS_E2E_DIR, "bows", BOWS_INPUT_MSCZ, BOWS_OUTPUT_MSCZ),
-        (BREATHE_E2E_DIR, "breathe", BREATHE_INPUT_MSCZ, BREATHE_OUTPUT_MSCZ),
+        (BOWS_E2E_DIR, "bows", BOWS_INPUT_MSCZ, BOWS_OUTPUT_MSCZ), # Quick canary test
+        (BREATHE_E2E_DIR, "breathe", BREATHE_INPUT_MSCZ, BREATHE_OUTPUT_MSCZ), # Longer, better for checking lines
+        (STARS_E2E_DIR, "stars", STARS_INPUT_MSCZ, STARS_OUTPUT_MSCZ), # Longest - for checking page turns
     ]
 )
 def test_format_mscz_for_manual_inspection(e2e_dir, part_mpos_key, input_mscz, output_mscz):

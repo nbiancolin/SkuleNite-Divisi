@@ -298,3 +298,20 @@ def test_slur_across_double_bar_overrides_double_bar_boost():
 
     assert _line_c_counts(lines) == [4, 4]
     assert lines[0].measures[-1].num == 4
+
+
+def test_long_mm_rest_exceeding_max_c_count_still_forms_a_line():
+    """MM rests longer than MAX_LINE_C_COUNT are unsplittable and must still layout."""
+    from mscz_formatter.mscx.lib.line_cost import MAX_LINE_C_COUNT
+
+    span = MAX_LINE_C_COUNT + 3
+    measures = [
+        *[_measure(i) for i in range(1, 4)],
+        _measure(4, is_mm_rest=True, mm_rest_span=span),
+        *[_measure(i) for i in range(5, 11)],
+    ]
+    lines = generate_lines(measures)
+
+    assert lines
+    assert any(m.is_mm_rest and m.mm_rest_span == span for line in lines for m in line.measures)
+    assert sum(line.rm_count for line in lines) == len(measures)

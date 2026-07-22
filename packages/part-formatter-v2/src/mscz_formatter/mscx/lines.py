@@ -37,8 +37,13 @@ def add_line_breaks(measures: list[RenderedMeasure]) -> list[Line]:
         for end_idx in range(start_idx, len(measures)):
             current.add_measure(measures[end_idx])
 
-            # Width / absolute length only grow — stop extending
-            if not current.is_valid() or current.c_count > MAX_LINE_C_COUNT:
+            # Width only grows; stop. Soft c_count ceiling still allows a
+            # lone oversized MM rest (cannot be split across lines).
+            if not current.is_valid():
+                break
+            if current.c_count > MAX_LINE_C_COUNT and not (
+                len(current.measures) == 1 and current.measures[0].is_mm_rest
+            ):
                 break
 
             if not line_is_candidate(current):
