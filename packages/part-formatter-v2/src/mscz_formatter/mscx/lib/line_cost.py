@@ -69,10 +69,12 @@ def get_mm_rest_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     MM-rest preferences:
     - Don't split consecutive MM rests
     - Prefer keeping an aligned MM-rest run with following measures when
-      the combined conceptual length still fits
+      the combined conceptual length still fits (unless the line already
+      has a pair of MM rests — those should end cleanly)
     """
     last = line.measures[-1]
     penalty = 0.0
+    mm_count = sum(1 for m in line.measures if m.is_mm_rest)
 
     if last.is_mm_rest and next_measure.is_mm_rest:
         penalty += 1.0
@@ -82,6 +84,7 @@ def get_mm_rest_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     if (
         last.is_mm_rest
         and not next_measure.is_mm_rest
+        and mm_count < 2
         and conceptual_length_fits(line.c_count)
         and line.c_count < MAX_LINE_C_COUNT
     ):
@@ -91,13 +94,27 @@ def get_mm_rest_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     return penalty
 
 
+def get_paired_mm_rest_boost(line: Line, next_measure: RenderedMeasure) -> float:
+    """
+    Prefer ending a line that places two MM rests together.
+
+    Rewards a clean break after the pair (line ends on an MM rest) so
+    trailing music is not absorbed just to fill space.
+    """
+    if not line.measures[-1].is_mm_rest:
+        return 0.0
+    mm_count = sum(1 for m in line.measures if m.is_mm_rest)
+    return 1.0 if mm_count >= 2 else 0.0
+
+
 MULTIPLIERS_AND_FUNCTIONS: list[
     tuple[float, Callable[[Line, RenderedMeasure], float]]
 ] = [
     (100, get_length_penalty),
-    (10, get_rehearsal_mark_penalty),
+    (50, get_rehearsal_mark_penalty),
     (-50, get_double_bar_boost),
     (80, get_mm_rest_penalty),
+    (-80, get_paired_mm_rest_boost),
 ]
 
 

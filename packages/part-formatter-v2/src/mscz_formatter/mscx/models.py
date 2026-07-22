@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 # placeholder (900000) meant Line.is_valid() never rejected overfull lines.
 MAX_LINE_WIDTH = 112500
 # Printable page height in .mpos units (letter 11" minus typical margins).
-MAX_PAGE_HEIGHT = 130000
+MAX_PAGE_HEIGHT = 120000
 # Extra first-page space for title/composer: first-system y is ~14k higher
 # than on later pages in broadway part fixtures (stars/bows/breathe).
 TITLE_BOX_OFFSET = 14000
