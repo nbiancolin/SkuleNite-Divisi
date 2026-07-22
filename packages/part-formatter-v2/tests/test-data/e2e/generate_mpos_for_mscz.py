@@ -187,11 +187,15 @@ def generate(
     musescore: str | None = None,
     parts: list[str] | None = None,
     include_score: bool = True,
-    copy_styles: bool = True,
+    copy_styles: bool = False,
     timeout: float = 120,
 ) -> dict[str, str]:
     """
     Unpack ``mscz_path`` and export ``.mpos`` files for the score and/or parts.
+
+    Style ``.mss`` files from the archive are applied during export via ``-S``
+    and live only in the temp unpack dir (cleaned automatically). Downstream
+    consumers only need the ``.mpos`` outputs.
 
     Args:
         mscz_path: Source ``.mscz``.
@@ -200,7 +204,8 @@ def generate(
         musescore: Optional path to the MuseScore binary.
         parts: If set, only export excerpts whose key/name matches one of these.
         include_score: Also export the root score ``.mpos``.
-        copy_styles: Copy each used ``.mss`` next to the corresponding ``.mpos``.
+        copy_styles: If True, also copy each used ``.mss`` next to its ``.mpos``
+            (usually unnecessary; styles are already baked into the layout).
         timeout: Per-export MuseScore timeout in seconds.
 
     Returns:
@@ -257,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         "-o",
         "--output-dir",
         default=None,
-        help="Directory for .mpos/.mss outputs (default: same folder as the .mscz)",
+        help="Directory for .mpos outputs (default: same folder as the .mscz)",
     )
     parser.add_argument(
         "--musescore",
@@ -277,9 +282,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip exporting the root score .mpos",
     )
     parser.add_argument(
-        "--no-copy-styles",
+        "--copy-styles",
         action="store_true",
-        help="Do not copy .mss style files next to the .mpos outputs",
+        help="Also copy .mss style files next to the .mpos outputs (usually unnecessary)",
     )
     parser.add_argument(
         "--timeout",
@@ -297,7 +302,7 @@ def main(argv: list[str] | None = None) -> int:
             musescore=args.musescore,
             parts=args.parts,
             include_score=not args.no_score,
-            copy_styles=not args.no_copy_styles,
+            copy_styles=args.copy_styles,
             timeout=args.timeout,
         )
     except (FileNotFoundError, ValueError, RuntimeError, subprocess.TimeoutExpired) as e:
