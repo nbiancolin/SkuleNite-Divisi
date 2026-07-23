@@ -143,12 +143,6 @@ Now that we have these Page and Line classes, we can go backwards and update the
 
 
 
-TODO before V1 (Delete this)
-- Make VS text centered and nicer
-- add back rule about multiple MM rests on a single line is allowed
-- test w fight!
-
-
 ---
 
 
