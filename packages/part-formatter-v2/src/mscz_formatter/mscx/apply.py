@@ -12,7 +12,6 @@ LOGGER = getLogger("mscz_formatter")
 # VBox height is in spatium. Match our printable page budget so the frame
 # fills the blank odd page after a volti-subito rest.
 VS_BLANK_FRAME_HEIGHT_SPATIA = MAX_PAGE_HEIGHT / SPATIUM_MPOS_UNITS
-VS_BLANK_TEXT = "V.S."
 
 
 def _make_layout_break(subtype: str) -> ET.Element:
@@ -22,16 +21,30 @@ def _make_layout_break(subtype: str) -> ET.Element:
     return lb
 
 
+def _generate_vs_text() -> ET.Element:
+    return ET.fromstring("<b><font size=\"16\"/>V.S.<br/><br/>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</b>")
+
+
 def _make_vs_blank_frame() -> ET.Element:
     """Full-page vertical frame with V.S. text and a trailing page break."""
     vbox = ET.Element("VBox")
     height = ET.SubElement(vbox, "height")
     height.text = f"{VS_BLANK_FRAME_HEIGHT_SPATIA:g}"
+    boxAutoSize = ET.SubElement(vbox, "boxAutoSize")
+    boxAutoSize.text = "0"
     text = ET.SubElement(vbox, "Text")
     style = ET.SubElement(text, "style")
     style.text = "frame"
+    size = ET.SubElement(text, "size")
+    size.text = "16"
+    bold = ET.SubElement(text, "bold")
+    bold.text = "1"
+    align = ET.SubElement(text, "align")
+    align.text = "center,baseline"
+    position = ET.SubElement(text, "position")
+    position.text = "center"
     body = ET.SubElement(text, "text")
-    body.text = VS_BLANK_TEXT
+    body.append(_generate_vs_text())
     vbox.append(_make_layout_break("page"))
     return vbox
 
