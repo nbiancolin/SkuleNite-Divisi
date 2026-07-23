@@ -14,13 +14,22 @@ def _measure(
     has_double_bar: bool = False,
     has_rehearsal_mark: bool = False,
     has_slur_or_tie_into_next: bool = False,
+    measure_repeat_span: int | None = None,
+    measure_repeat_index: int | None = None,
+    width: float = 100,
 ) -> RenderedMeasure:
     return RenderedMeasure(
         num=num,
-        width=100,
+        width=width,
         height=10,
         source_measure_hash=num,
-        source_measure=SourceMeasure(num=num, hash_key=num, is_rest=False),
+        source_measure=SourceMeasure(
+            num=num,
+            hash_key=num,
+            is_rest=False,
+            measure_repeat_span=measure_repeat_span,
+            measure_repeat_index=measure_repeat_index,
+        ),
         has_double_bar=has_double_bar,
         has_existing_line_break=False,
         has_rehearsal_mark=has_rehearsal_mark,
@@ -28,6 +37,8 @@ def _measure(
         mm_rest_hashes=[],
         mm_rest_span=mm_rest_span,
         has_slur_or_tie_into_next=has_slur_or_tie_into_next,
+        measure_repeat_span=measure_repeat_span,
+        measure_repeat_index=measure_repeat_index,
     )
 
 
@@ -315,3 +326,48 @@ def test_long_mm_rest_exceeding_max_c_count_still_forms_a_line():
     assert lines
     assert any(m.is_mm_rest and m.mm_rest_span == span for line in lines for m in line.measures)
     assert sum(line.rm_count for line in lines) == len(measures)
+
+
+def _four_bar_repeat(start_num: int) -> list[RenderedMeasure]:
+    return [
+        _measure(
+            start_num + offset,
+            measure_repeat_span=4,
+            measure_repeat_index=offset + 1,
+        )
+        for offset in range(4)
+    ]
+
+
+def test_multi_measure_repeat_is_not_split_across_lines():
+    """Adjacent 4-bar repeats must stay intact (not packed as 6+2)."""
+    measures = [
+        *_four_bar_repeat(1),
+        *_four_bar_repeat(5),
+        *[_measure(i) for i in range(9, 15)],
+    ]
+    lines = generate_lines(measures)
+
+    assert not any(line.measures[-1].continues_measure_repeat for line in lines)
+    # First group alone (c=4); second group may share a line with following
+    # music once complete — never mid-group like [1..6]+[7..8].
+    assert [m.num for m in lines[0].measures] == [1, 2, 3, 4]
+    assert lines[1].measures[0].num == 5
+    assert lines[1].measures[3].num == 8
+    assert sum(line.rm_count for line in lines) == len(measures)
+
+
+def test_multi_measure_repeat_can_share_line_when_complete():
+    """A completed 4-bar repeat may sit with preceding music on an mpl line."""
+    measures = [
+        _measure(1),
+        _measure(2),
+        *_four_bar_repeat(3),
+        *[_measure(i) for i in range(7, 13)],
+    ]
+    lines = generate_lines(measures)
+
+    assert lines[0].c_count == MEASURES_PER_LINE
+    assert [m.num for m in lines[0].measures] == [1, 2, 3, 4, 5, 6]
+    assert lines[0].measures[-1].measure_repeat_index == 4
+    assert not lines[0].measures[-1].continues_measure_repeat

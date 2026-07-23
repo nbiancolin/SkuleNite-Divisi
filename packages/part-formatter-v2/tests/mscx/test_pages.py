@@ -9,6 +9,7 @@ from mscz_formatter.mscx.pages import (
     FIRST_PAGE_BUDGET,
     LATER_PAGE_BUDGET,
     add_page_breaks,
+    pages_from_lines,
 )
 
 # First-page validity double-counts TITLE_BOX_OFFSET (once in height, once in is_valid).
@@ -238,3 +239,27 @@ def test_inserts_blank_vs_when_even_page_ends_on_rest():
     assert pages[blank_idx - 1].lines[-1].measures[-1].is_mm_rest
     assert _flatten(pages) == lines
     assert all(page.is_valid() for page in pages)
+
+
+def test_pages_from_lines_skips_page_turns_when_disabled():
+    """Without turn optimization, all lines stay on one page (line breaks only)."""
+    content_h = 40_000
+    lines = [_line(i, height=content_h) for i in range(7)]
+
+    pages = pages_from_lines(lines, optimize_for_page_turns=False)
+
+    assert len(pages) == 1
+    assert pages[0].is_first_page
+    assert pages[0].lines == lines
+    assert not pages[0].is_blank_vs
+
+
+def test_pages_from_lines_empty_when_disabled():
+    assert pages_from_lines([], optimize_for_page_turns=False) == []
+
+
+def test_pages_from_lines_delegates_to_add_page_breaks_when_enabled():
+    content_h = 40_000
+    lines = [_line(i, height=content_h) for i in range(5)]
+
+    assert pages_from_lines(lines, optimize_for_page_turns=True) == add_page_breaks(lines)

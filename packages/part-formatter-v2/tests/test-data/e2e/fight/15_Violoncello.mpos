@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score>
+  <elements>
+    <element id="0" x="13464.6" y="25370.1" sx="24497.1" sy="3968.5" page="0">
+      </element>
+    <element id="1" x="37961.6" y="25370.1" sx="20731.5" sy="3968.5" page="0">
+      </element>
+    <element id="2" x="58693.1" y="25370.1" sx="17999.1" sy="3968.5" page="0">
+      </element>
+    <element id="3" x="76692.2" y="25370.1" sx="20731.5" sy="3968.5" page="0">
+      </element>
+    <element id="4" x="97423.7" y="25370.1" sx="16472.4" sy="3968.5" page="0">
+      </element>
+    <element id="5" x="8503.93" y="37993.7" sx="25495.9" sy="3968.5" page="0">
+      </element>
+    <element id="6" x="33999.8" y="37993.7" sx="16594" sy="3968.5" page="0">
+      </element>
+    <element id="7" x="50593.8" y="37993.7" sx="19326.4" sy="3968.5" page="0">
+      </element>
+    <element id="8" x="69920.2" y="37993.7" sx="15563.8" sy="3968.5" page="0">
+      </element>
+    <element id="9" x="85484.1" y="37993.7" sx="16401.6" sy="3968.5" page="0">
+      </element>
+    <element id="10" x="101886" y="37993.7" sx="12010.4" sy="3968.5" page="0">
+      </element>
+    <element id="11" x="8503.93" y="50617.3" sx="17114.8" sy="3968.5" page="0">
+      </element>
+    <element id="12" x="25618.7" y="50617.3" sx="13703.9" sy="3968.5" page="0">
+      </element>
+    <element id="13" x="39322.6" y="50617.3" sx="11040.6" sy="3968.5" page="0">
+      </element>
+    <element id="14" x="50363.2" y="50617.3" sx="21177.6" sy="3968.5" page="0">
+      </element>
+    <element id="15" x="71540.8" y="50617.3" sx="21177.6" sy="3968.5" page="0">
+      </element>
+    <element id="16" x="92718.5" y="50617.3" sx="21177.6" sy="3968.5" page="0">
+      </element>
+    <element id="17" x="8503.93" y="63240.9" sx="25437" sy="3968.5" page="0">
+      </element>
+    <element id="18" x="33940.9" y="63240.9" sx="22045.6" sy="3968.5" page="0">
+      </element>
+    <element id="19" x="55986.5" y="63240.9" sx="19267.5" sy="3968.5" page="0">
+      </element>
+    <element id="20" x="75254.1" y="63240.9" sx="22059.7" sy="3968.5" page="0">
+      </element>
+    <element id="21" x="97313.8" y="63240.9" sx="16582.3" sy="3968.5" page="0">
+      </element>
+    <element id="22" x="8503.93" y="75864.6" sx="23496" sy="3968.5" page="0">
+      </element>
+    <element id="23" x="32000" y="75864.6" sx="12391.1" sy="3968.5" page="0">
+      </element>
+    <element id="24" x="44391" y="75864.6" sx="17693.7" sy="3968.5" page="0">
+      </element>
+    <element id="25" x="62084.7" y="75864.6" sx="20009.7" sy="3968.5" page="0">
+      </element>
+    <element id="26" x="82094.3" y="75864.6" sx="16084.4" sy="3968.5" page="0">
+      </element>
+    <element id="27" x="98178.8" y="75864.6" sx="15717.3" sy="3968.5" page="0">
+      </element>
+    <element id="28" x="8503.93" y="88488.2" sx="22868" sy="3968.5" page="0">
+      </element>
+    <element id="29" x="31371.9" y="88488.2" sx="16194" sy="3968.5" page="0">
+      </element>
+    <element id="30" x="47565.9" y="88488.2" sx="10186.5" sy="3968.5" page="0">
+      </element>
+    <element id="31" x="57752.4" y="88488.2" sx="12982" sy="3968.5" page="0">
+      </element>
+    <element id="32" x="70734.4" y="88488.2" sx="10186.5" sy="3968.5" page="0">
+      </element>
+    <element id="33" x="80920.8" y="88488.2" sx="10186.5" sy="3968.5" page="0">
+      </element>
+    <element id="34" x="91107.3" y="88488.2" sx="10186.5" sy="3968.5" page="0">
+      </element>
+    <element id="35" x="101294" y="88488.2" sx="12602.4" sy="3968.5" page="0">
+      </element>
+    <element id="36" x="8503.93" y="101112" sx="18714" sy="3968.5" page="0">
+      </element>
+    <element id="37" x="27217.9" y="101112" sx="17556.9" sy="3968.5" page="0">
+      </element>
+    <element id="38" x="44774.8" y="101112" sx="10272.8" sy="3968.5" page="0">
+      </element>
+    <element id="39" x="55047.6" y="101112" sx="20542.2" sy="3968.5" page="0">
+      </element>
+    <element id="40" x="75589.8" y="101112" sx="17764.1" sy="3968.5" page="0">
+      </element>
+    <element id="41" x="93353.9" y="101112" sx="20542.2" sy="3968.5" page="0">
+      </element>
+    <element id="42" x="8503.93" y="113735" sx="23256.8" sy="3968.5" page="0">
+      </element>
+    <element id="43" x="31760.7" y="113735" sx="16121" sy="3968.5" page="0">
+      </element>
+    <element id="44" x="47881.7" y="113735" sx="18532.8" sy="3968.5" page="0">
+      </element>
+    <element id="45" x="66414.4" y="113735" sx="18532.8" sy="3968.5" page="0">
+      </element>
+    <element id="46" x="84947.2" y="113735" sx="9649.63" sy="3968.5" page="0">
+      </element>
+    <element id="47" x="94596.8" y="113735" sx="9649.63" sy="3968.5" page="0">
+      </element>
+    <element id="48" x="104246" y="113735" sx="9649.63" sy="3968.5" page="0">
+      </element>
+    <element id="49" x="8503.93" y="126359" sx="18247" sy="3968.5" page="0">
+      </element>
+    <element id="50" x="26751" y="126359" sx="12903.1" sy="3968.5" page="0">
+      </element>
+    <element id="51" x="39654.1" y="126359" sx="12077.6" sy="3968.5" page="0">
+      </element>
+    <element id="52" x="51731.7" y="126359" sx="12077.6" sy="3968.5" page="0">
+      </element>
+    <element id="53" x="63809.3" y="126359" sx="12077.6" sy="3968.5" page="0">
+      </element>
+    <element id="54" x="75886.9" y="126359" sx="12077.6" sy="3968.5" page="0">
+      </element>
+    <element id="55" x="87964.4" y="126359" sx="12077.6" sy="3968.5" page="0">
+      </element>
+    <element id="56" x="100042" y="126359" sx="13854.1" sy="3968.5" page="0">
+      </element>
+    <element id="57" x="8503.93" y="138983" sx="19957.8" sy="3968.5" page="0">
+      </element>
+    <element id="58" x="28461.7" y="138983" sx="13788.3" sy="3968.5" page="0">
+      </element>
+    <element id="59" x="42250" y="138983" sx="17911.5" sy="3968.5" page="0">
+      </element>
+    <element id="60" x="60161.5" y="138983" sx="17911.5" sy="3968.5" page="0">
+      </element>
+    <element id="61" x="78073.1" y="138983" sx="17911.5" sy="3968.5" page="0">
+      </element>
+    <element id="62" x="95984.6" y="138983" sx="17911.5" sy="3968.5" page="0">
+      </element>
+    <element id="63" x="8503.93" y="16828.6" sx="23829.7" sy="3968.5" page="1">
+      </element>
+    <element id="64" x="32333.6" y="16828.6" sx="17660.2" sy="3968.5" page="1">
+      </element>
+    <element id="65" x="49993.8" y="16828.6" sx="17660.2" sy="3968.5" page="1">
+      </element>
+    <element id="66" x="67654" y="16828.6" sx="10921.7" sy="3968.5" page="1">
+      </element>
+    <element id="67" x="78575.7" y="16828.6" sx="17660.2" sy="3968.5" page="1">
+      </element>
+    <element id="68" x="96235.9" y="16828.6" sx="17660.2" sy="3968.5" page="1">
+      </element>
+    <element id="69" x="8503.93" y="37167.2" sx="22706.6" sy="3968.5" page="1">
+      </element>
+    <element id="70" x="31210.5" y="37167.2" sx="16537.1" sy="3968.5" page="1">
+      </element>
+    <element id="71" x="47747.6" y="37167.2" sx="16537.1" sy="3968.5" page="1">
+      </element>
+    <element id="72" x="64284.7" y="37167.2" sx="16537.1" sy="3968.5" page="1">
+      </element>
+    <element id="73" x="80821.9" y="37167.2" sx="16537.1" sy="3968.5" page="1">
+      </element>
+    <element id="74" x="97359" y="37167.2" sx="16537.1" sy="3968.5" page="1">
+      </element>
+    <element id="75" x="8503.93" y="57505.8" sx="20170.3" sy="3968.5" page="1">
+      </element>
+    <element id="76" x="28674.3" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="77" x="38576.4" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="78" x="48478.5" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="79" x="58380.6" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="80" x="68282.7" y="57505.8" sx="9806.84" sy="3968.5" page="1">
+      </element>
+    <element id="81" x="78089.6" y="57505.8" sx="16002.3" sy="3968.5" page="1">
+      </element>
+    <element id="82" x="94091.9" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="83" x="103994" y="57505.8" sx="9902.11" sy="3968.5" page="1">
+      </element>
+    <element id="84" x="8503.93" y="77844.4" sx="58053.8" sy="3968.5" page="1">
+      </element>
+    <element id="85" x="66557.8" y="77844.4" sx="47338.3" sy="3968.5" page="1">
+      </element>
+    </elements>
+  <events>
+    <event elid="0" position="0">
+      </event>
+    <event elid="1" position="8727">
+      </event>
+    <event elid="2" position="9818">
+      </event>
+    <event elid="3" position="10909">
+      </event>
+    <event elid="4" position="12000">
+      </event>
+    <event elid="5" position="13091">
+      </event>
+    <event elid="6" position="14182">
+      </event>
+    <event elid="7" position="15273">
+      </event>
+    <event elid="8" position="16364">
+      </event>
+    <event elid="9" position="17455">
+      </event>
+    <event elid="10" position="30545">
+      </event>
+    <event elid="11" position="31636">
+      </event>
+    <event elid="12" position="32727">
+      </event>
+    <event elid="13" position="33818">
+      </event>
+    <event elid="14" position="34909">
+      </event>
+    <event elid="15" position="36000">
+      </event>
+    <event elid="16" position="37091">
+      </event>
+    <event elid="17" position="38182">
+      </event>
+    <event elid="18" position="39273">
+      </event>
+    <event elid="19" position="40364">
+      </event>
+    <event elid="20" position="41455">
+      </event>
+    <event elid="21" position="42545">
+      </event>
+    <event elid="22" position="43636">
+      </event>
+    <event elid="23" position="61091">
+      </event>
+    <event elid="24" position="65265">
+      </event>
+    <event elid="25" position="80917">
+      </event>
+    <event elid="26" position="81960">
+      </event>
+    <event elid="27" position="90308">
+      </event>
+    <event elid="28" position="98656">
+      </event>
+    <event elid="29" position="99700">
+      </event>
+    <event elid="30" position="100743">
+      </event>
+    <event elid="31" position="101787">
+      </event>
+    <event elid="32" position="102830">
+      </event>
+    <event elid="33" position="103874">
+      </event>
+    <event elid="34" position="104917">
+      </event>
+    <event elid="35" position="105960">
+      </event>
+    <event elid="36" position="107004">
+      </event>
+    <event elid="37" position="111178">
+      </event>
+    <event elid="38" position="125787">
+      </event>
+    <event elid="39" position="127623">
+      </event>
+    <event elid="40" position="128583">
+      </event>
+    <event elid="41" position="129543">
+      </event>
+    <event elid="42" position="130503">
+      </event>
+    <event elid="43" position="131463">
+      </event>
+    <event elid="44" position="140103">
+      </event>
+    <event elid="45" position="141063">
+      </event>
+    <event elid="46" position="142023">
+      </event>
+    <event elid="47" position="142983">
+      </event>
+    <event elid="48" position="143943">
+      </event>
+    <event elid="49" position="144903">
+      </event>
+    <event elid="50" position="145863">
+      </event>
+    <event elid="51" position="146823">
+      </event>
+    <event elid="52" position="147783">
+      </event>
+    <event elid="53" position="148743">
+      </event>
+    <event elid="54" position="149703">
+      </event>
+    <event elid="55" position="150663">
+      </event>
+    <event elid="56" position="151623">
+      </event>
+    <event elid="57" position="152583">
+      </event>
+    <event elid="58" position="153543">
+      </event>
+    <event elid="59" position="154503">
+      </event>
+    <event elid="60" position="155463">
+      </event>
+    <event elid="61" position="156423">
+      </event>
+    <event elid="62" position="157383">
+      </event>
+    <event elid="63" position="158343">
+      </event>
+    <event elid="64" position="159303">
+      </event>
+    <event elid="65" position="160263">
+      </event>
+    <event elid="66" position="161223">
+      </event>
+    <event elid="67" position="162183">
+      </event>
+    <event elid="68" position="163143">
+      </event>
+    <event elid="69" position="164103">
+      </event>
+    <event elid="70" position="165063">
+      </event>
+    <event elid="71" position="166023">
+      </event>
+    <event elid="72" position="166983">
+      </event>
+    <event elid="73" position="167943">
+      </event>
+    <event elid="74" position="168903">
+      </event>
+    <event elid="75" position="169863">
+      </event>
+    <event elid="76" position="175623">
+      </event>
+    <event elid="77" position="176583">
+      </event>
+    <event elid="78" position="177543">
+      </event>
+    <event elid="79" position="178503">
+      </event>
+    <event elid="80" position="179463">
+      </event>
+    <event elid="81" position="181383">
+      </event>
+    <event elid="82" position="182343">
+      </event>
+    <event elid="83" position="183303">
+      </event>
+    <event elid="84" position="185222">
+      </event>
+    <event elid="85" position="186182">
+      </event>
+    </events>
+  </score>

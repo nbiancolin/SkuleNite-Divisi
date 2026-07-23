@@ -5,7 +5,11 @@ Code to load mscx files into memory and return the dataclasses
 from typing import TypedDict
 import xml.etree.ElementTree as ET
 
-from mscz_formatter.mscx.models import SourceMeasure, RenderedMeasure
+from mscz_formatter.mscx.models import (
+    MEASURE_REPEAT_WIDTH_FACTOR,
+    RenderedMeasure,
+    SourceMeasure,
+)
 
 
 class MusescoreFileData(TypedDict):
@@ -38,6 +42,72 @@ def measure_is_mm_rest_start(m: ET.Element) -> int:
         assert res.is_integer(), f"MM Rest 'len' property was not a whole number: found {len_prop}"
         return int(res)
     return 0
+
+
+def _measure_repeat_count(m: ET.Element) -> int | None:
+    """Position within a % measure-repeat run (1..N), or None if not in one."""
+    tag = m.find("measureRepeatCount")
+    if tag is None or not tag.text:
+        return None
+    return int(tag.text)
+
+
+def _measure_repeat_subtype(m: ET.Element) -> int | None:
+    """N for an N-bar measure repeat symbol, typically on count==2 for N=4."""
+    mr = m.find(".//MeasureRepeat")
+    if mr is None:
+        return None
+    subtype = mr.find("subtype")
+    if subtype is None or not subtype.text:
+        return None
+    return int(subtype.text)
+
+
+def _measure_repeat_annotations(
+    ordered_xml_measures: list[ET.Element],
+) -> list[tuple[int | None, int | None]]:
+    """
+    For each MSCX measure, return (span, 1-based index) if it belongs to a
+    multi-measure % repeat (span >= 2), else (None, None).
+
+    MuseScore encodes an N-bar repeat as N consecutive bars with
+    ``measureRepeatCount`` 1..N; the ``MeasureRepeat`` symbol (subtype=N)
+    usually sits on count 2.
+    """
+    n = len(ordered_xml_measures)
+    annotations: list[tuple[int | None, int | None]] = [(None, None)] * n
+    i = 0
+    while i < n:
+        if _measure_repeat_count(ordered_xml_measures[i]) != 1:
+            i += 1
+            continue
+
+        subtype: int | None = None
+        j = i
+        while j < n:
+            count = _measure_repeat_count(ordered_xml_measures[j])
+            expected = j - i + 1
+            if count != expected:
+                break
+            found = _measure_repeat_subtype(ordered_xml_measures[j])
+            if found is not None:
+                subtype = found
+            j += 1
+            if subtype is not None and (j - i) >= subtype:
+                break
+
+        span = subtype if subtype is not None else (j - i)
+        if span < 2:
+            i = max(j, i + 1)
+            continue
+
+        for k in range(span):
+            idx = i + k
+            if idx >= n:
+                break
+            annotations[idx] = (span, k + 1)
+        i += span
+    return annotations
 
 
 def _hidden_by_mm_rest_flags(ordered_xml_measures: list[ET.Element]) -> list[bool]:
@@ -81,6 +151,7 @@ def load_mscx_file(
 
     ordered_xml_measures = list(staff.findall("Measure"))
     hidden_flags = _hidden_by_mm_rest_flags(ordered_xml_measures)
+    repeat_annotations = _measure_repeat_annotations(ordered_xml_measures)
     ordered_source_measures: list[SourceMeasure] = []
     measure_num = 1
 
@@ -88,6 +159,7 @@ def load_mscx_file(
         mm_rest_len = measure_is_mm_rest_start(m)
         is_mm_rest_span = mm_rest_len != 0
         is_hidden_by_mm_rest = hidden_flags[i]
+        repeat_span, repeat_index = repeat_annotations[i]
 
         # Full-bar rests live under <voice>. MuseScore 4 stores durationType
         # as a child element; older files may use an attribute.
@@ -109,7 +181,9 @@ def load_mscx_file(
                 is_mm_rest_span=is_mm_rest_span,
                 is_hidden_by_mm_rest=is_hidden_by_mm_rest,
                 mm_rest_count=mm_rest_len if is_mm_rest_span else None,
-                is_rest=is_rest
+                is_rest=is_rest,
+                measure_repeat_span=repeat_span,
+                measure_repeat_index=repeat_index,
             )
         )
 
@@ -177,10 +251,14 @@ def load_mpos_file(
         outgoing_slur_tie_spans.append(
             SourceMeasure.get_outgoing_slur_or_tie_span(etm)
         )
+        width = float(elem.attrib["sx"])
+        # Multi-measure % repeats pack tighter than raw .mpos sum suggests.
+        if sm.measure_repeat_span is not None and sm.measure_repeat_span >= 2:
+            width *= MEASURE_REPEAT_WIDTH_FACTOR
         rendered_measures.append(
             RenderedMeasure(
                 num=measure_num,
-                width=float(elem.attrib["sx"]),
+                width=width,
                 height=float(elem.attrib["sy"]),
                 source_measure_hash=sm.hash_key,
                 source_measure=sm,
@@ -190,6 +268,8 @@ def load_mpos_file(
                 is_mm_rest=is_mm_rest,
                 mm_rest_hashes=mm_rest_hashes,
                 mm_rest_span=sm.mm_rest_count if is_mm_rest else None,
+                measure_repeat_span=sm.measure_repeat_span,
+                measure_repeat_index=sm.measure_repeat_index,
             )
         )
 

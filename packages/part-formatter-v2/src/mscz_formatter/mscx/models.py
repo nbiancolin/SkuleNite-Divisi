@@ -6,6 +6,9 @@ import xml.etree.ElementTree as ET
 # width lands at ~105392 (pageWidth 8.5" minus margins). Using a much larger
 # placeholder (900000) meant Line.is_valid() never rejected overfull lines.
 MAX_LINE_WIDTH = 112500
+# Multi-measure % repeats render tighter than the sum of their .mpos boxes;
+# treat the group as this fraction of the raw summed width when packing.
+MEASURE_REPEAT_WIDTH_FACTOR = 0.85
 # Printable page height in .mpos units (letter 11" minus typical margins).
 MAX_PAGE_HEIGHT = 120000
 # Extra first-page space for title/composer: first-system y is ~14k higher
@@ -29,6 +32,11 @@ class SourceMeasure:
     is_mm_rest_span: bool = False
     is_hidden_by_mm_rest: bool = False
     mm_rest_count: int | None = None
+
+    # Multi-measure % repeat (e.g. 4-bar): members share span N and index 1..N.
+    # Only set for N >= 2; single-bar repeats are left unset.
+    measure_repeat_span: int | None = None
+    measure_repeat_index: int | None = None
 
     # TODO: Could these be properties?
     @classmethod
@@ -91,9 +99,22 @@ class RenderedMeasure:
     # used to discourage line breaks across the barline.
     has_slur_or_tie_into_next: bool = False
 
+    # Multi-measure % repeat membership (copied from SourceMeasure).
+    measure_repeat_span: int | None = None
+    measure_repeat_index: int | None = None
+
     @property
     def is_rest(self) -> bool:
         return self.source_measure.is_rest
+
+    @property
+    def continues_measure_repeat(self) -> bool:
+        """True if ending a line here would split a multi-measure % repeat."""
+        return (
+            self.measure_repeat_span is not None
+            and self.measure_repeat_index is not None
+            and self.measure_repeat_index < self.measure_repeat_span
+        )
 
 
 

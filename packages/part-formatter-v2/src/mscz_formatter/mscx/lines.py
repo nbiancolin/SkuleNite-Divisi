@@ -46,6 +46,11 @@ def add_line_breaks(measures: list[RenderedMeasure]) -> list[Line]:
             ):
                 break
 
+            # Hard rule: never end a line mid multi-measure % repeat.
+            # Keep growing until the group completes (do not break).
+            if current.measures[-1].continues_measure_repeat:
+                continue
+
             if not line_is_candidate(current):
                 continue
 

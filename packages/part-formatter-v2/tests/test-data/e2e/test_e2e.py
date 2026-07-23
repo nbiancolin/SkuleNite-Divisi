@@ -43,12 +43,18 @@ STARS_E2E_DIR = E2E_DIR / "stars"
 STARS_INPUT_MSCZ = STARS_E2E_DIR / "stars.mscz"
 STARS_OUTPUT_MSCZ = STARS_E2E_DIR / "stars-formatted.mscz"
 
+# fight
+FIGHT_E2E_DIR = E2E_DIR / "fight"
+FIGHT_INPUT_MSCZ = FIGHT_E2E_DIR / "fight.mscz"
+FIGHT_OUTPUT_MSCZ = FIGHT_E2E_DIR / "fight-formatted.mscz"
+
 @pytest.mark.e2e
 @pytest.mark.parametrize(
     "e2e_dir, part_mpos_key, input_mscz, output_mscz", [
         (BOWS_E2E_DIR, "bows", BOWS_INPUT_MSCZ, BOWS_OUTPUT_MSCZ), # Quick canary test
         (BREATHE_E2E_DIR, "breathe", BREATHE_INPUT_MSCZ, BREATHE_OUTPUT_MSCZ), # Longer, better for checking lines
-        (STARS_E2E_DIR, "stars", STARS_INPUT_MSCZ, STARS_OUTPUT_MSCZ), # Longest - for checking page turns
+        (STARS_E2E_DIR, "stars", STARS_INPUT_MSCZ, STARS_OUTPUT_MSCZ), # longer - for checking page turns
+        (FIGHT_E2E_DIR, "fight", FIGHT_INPUT_MSCZ, FIGHT_OUTPUT_MSCZ), # Longest - for checking borderline impossible page turns
     ]
 )
 def test_format_mscz_for_manual_inspection(e2e_dir, part_mpos_key, input_mscz, output_mscz):

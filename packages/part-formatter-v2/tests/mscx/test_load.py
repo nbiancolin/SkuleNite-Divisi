@@ -266,6 +266,66 @@ def test_load_mscx_raises_without_score(tmp_path):
         load_mscx_file(str(invalid))
 
 
+def test_load_detects_multi_measure_repeats_and_scales_width(tmp_path):
+    """4-bar % repeats are annotated as a keep-together group; widths use 85%."""
+    from mscz_formatter.mscx.models import MEASURE_REPEAT_WIDTH_FACTOR
+
+    mscx_path = tmp_path / "measure_repeats.mscx"
+    mscx_path.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+        <museScore>
+          <Score>
+            <Staff id="1">
+              <Measure>
+                <voice><Chord><durationType>whole</durationType><Note><pitch>60</pitch><tpc>14</tpc></Note></Chord></voice>
+              </Measure>
+              <Measure>
+                <measureRepeatCount>1</measureRepeatCount>
+                <voice><Rest><durationType>measure</durationType></Rest></voice>
+              </Measure>
+              <Measure>
+                <measureRepeatCount>2</measureRepeatCount>
+                <voice>
+                  <MeasureRepeat>
+                    <subtype>4</subtype>
+                  </MeasureRepeat>
+                </voice>
+              </Measure>
+              <Measure>
+                <measureRepeatCount>3</measureRepeatCount>
+                <voice><Rest><durationType>measure</durationType></Rest></voice>
+              </Measure>
+              <Measure>
+                <measureRepeatCount>4</measureRepeatCount>
+                <voice><Rest><durationType>measure</durationType></Rest></voice>
+              </Measure>
+            </Staff>
+          </Score>
+        </museScore>
+        """,
+        encoding="utf-8",
+    )
+    _tree, measures_by_hash, source_measures = load_mscx_file(str(mscx_path))
+
+    assert source_measures[0].measure_repeat_span is None
+    for i, expected_index in enumerate((1, 2, 3, 4), start=1):
+        assert source_measures[i].measure_repeat_span == 4
+        assert source_measures[i].measure_repeat_index == expected_index
+
+    mpos_path = tmp_path / "measure_repeats.mpos"
+    _write_mpos(mpos_path, len(source_measures))
+    rendered = load_mpos_file(str(mpos_path), measures_by_hash, source_measures)
+
+    assert rendered[0].width == 1000.0
+    assert rendered[0].continues_measure_repeat is False
+    for i, expected_index in enumerate((1, 2, 3, 4), start=1):
+        raw = 1000.0 + i
+        assert rendered[i].width == pytest.approx(raw * MEASURE_REPEAT_WIDTH_FACTOR)
+        assert rendered[i].measure_repeat_span == 4
+        assert rendered[i].measure_repeat_index == expected_index
+        assert rendered[i].continues_measure_repeat is (expected_index < 4)
+
+
 def _write_mpos(path: Path, count: int) -> None:
     elements = "\n".join(
         f'    <element id="{i}" x="0" y="0" sx="{1000 + i}" sy="3968.01" page="0"></element>'

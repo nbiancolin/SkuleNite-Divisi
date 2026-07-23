@@ -91,6 +91,14 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Skip MPOS-based line/page layout on parts",
     )
+    parser.add_argument(
+        "--no-page-turns",
+        action="store_true",
+        help=(
+            "Apply line breaks only; skip turn-aware page breaks "
+            "(optimize_for_page_turns=False)"
+        ),
+    )
 
     args = parser.parse_args(argv)
 
@@ -106,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         "staff_spacing_value": args.staff_spacing_value,
         "apply_mss_style": not args.no_styles,
         "apply_part_layout": not args.no_layout,
+        "optimize_for_page_turns": not args.no_page_turns,
     }
 
     try:

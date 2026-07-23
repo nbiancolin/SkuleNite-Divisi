@@ -54,6 +54,8 @@ def _format_measure(m) -> str:
         label += "D"
     if m.has_slur_or_tie_into_next:
         label += "S"
+    if m.measure_repeat_span:
+        label += f"%{m.measure_repeat_index}/{m.measure_repeat_span}"
     return label
 
 

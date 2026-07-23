@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from mscz_formatter.mscx.apply import apply_layout_to_tree
 from mscz_formatter.mscx.lines import add_line_breaks
 from mscz_formatter.mscx.load import load_in
-from mscz_formatter.mscx.pages import add_page_breaks
+from mscz_formatter.mscx.pages import pages_from_lines
 from mscz_formatter.mscz.excerpts import list_excerpts, resolve_part_mpos
 from mscz_formatter.mscz.file_processing import unpack_mscz_to_tempdir
 from mscz_formatter.mscz.inspect import ScoreInfo, get_all_properties
@@ -29,6 +29,7 @@ class FormattingParams(TypedDict):
     staff_spacing_value: NotRequired[str | None]
     apply_mss_style: NotRequired[bool]
     apply_part_layout: NotRequired[bool]
+    optimize_for_page_turns: NotRequired[bool]
 
 
 def get_score_attributes(input_path: str) -> ScoreInfo:
@@ -50,10 +51,15 @@ def get_score_attributes(input_path: str) -> ScoreInfo:
         return get_all_properties(score)
 
 
-def _format_part_with_mpos(mscx_path: str, mpos_path: str) -> None:
+def _format_part_with_mpos(
+    mscx_path: str,
+    mpos_path: str,
+    *,
+    optimize_for_page_turns: bool = True,
+) -> None:
     data = load_in(mscx_path, mpos_path)
     lines = add_line_breaks(data["rendered_measures"])
-    pages = add_page_breaks(lines)
+    pages = pages_from_lines(lines, optimize_for_page_turns=optimize_for_page_turns)
     apply_layout_to_tree(data["tree"], pages, data["measures_by_hash"], mscx_path)
 
 
@@ -77,6 +83,9 @@ def format_mscz(
 
     Styles are applied to the score and all excerpts. MPOS-based line/page
     layout is applied only to parts listed in ``part_mpos``.
+
+    When ``optimize_for_page_turns`` is False, line breaks are still planned
+    and applied, but the page-turn DP (page breaks / V.S. blanks) is skipped.
     """
     params = dict(params or {})
     if not part_mpos:
@@ -88,6 +97,7 @@ def format_mscz(
     style = style_name if isinstance(style_name, Style) else Style(str(style_name))
     apply_mss_style = params.get("apply_mss_style", True)
     apply_part_layout = params.get("apply_part_layout", True)
+    optimize_for_page_turns = params.get("optimize_for_page_turns", True)
 
     staff_spacing_strategy = normalize_staff_spacing_strategy(
         params.get("staff_spacing_strategy")
@@ -124,7 +134,11 @@ def format_mscz(
                         excerpt_key,
                         mpos_path,
                     )
-                    _format_part_with_mpos(excerpt.mscx_path, mpos_path)
+                    _format_part_with_mpos(
+                        excerpt.mscx_path,
+                        mpos_path,
+                        optimize_for_page_turns=optimize_for_page_turns,
+                    )
 
     except Exception:
         LOGGER.exception("Failed to process %s", input_path)

@@ -24,7 +24,7 @@ STAFF_SPACING_STRATEGIES: Final[tuple[str, ...]] = ("predict", "preserve", "over
 def normalize_staff_spacing_strategy(strategy: str | None) -> str:
     if strategy in STAFF_SPACING_STRATEGIES:
         return strategy
-    return "predict"
+    return "preserve"
 
 
 def _predict_staff_spacing(num_staves: int) -> float:

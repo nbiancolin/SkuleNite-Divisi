@@ -180,6 +180,26 @@ def _group_total_cost(
     )
 
 
+def pages_from_lines(
+    lines: list[Line],
+    *,
+    optimize_for_page_turns: bool = True,
+) -> list[Page]:
+    """
+    Build pages from planned lines.
+
+    When ``optimize_for_page_turns`` is True (default), run the turn-aware DP
+    (odd-page turns, facing spreads, V.S. blanks). When False, skip page
+    breaks entirely: emit a single page so only line breaks are applied and
+    MuseScore handles natural paging.
+    """
+    if not lines:
+        return []
+    if optimize_for_page_turns:
+        return add_page_breaks(lines)
+    return [Page(lines=list(lines), is_first_page=True)]
+
+
 def add_page_breaks(lines: list[Line]) -> list[Page]:
     n = len(lines)
     if n == 0:
