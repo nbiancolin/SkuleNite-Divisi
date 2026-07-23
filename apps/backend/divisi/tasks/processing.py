@@ -10,23 +10,25 @@ from mscz_formatter.mscz.format import format_mscz
 
 from divisi.lib.musescore_headless import export_all_mpos
 from divisi.models import UploadSession
-from ensembles.formatting_steps_constants import (
-    FORMATTING_STEP_KEYS,
-    LINE_BREAK_STEP_KEYS,
-    merge_formatting_step_defaults,
-)
+from ensembles.formatting_steps_constants import normalize_formatting_steps
 from ensembles.models import ArrangementVersion
 
 LOGGER = getLogger("divisi_processing")
 
-_LAYOUT_INFER_KEYS: tuple[str, ...] = LINE_BREAK_STEP_KEYS + (
-    "apply_line_break_balancing",
-    "apply_scrub_existing_line_breaks",
+_METADATA_KEYS = (
+    "show_title",
+    "show_number",
+    "version_num",
+    "work_title",
+    "composer",
+    "arranger",
 )
 
 
 def _v2_formatting_params(formatting_params: dict) -> dict:
     """Map stored / API params onto part-formatter-v2 ``FormattingParams``."""
+    steps = normalize_formatting_steps(formatting_params)
+
     params: dict = {
         "selected_style": formatting_params.get("selected_style") or "broadway",
         "staff_spacing_strategy": formatting_params.get("staff_spacing_strategy"),
@@ -34,17 +36,12 @@ def _v2_formatting_params(formatting_params: dict) -> dict:
         "optimize_for_page_turns": formatting_params.get(
             "optimize_for_page_turns", True
         ),
+        **steps,
     }
 
-    if "apply_mss_style" in formatting_params:
-        params["apply_mss_style"] = bool(formatting_params["apply_mss_style"])
-
-    if "apply_part_layout" in formatting_params:
-        params["apply_part_layout"] = bool(formatting_params["apply_part_layout"])
-    elif any(k in formatting_params for k in _LAYOUT_INFER_KEYS):
-        params["apply_part_layout"] = any(
-            formatting_params.get(k) for k in _LAYOUT_INFER_KEYS
-        )
+    for key in _METADATA_KEYS:
+        if key in formatting_params and formatting_params[key] is not None:
+            params[key] = formatting_params[key]
 
     return params
 
@@ -93,7 +90,6 @@ def _format_mscz_file(
             LOGGER.error("Error from mscz_formatter (part-formatter-v2)")
             return {"status": "error", "details": "unknown part formatter error"}
 
-        # upload generated file back to storage at session.output_file_key
         with open(tmp_out_path, "rb") as out_f:
             django_file = File(out_f)
             default_storage.save(output_key, django_file)
@@ -126,12 +122,17 @@ def format_upload_session(session_id: int, **kwargs) -> dict[str, str]:
         "show_title": kwargs.get("show_title"),
         "show_number": kwargs.get("show_number"),
         "version_num": kwargs.get("version_num", "1.0.0"),
-        "num_measures_per_line_score": kwargs.get("num_measures_per_line_score"),
-        "num_measures_per_line_part": kwargs.get("num_measures_per_line_part"),
-        "num_lines_per_page": kwargs.get("num_lines_per_page"),
+        "work_title": kwargs.get("work_title"),
+        "composer": kwargs.get("composer"),
+        "arranger": kwargs.get("arranger"),
         "staff_spacing_strategy": kwargs.get("staff_spacing_strategy"),
         "staff_spacing_value": kwargs.get("staff_spacing_value"),
         "optimize_for_page_turns": kwargs.get("optimize_for_page_turns", True),
+        "apply_mss_style": True,
+        "apply_score_metadata": True,
+        "apply_part_layout": True,
+        "apply_broadway_vbox_header": True,
+        "apply_part_name_in_header": True,
     }
 
     return _format_mscz_file(input_key, output_key, params)
@@ -148,9 +149,6 @@ def _arrangement_version_format_params(
         "show_number": version.arrangement.mvt_no,
         "work_title": version.arrangement.title,
         "version_num": f"v{version.version_label}",
-        "num_measures_per_line_score": version.num_measures_per_line_score,
-        "num_measures_per_line_part": version.num_measures_per_line_part,
-        "num_lines_per_page": version.num_lines_per_page,
         "staff_spacing_strategy": version.staff_spacing_strategy,
         "staff_spacing_value": (
             str(version.staff_spacing_value)
@@ -161,15 +159,12 @@ def _arrangement_version_format_params(
     }
 
     if formatting_steps_override is not None:
-        params.update(formatting_steps_override)
+        step_source = formatting_steps_override
     else:
         stored = version.formatting_steps or {}
-        if isinstance(stored, dict):
-            for key in FORMATTING_STEP_KEYS:
-                if key in stored:
-                    params[key] = stored[key]
+        step_source = stored if isinstance(stored, dict) else {}
 
-    merge_formatting_step_defaults(params)
+    params.update(normalize_formatting_steps(step_source))
     return params
 
 

@@ -10,9 +10,10 @@ from django.db.models import F
 from rest_framework import serializers, status
 
 from ensembles.formatting_steps_constants import (
-    FORMATTING_STEP_KEYS,
+    ACCEPTED_FORMATTING_STEP_KEYS,
     default_formatting_steps,
     merge_formatting_step_defaults,
+    normalize_formatting_steps,
 )
 from ensembles.models import (
     Arrangement,
@@ -38,24 +39,21 @@ VERSION_TYPES = [("major", "Major"), ("minor", "Minor"), ("patch", "Patch")]
 
 def coerce_formatting_steps(raw) -> dict[str, bool]:
     """Merge client partial dict with defaults; reject unknown keys and non-bool values."""
-    base = default_formatting_steps()
     if raw is None:
-        return base
+        return default_formatting_steps()
     if not isinstance(raw, dict):
         raise serializers.ValidationError("formatting_steps must be a JSON object.")
-    unknown = set(raw) - set(FORMATTING_STEP_KEYS)
+    unknown = set(raw) - ACCEPTED_FORMATTING_STEP_KEYS
     if unknown:
         raise serializers.ValidationError(
             f"Unknown formatting_steps keys: {sorted(unknown)}"
         )
-    for k in FORMATTING_STEP_KEYS:
-        if k in raw:
-            v = raw[k]
-            if not isinstance(v, bool):
-                raise serializers.ValidationError(
-                    {k: "Each formatting_steps value must be a boolean."}
-                )
-            base[k] = v
+    for k, v in raw.items():
+        if not isinstance(v, bool):
+            raise serializers.ValidationError(
+                {k: "Each formatting_steps value must be a boolean."}
+            )
+    base = normalize_formatting_steps(raw)
     merge_formatting_step_defaults(base)
     return base
 

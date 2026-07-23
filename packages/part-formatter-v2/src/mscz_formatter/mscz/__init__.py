@@ -7,17 +7,25 @@ from mscz_formatter.mscz.excerpts import ExcerptInfo, list_excerpts, resolve_par
 from mscz_formatter.mscz.file_processing import unpack_mscz_to_tempdir
 from mscz_formatter.mscz.format import FormattingParams, format_mscz, get_score_attributes
 from mscz_formatter.mscz.inspect import ScoreInfo
+from mscz_formatter.mscz.metadata import (
+    CONDUCTOR_SCORE_PART_NAME,
+    apply_metadata_and_headers_to_mscx,
+    set_score_properties,
+)
 from mscz_formatter.mscz.styles import Style, add_styles_to_score_and_parts
 
 __all__ = [
+    "CONDUCTOR_SCORE_PART_NAME",
     "ExcerptInfo",
     "FormattingParams",
     "ScoreInfo",
     "Style",
     "add_styles_to_score_and_parts",
+    "apply_metadata_and_headers_to_mscx",
     "format_mscz",
     "get_score_attributes",
     "list_excerpts",
     "resolve_part_mpos",
+    "set_score_properties",
     "unpack_mscz_to_tempdir",
 ]

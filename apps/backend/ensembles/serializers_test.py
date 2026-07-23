@@ -197,16 +197,11 @@ def test_create_arrangement_version_mscz_serializer_formatting_steps_partial(
     assert serializer.is_valid(), serializer.errors
     assert serializer.validated_data["formatting_steps"]["apply_mss_style"] is False
     assert serializer.validated_data["formatting_steps"]["apply_score_metadata"] is True
-    assert (
-        serializer.validated_data["formatting_steps"][
-            "apply_scrub_existing_line_breaks"
-        ]
-        is False
-    )
+    assert serializer.validated_data["formatting_steps"]["apply_part_layout"] is True
 
 
 @pytest.mark.django_db
-def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_steps(
+def test_create_arrangement_version_mscz_serializer_legacy_layout_steps_map(
     arrangement,
 ):
     fake_file = SimpleUploadedFile("score.mscz", b"fakecontent")
@@ -215,21 +210,18 @@ def test_create_arrangement_version_mscz_serializer_line_breaks_force_mm_rest_st
         "arrangement_id": arrangement.id,
         "version_type": "minor",
         "formatting_steps": {
-            "apply_rehearsal_line_breaks": True,
+            "apply_rehearsal_line_breaks": False,
+            "apply_double_bar_line_breaks": False,
+            "apply_measure_count_line_breaks": False,
+            "apply_line_break_balancing": False,
             "apply_multimeasure_rest_prep": False,
             "apply_multimeasure_rest_cleanup": False,
         },
     }
     serializer = CreateArrangementVersionMsczSerializer(data=data)
     assert serializer.is_valid(), serializer.errors
-    assert (
-        serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_prep"]
-        is True
-    )
-    assert (
-        serializer.validated_data["formatting_steps"]["apply_multimeasure_rest_cleanup"]
-        is True
-    )
+    assert serializer.validated_data["formatting_steps"]["apply_part_layout"] is False
+    assert "apply_rehearsal_line_breaks" not in serializer.validated_data["formatting_steps"]
 
 
 @pytest.mark.django_db
