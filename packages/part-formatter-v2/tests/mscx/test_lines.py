@@ -328,6 +328,54 @@ def test_long_mm_rest_exceeding_max_c_count_still_forms_a_line():
     assert sum(line.rm_count for line in lines) == len(measures)
 
 
+def test_oversized_mm_rest_packs_trailing_music_to_aligned_group():
+    """Fight Violoncello: a 15-bar MM rest must absorb the following bar as
+    c=16 rather than leaving an orphan 1-bar line (soft MAX is 12)."""
+    measures = [
+        _measure(61, is_mm_rest=True, mm_rest_span=15, has_double_bar=True),
+        _measure(76),
+        *[_measure(i) for i in range(77, 83)],
+    ]
+    lines = generate_lines(measures)
+
+    assert lines[0].c_count == MEASURES_PER_LINE * 2 + ALTERNATE_LINE_LENGTH  # 16
+    assert [m.num for m in lines[0].measures] == [61, 76]
+    assert lines[0].measures[0].is_mm_rest
+    assert not lines[0].measures[1].is_mm_rest
+
+
+def test_consecutive_mm_rests_may_exceed_soft_max_when_aligned():
+    """Two consecutive MM rests summing past MAX_LINE_C_COUNT (8+8=16) share
+    a line when aligned, even if the second carries an RM."""
+    measures = [
+        _measure(77, is_mm_rest=True, mm_rest_span=8, has_double_bar=True),
+        _measure(85, is_mm_rest=True, mm_rest_span=8, has_rehearsal_mark=True),
+        *[_measure(i) for i in range(93, 99)],
+    ]
+    lines = generate_lines(measures)
+
+    assert lines[0].c_count == 16
+    assert [m.is_mm_rest for m in lines[0].measures] == [True, True]
+    assert lines[0].measures[1].has_rehearsal_mark
+    assert lines[1].measures[0].num == 93
+
+
+def test_fourteen_plus_two_mm_rests_group_as_sixteen():
+    """14+2 consecutive MM rests align to 16 and should not split."""
+    measures = [
+        _measure(105, is_mm_rest=True, mm_rest_span=14, has_rehearsal_mark=True),
+        _measure(119, is_mm_rest=True, mm_rest_span=2, has_double_bar=True),
+        _measure(121, has_rehearsal_mark=True),
+        _measure(122),
+    ]
+    lines = generate_lines(measures)
+
+    assert lines[0].c_count == 16
+    assert [m.num for m in lines[0].measures] == [105, 119]
+    assert lines[1].measures[0].num == 121
+    assert lines[1].measures[0].has_rehearsal_mark
+
+
 def _four_bar_repeat(start_num: int) -> list[RenderedMeasure]:
     return [
         _measure(

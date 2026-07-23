@@ -5,8 +5,10 @@ from mscz_formatter.mscx.models import Line, RenderedMeasure
 
 MEASURES_PER_LINE = 6
 ALTERNATE_LINE_LENGTH = 4
-# Absolute ceiling so the DP loop terminates even when width still fits
+# Soft ceiling for typical MM packing preference (mpl * 2).
 MAX_LINE_C_COUNT = MEASURES_PER_LINE * 2
+# Hard DP termination. Allows aligned over-soft-ceiling MM lines (e.g. 15+1 → 16).
+ABSOLUTE_MAX_LINE_C_COUNT = MEASURES_PER_LINE * 4
 
 
 def conceptual_length_fits(c_count: int) -> bool:
@@ -14,6 +16,15 @@ def conceptual_length_fits(c_count: int) -> bool:
         c_count % MEASURES_PER_LINE == 0
         or c_count % ALTERNATE_LINE_LENGTH == 0
     )
+
+
+def _line_has_mm_rest(line: Line) -> bool:
+    return any(m.is_mm_rest for m in line.measures)
+
+
+def allows_over_soft_c_count(line: Line) -> bool:
+    """Past MAX_LINE_C_COUNT, keep growing only when the line has an MM rest."""
+    return _line_has_mm_rest(line)
 
 
 def get_length_penalty(line: Line, next_measure: RenderedMeasure) -> float:
@@ -47,11 +58,18 @@ def get_rehearsal_mark_penalty(line: Line, next_measure: RenderedMeasure) -> flo
     Rehearsal marks should start new lines.
     - Penalize RMs that appear mid-line
     - Prefer breaking immediately before a rehearsal mark
+
+    Exception: an RM on a later MM rest in a consecutive MM-rest run does
+    not count as a buried mid-line mark (pairing the rests is preferred).
     """
     penalty = 0.0
     for i, m in enumerate(line.measures):
-        if m.has_rehearsal_mark and i != 0:
-            penalty += 1.0
+        if not m.has_rehearsal_mark or i == 0:
+            continue
+        prev = line.measures[i - 1]
+        if m.is_mm_rest and prev.is_mm_rest:
+            continue
+        penalty += 1.0
     if next_measure.has_rehearsal_mark:
         penalty -= 1.0
     return penalty
@@ -77,7 +95,8 @@ def get_mm_rest_penalty(line: Line, next_measure: RenderedMeasure) -> float:
     mm_count = sum(1 for m in line.measures if m.is_mm_rest)
 
     if last.is_mm_rest and next_measure.is_mm_rest:
-        penalty += 1.0
+        # Strong enough to beat break-before-RM + DB when pairing 8+8 etc.
+        penalty += 1.25
 
     # Prefer not breaking right after MM rests when the next measures
     # would still fit on an aligned over-mpl line
@@ -104,7 +123,7 @@ def get_paired_mm_rest_boost(line: Line, next_measure: RenderedMeasure) -> float
     if not line.measures[-1].is_mm_rest:
         return 0.0
     mm_count = sum(1 for m in line.measures if m.is_mm_rest)
-    return 1.0 if mm_count >= 2 else 0.0
+    return 1.25 if mm_count >= 2 else 0.0
 
 
 MULTIPLIERS_AND_FUNCTIONS: list[
@@ -133,19 +152,21 @@ def line_is_candidate(line: Line) -> bool:
 
     Regular content may not exceed mpl. Past mpl is only allowed when the
     conceptual length aligns and the line contains an MM rest.
-    A single MM rest may exceed MAX_LINE_C_COUNT (unsplittable).
+    Past the soft MAX_LINE_C_COUNT ceiling, aligned MM lines (e.g. c=16)
+    and lone unsplittable MM rests remain eligible; everything else is cut
+    off by ABSOLUTE_MAX_LINE_C_COUNT in the DP loop.
     """
     if not line.measures:
         return False
     if not line.is_valid():
         return False
-    if line.c_count > MAX_LINE_C_COUNT:
+    if line.c_count > ABSOLUTE_MAX_LINE_C_COUNT:
         return _is_unsplittable_mm_rest_line(line)
+    if _is_unsplittable_mm_rest_line(line):
+        return True
     if line.c_count <= MEASURES_PER_LINE:
         return True
-    return conceptual_length_fits(line.c_count) and any(
-        m.is_mm_rest for m in line.measures
-    )
+    return conceptual_length_fits(line.c_count) and _line_has_mm_rest(line)
 
 
 def _last_line_cost(line: Line) -> float:

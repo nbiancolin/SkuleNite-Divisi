@@ -5,9 +5,11 @@ from functools import lru_cache
 from math import inf
 
 from mscz_formatter.mscx.lib.line_cost import (
+    ABSOLUTE_MAX_LINE_C_COUNT,
     ALTERNATE_LINE_LENGTH,
     MAX_LINE_C_COUNT,
     MEASURES_PER_LINE,
+    allows_over_soft_c_count,
     line_cost,
     line_is_candidate,
 )
@@ -37,12 +39,18 @@ def add_line_breaks(measures: list[RenderedMeasure]) -> list[Line]:
         for end_idx in range(start_idx, len(measures)):
             current.add_measure(measures[end_idx])
 
-            # Width only grows; stop. Soft c_count ceiling still allows a
-            # lone oversized MM rest (cannot be split across lines).
+            # Width only grows; stop. Soft c_count ceiling still allows MM
+            # lines to grow toward an aligned length (e.g. 15+1 → 16) and
+            # lone oversized MM rests (cannot be split across lines).
             if not current.is_valid():
                 break
-            if current.c_count > MAX_LINE_C_COUNT and not (
+            if current.c_count > ABSOLUTE_MAX_LINE_C_COUNT and not (
                 len(current.measures) == 1 and current.measures[0].is_mm_rest
+            ):
+                break
+            if (
+                current.c_count > MAX_LINE_C_COUNT
+                and not allows_over_soft_c_count(current)
             ):
                 break
 

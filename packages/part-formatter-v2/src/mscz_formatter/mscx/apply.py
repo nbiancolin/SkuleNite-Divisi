@@ -12,6 +12,7 @@ LOGGER = getLogger("mscz_formatter")
 # VBox height is in spatium. Match our printable page budget so the frame
 # fills the blank odd page after a volti-subito rest.
 VS_BLANK_FRAME_HEIGHT_SPATIA = MAX_PAGE_HEIGHT / SPATIUM_MPOS_UNITS
+VS_BLANK_TEXT = "V.S."
 
 
 def _make_layout_break(subtype: str) -> ET.Element:
@@ -54,11 +55,11 @@ def _is_vs_blank_frame(elem: ET.Element) -> bool:
         return False
     text_el = elem.find("./Text/text")
     lb = elem.find("LayoutBreak")
-    return (
-        text_el is not None
-        and (text_el.text or "").strip() == VS_BLANK_TEXT
-        and lb is not None
-    )
+    if text_el is None or lb is None:
+        return False
+    # Plain-text legacy frames, or nested HTML from _generate_vs_text().
+    content = "".join(text_el.itertext())
+    return VS_BLANK_TEXT in content
 
 
 def _insert_before_voice(measure: ET.Element, child: ET.Element) -> None:

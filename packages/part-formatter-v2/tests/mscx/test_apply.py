@@ -151,7 +151,9 @@ def test_blank_vs_page_inserts_vbox_with_page_break():
 
     assert _line_break_subtype(m1) == "page"
     assert staff[1].tag == "VBox"
-    assert staff[1].find("./Text/text").text == "V.S."
+    vs_text = staff[1].find("./Text/text")
+    assert vs_text is not None
+    assert "V.S." in "".join(vs_text.itertext())
     assert staff[1].find("./LayoutBreak/subtype").text == "page"
     assert staff[2] is m2
     assert _line_break_subtype(m2) is None
