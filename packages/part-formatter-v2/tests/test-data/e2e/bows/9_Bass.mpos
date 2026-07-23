@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score>
+  <elements>
+    <element id="0" x="13464.6" y="34566.4" sx="23613.6" sy="3968.5" page="0">
+      </element>
+    <element id="1" x="37078.1" y="34566.4" sx="14837.8" sy="3968.5" page="0">
+      </element>
+    <element id="2" x="51915.9" y="34566.4" sx="15296.2" sy="3968.5" page="0">
+      </element>
+    <element id="3" x="67212.2" y="34566.4" sx="14837.8" sy="3968.5" page="0">
+      </element>
+    <element id="4" x="82050" y="34566.4" sx="14837.8" sy="3968.5" page="0">
+      </element>
+    <element id="5" x="96887.8" y="34566.4" sx="17008.3" sy="3968.5" page="0">
+      </element>
+    <element id="6" x="8503.93" y="55405.8" sx="22367.5" sy="3968.5" page="0">
+      </element>
+    <element id="7" x="30871.5" y="55405.8" sx="16604.9" sy="3968.5" page="0">
+      </element>
+    <element id="8" x="47476.4" y="55405.8" sx="16604.9" sy="3968.5" page="0">
+      </element>
+    <element id="9" x="64081.3" y="55405.8" sx="16604.9" sy="3968.5" page="0">
+      </element>
+    <element id="10" x="80686.2" y="55405.8" sx="16604.9" sy="3968.5" page="0">
+      </element>
+    <element id="11" x="97291.2" y="55405.8" sx="16604.9" sy="3968.5" page="0">
+      </element>
+    <element id="12" x="8503.93" y="76245.2" sx="21911.7" sy="3968.5" page="0">
+      </element>
+    <element id="13" x="30415.7" y="76245.2" sx="15662.9" sy="3968.5" page="0">
+      </element>
+    <element id="14" x="46078.5" y="76245.2" sx="14262.4" sy="3968.5" page="0">
+      </element>
+    <element id="15" x="60340.9" y="76245.2" sx="21256.9" sy="3968.5" page="0">
+      </element>
+    <element id="16" x="81597.8" y="76245.2" sx="16149.1" sy="3968.5" page="0">
+      </element>
+    <element id="17" x="97747" y="76245.2" sx="16149.1" sy="3968.5" page="0">
+      </element>
+    <element id="18" x="8503.93" y="97084.5" sx="25125.8" sy="3968.5" page="0">
+      </element>
+    <element id="19" x="33629.8" y="97084.5" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="20" x="49683" y="97084.5" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="21" x="65736.3" y="97084.5" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="22" x="81789.6" y="97084.5" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="23" x="97842.8" y="97084.5" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="24" x="8503.93" y="117924" sx="25125.8" sy="3968.5" page="0">
+      </element>
+    <element id="25" x="33629.8" y="117924" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="26" x="49683" y="117924" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="27" x="65736.3" y="117924" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="28" x="81789.6" y="117924" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="29" x="97842.8" y="117924" sx="16053.3" sy="3968.5" page="0">
+      </element>
+    <element id="30" x="8503.93" y="138763" sx="23964.5" sy="3968.5" page="0">
+      </element>
+    </elements>
+  <events>
+    <event elid="0" position="0">
+      </event>
+    <event elid="1" position="1500">
+      </event>
+    <event elid="2" position="3000">
+      </event>
+    <event elid="3" position="4500">
+      </event>
+    <event elid="4" position="6000">
+      </event>
+    <event elid="5" position="7500">
+      </event>
+    <event elid="6" position="9000">
+      </event>
+    <event elid="7" position="10500">
+      </event>
+    <event elid="8" position="12000">
+      </event>
+    <event elid="9" position="13500">
+      </event>
+    <event elid="10" position="15000">
+      </event>
+    <event elid="11" position="16500">
+      </event>
+    <event elid="12" position="18000">
+      </event>
+    <event elid="13" position="19500">
+      </event>
+    <event elid="14" position="21000">
+      </event>
+    <event elid="15" position="22500">
+      </event>
+    <event elid="16" position="24000">
+      </event>
+    <event elid="17" position="25500">
+      </event>
+    <event elid="18" position="27000">
+      </event>
+    <event elid="19" position="28500">
+      </event>
+    <event elid="20" position="30000">
+      </event>
+    <event elid="21" position="31500">
+      </event>
+    <event elid="22" position="33000">
+      </event>
+    <event elid="23" position="34500">
+      </event>
+    <event elid="24" position="36000">
+      </event>
+    <event elid="25" position="37500">
+      </event>
+    <event elid="26" position="39000">
+      </event>
+    <event elid="27" position="40500">
+      </event>
+    <event elid="28" position="42000">
+      </event>
+    <event elid="29" position="43500">
+      </event>
+    <event elid="30" position="45000">
+      </event>
+    </events>
+  </score>
