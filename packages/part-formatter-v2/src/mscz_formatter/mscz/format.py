@@ -76,9 +76,10 @@ def format_mscz(
         input_path: Source ``.mscz`` (score + embedded Excerpts).
         output_path: Destination ``.mscz``.
         part_mpos: Map of part key → ``.mpos`` path. Every part you expect to
-            export must appear here. Keys may be excerpt folder names
-            (``0_Trumpet_in_Bb``), names without index (``Trumpet_in_Bb``), or
-            excerpt indices (``0``).
+            export must appear here when ``apply_part_layout`` is True. Keys may
+            be excerpt folder names (``0_Trumpet_in_Bb``), names without index
+            (``Trumpet_in_Bb``), or excerpt indices (``0``). May be empty when
+            ``apply_part_layout`` is False.
         params: Optional style / spatium options.
 
     Styles are applied to the score and all excerpts. MPOS-based line/page
@@ -88,16 +89,17 @@ def format_mscz(
     and applied, but the page-turn DP (page breaks / V.S. blanks) is skipped.
     """
     params = dict(params or {})
-    if not part_mpos:
-        raise ValueError(
-            "part_mpos is required: provide one .mpos path for each part to export"
-        )
-
     style_name = params.get("selected_style") or "broadway"
     style = style_name if isinstance(style_name, Style) else Style(str(style_name))
     apply_mss_style = params.get("apply_mss_style", True)
     apply_part_layout = params.get("apply_part_layout", True)
     optimize_for_page_turns = params.get("optimize_for_page_turns", True)
+
+    if apply_part_layout and not part_mpos:
+        raise ValueError(
+            "part_mpos is required when apply_part_layout is True: "
+            "provide one .mpos path for each part to export"
+        )
 
     staff_spacing_strategy = normalize_staff_spacing_strategy(
         params.get("staff_spacing_strategy")

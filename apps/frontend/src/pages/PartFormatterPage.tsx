@@ -61,6 +61,7 @@ export default function PartFormatterPage() {
   const [staffSpacingStrategy, setStaffSpacingStrategy] =
     useState<StaffSpacingStrategy>("predict")
   const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75")
+  const [optimizeForPageTurns, setOptimizeForPageTurns] = useState(true)
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -165,6 +166,7 @@ export default function PartFormatterPage() {
         composer: composer,
         arranger: arranger,
         staff_spacing_strategy: staffSpacingStrategy,
+        optimize_for_page_turns: optimizeForPageTurns,
         ...(staffSpacingStrategy === "override"
           ? { staff_spacing_value: staffSpacingCustom.trim() }
           : {}),
@@ -274,6 +276,13 @@ export default function PartFormatterPage() {
               mt="md"
             />
           )}
+          <Checkbox
+            mt="md"
+            label="Optimize for page turns"
+            description="When off, line breaks are still applied but turn-aware page breaks and V.S. blanks are skipped."
+            checked={optimizeForPageTurns}
+            onChange={(e) => setOptimizeForPageTurns(e.currentTarget.checked)}
+          />
           <ScoreTitlePreview
             selectedStyle={selectedStyle}
             setSelectedStyle={setSelectedStyle}

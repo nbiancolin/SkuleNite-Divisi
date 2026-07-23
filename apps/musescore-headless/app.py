@@ -13,6 +13,7 @@ import re
 import logging
 import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from fastapi import FastAPI, UploadFile, Form, HTTPException, Response
@@ -440,6 +441,192 @@ async def render_all_parts_pdf(file: UploadFile):
                 content=zip_buffer.getvalue(),
                 media_type="application/zip",
                 headers={"Content-Disposition": (f'attachment; filename="{src_stem}_score_and_parts.zip"')},
+            )
+
+
+@dataclass(frozen=True)
+class _MposExportTarget:
+    """One MSCX inside an unpacked MSCZ, plus its style file if present."""
+
+    key: str
+    mscx_path: Path
+    style_path: Path | None
+    is_excerpt: bool
+
+
+def _score_style_path(work_dir: Path) -> Path | None:
+    preferred = work_dir / "score_style.mss"
+    if preferred.is_file():
+        return preferred
+    mss_files = sorted(work_dir.glob("*.mss"))
+    return mss_files[0] if mss_files else None
+
+
+def _list_mpos_export_targets(work_dir: Path) -> list[_MposExportTarget]:
+    """Discover the root score and every ``Excerpts/<key>/*.mscx`` target."""
+    targets: list[_MposExportTarget] = []
+
+    root_mscx = sorted(p for p in work_dir.glob("*.mscx") if p.is_file())
+    if not root_mscx:
+        raise ValueError(f"No root .mscx found under {work_dir}")
+    if len(root_mscx) > 1:
+        raise ValueError(
+            f"Expected one root .mscx under {work_dir}, found: "
+            f"{[p.name for p in root_mscx]}"
+        )
+
+    score_mscx = root_mscx[0]
+    targets.append(
+        _MposExportTarget(
+            key=score_mscx.stem,
+            mscx_path=score_mscx,
+            style_path=_score_style_path(work_dir),
+            is_excerpt=False,
+        )
+    )
+
+    excerpts_dir = work_dir / "Excerpts"
+    if excerpts_dir.is_dir():
+        for excerpt_dir in sorted(p for p in excerpts_dir.iterdir() if p.is_dir()):
+            mscx_files = sorted(excerpt_dir.glob("*.mscx"))
+            if not mscx_files:
+                continue
+            mscx = mscx_files[0]
+            style = excerpt_dir / f"{mscx.stem}.mss"
+            if not style.is_file():
+                sibling_mss = sorted(excerpt_dir.glob("*.mss"))
+                style_path = sibling_mss[0] if sibling_mss else None
+            else:
+                style_path = style
+            targets.append(
+                _MposExportTarget(
+                    key=excerpt_dir.name,
+                    mscx_path=mscx,
+                    style_path=style_path,
+                    is_excerpt=True,
+                )
+            )
+
+    return targets
+
+
+def _export_one_mpos(
+    target: _MposExportTarget,
+    output_path: Path,
+    *,
+    timeout: int = 120,
+) -> None:
+    """Export a single .mpos via MuseScore CLI (``-S`` style when present)."""
+    if output_path.exists():
+        output_path.unlink()
+
+    cmd = ["musescore", "-f"]
+    if target.style_path is not None and target.style_path.is_file():
+        cmd.extend(["-S", str(target.style_path)])
+    cmd.extend(["-o", str(output_path), str(target.mscx_path)])
+
+    proc = run_musescore(cmd, timeout=timeout)
+    if proc.returncode != 0 or not output_path.is_file():
+        detail = (proc.stderr or proc.stdout or "").strip()
+        raise RuntimeError(
+            f"MuseScore failed exporting '{target.key}' to {output_path}"
+            + (f":\n{detail}" if detail else f" (exit {proc.returncode})")
+        )
+
+
+@app.post("/export-all-mpos")
+async def export_all_mpos(
+    file: UploadFile,
+    include_score: bool = Form(True),
+):
+    """
+    Unpack a .mscz and export .mpos measure-position files for the score
+    and/or each part excerpt, matching part-formatter-v2's generate helper.
+
+    Returns a zip of ``{key}.mpos`` files (excerpt folder names / score stem).
+    """
+    logger.info("========================================")
+    logger.info("Starting /export-all-mpos")
+    logger.info("========================================")
+    logger.info(f"Filename: {file.filename}")
+    logger.info(f"include_score: {include_score}")
+
+    async with render_lock:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            src = tmp / (file.filename or "score.mscz")
+            work_dir = tmp / "unpacked"
+            out_dir = tmp / "mpos"
+            work_dir.mkdir()
+            out_dir.mkdir()
+
+            file_content = await file.read()
+            logger.info(f"Received file size: {len(file_content)} bytes")
+            src.write_bytes(file_content)
+
+            try:
+                with zipfile.ZipFile(src, "r") as zf:
+                    zf.extractall(work_dir)
+            except zipfile.BadZipFile as e:
+                raise HTTPException(400, f"Invalid .mscz (not a zip): {e}") from e
+
+            try:
+                targets = _list_mpos_export_targets(work_dir)
+            except ValueError as e:
+                raise HTTPException(400, str(e)) from e
+
+            mpos_files: list[tuple[str, bytes]] = []
+
+            for target in targets:
+                if target.is_excerpt:
+                    pass
+                elif not include_score:
+                    continue
+
+                mpos_path = out_dir / f"{target.key}.mpos"
+                logger.info(f"Exporting {target.key} -> {mpos_path.name}")
+
+                try:
+                    _export_one_mpos(target, mpos_path, timeout=120)
+                except subprocess.TimeoutExpired:
+                    logger.exception(f"MuseScore timed out exporting {target.key}")
+                    raise HTTPException(
+                        504,
+                        f"MuseScore timed out exporting '{target.key}'",
+                    )
+                except RuntimeError as e:
+                    logger.exception(f"Failed exporting {target.key}")
+                    raise HTTPException(500, str(e)) from e
+
+                mpos_files.append((f"{target.key}.mpos", mpos_path.read_bytes()))
+                logger.info(
+                    f"Exported {target.key}: {mpos_path.stat().st_size} bytes"
+                )
+
+            if not mpos_files:
+                raise HTTPException(
+                    500,
+                    "No .mpos files were generated (check parts / include_score)",
+                )
+
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                for name, content in mpos_files:
+                    zip_file.writestr(name, content)
+                    logger.info(f"Added to zip: {name} ({len(content)} bytes)")
+
+            zip_buffer.seek(0)
+            src_stem = Path(file.filename or "score").stem
+            logger.info(f"export-all-mpos completed: {len(mpos_files)} file(s)")
+
+            return Response(
+                content=zip_buffer.getvalue(),
+                media_type="application/zip",
+                headers={
+                    "Content-Disposition": (
+                        f'attachment; filename="{src_stem}_mpos.zip"'
+                    )
+                },
             )
 
 
