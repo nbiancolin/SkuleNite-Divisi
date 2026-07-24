@@ -1,3 +1,7 @@
+import io
+import zipfile
+from pathlib import Path
+
 import requests
 from django.conf import settings
 
@@ -45,3 +49,45 @@ def render_all_parts_pdf(input_path: str) -> bytes:
     r.raise_for_status()
 
     return r.content
+
+
+def export_all_mpos(
+    input_path: str,
+    output_dir: str,
+    *,
+    include_score: bool = False,
+    timeout: int = 600,
+) -> dict[str, str]:
+    """
+    Export .mpos files for a .mscz via musescore-headless ``/export-all-mpos``.
+
+    Writes each ``{key}.mpos`` into ``output_dir`` and returns a map of
+    target key → absolute path (same shape as part-formatter-v2's generate helper).
+    """
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    with open(input_path, "rb") as f:
+        r = requests.post(
+            f"http://{_get_host()}:1234/export-all-mpos",
+            files={"file": f},
+            data={"include_score": "true" if include_score else "false"},
+            timeout=timeout,
+        )
+
+    r.raise_for_status()
+
+    results: dict[str, str] = {}
+    with zipfile.ZipFile(io.BytesIO(r.content), "r") as zf:
+        for name in zf.namelist():
+            if not name.endswith(".mpos"):
+                continue
+            key = Path(name).stem
+            dest = out / f"{key}.mpos"
+            dest.write_bytes(zf.read(name))
+            results[key] = str(dest.resolve())
+
+    if not results:
+        raise RuntimeError("musescore-headless returned no .mpos files")
+
+    return results

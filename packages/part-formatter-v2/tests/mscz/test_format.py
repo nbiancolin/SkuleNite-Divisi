@@ -114,6 +114,18 @@ def test_format_mscz_requires_part_mpos(tmp_path):
         format_mscz(str(NEW_TEST_SCORE), str(out), {})
 
 
+def test_format_mscz_allows_empty_part_mpos_without_layout(tmp_path):
+    out = tmp_path / "out.mscz"
+    ok = format_mscz(
+        str(NEW_TEST_SCORE),
+        str(out),
+        {},
+        {"apply_part_layout": False, "apply_mss_style": True},
+    )
+    assert ok
+    assert out.is_file()
+
+
 def test_format_mscz_styles_only(tmp_path):
     """Apply styles for listed parts without running layout (avoids MPOS size mismatch)."""
     out = tmp_path / "styled.mscz"

@@ -47,6 +47,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+    optimize_for_page_turns = serializers.BooleanField(required=False, default=True)
 
     def validate_session_id(self, value):
         if not value:
@@ -82,6 +83,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
         version_num = self.validated_data["version_num"]
         staff_spacing_strategy = self.validated_data["staff_spacing_strategy"]
         staff_spacing_value = self.validated_data["staff_spacing_value"]
+        optimize_for_page_turns = self.validated_data["optimize_for_page_turns"]
 
         # Classical is just broadway minus show text
         if style == "classical":
@@ -103,6 +105,7 @@ class FormatMsczFileSerializer(serializers.Serializer):
                     if staff_spacing_value is not None
                     else None
                 ),
+                optimize_for_page_turns=optimize_for_page_turns,
             )
 
             if res["status"] != "success":

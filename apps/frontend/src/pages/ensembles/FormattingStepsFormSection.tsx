@@ -40,40 +40,20 @@ export default function FormattingStepsFormSection({ value, onChange }: Props) {
       <Text size="xs" fw={500} mt="xs">
         Score appearance
       </Text>
-      {row(value.apply_mss_style, (v) => patch({ apply_mss_style: v }), "Apply MSS style (Broadway / Jazz templates)")}
+      {row(
+        value.apply_mss_style,
+        (v) => patch({ apply_mss_style: v }),
+        "Apply MSS style (Broadway / Jazz templates)"
+      )}
       {row(
         value.apply_score_metadata,
         (v) => patch({ apply_score_metadata: v }),
         "Score metadata (show title, number, version in file properties)"
       )}
-
-      <Text size="xs" fw={500} mt="xs">
-        Line breaks
-      </Text>
       {row(
-        value.apply_scrub_existing_line_breaks,
-        (v) => patch({ apply_scrub_existing_line_breaks: v }),
-        "Scrub all existing line breaks before applying formatter line breaks"
-      )}
-      {row(
-        value.apply_rehearsal_line_breaks,
-        (v) => patch({ apply_rehearsal_line_breaks: v }),
-        "Line breaks before rehearsal marks"
-      )}
-      {row(
-        value.apply_double_bar_line_breaks,
-        (v) => patch({ apply_double_bar_line_breaks: v }),
-        "Line breaks at double barlines"
-      )}
-      {row(
-        value.apply_measure_count_line_breaks,
-        (v) => patch({ apply_measure_count_line_breaks: v }),
-        "Line breaks every N measures (uses score/part counts above)"
-      )}
-      {row(
-        value.apply_line_break_balancing,
-        (v) => patch({ apply_line_break_balancing: v }),
-        "Balance short lines (final pass)"
+        value.apply_part_layout,
+        (v) => patch({ apply_part_layout: v }),
+        "Part layout (MPOS-based line breaks and page turns)"
       )}
 
       <Text size="xs" fw={500} mt="xs">
