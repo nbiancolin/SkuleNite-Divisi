@@ -42,9 +42,6 @@ export default function CreateVersionFromCommitPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   const [versionType, setVersionType] = useState<string>("patch");
-  const [measuresPerLineScore, setMeasuresPerLineScore] = useState<string>("8");
-  const [measuresPerLinePart, setMeasuresPerLinePart] = useState<string>("6");
-  const [linesPerPage, setLinesPerPage] = useState<string>("8");
   const [staffSpacingStrategy, setStaffSpacingStrategy] =
     useState<StaffSpacingStrategy>("preserve")
   const [staffSpacingCustom, setStaffSpacingCustom] = useState<string>("1.75");
@@ -140,14 +137,6 @@ export default function CreateVersionFromCommitPage() {
       return;
     }
 
-    const nScore = parseInt(measuresPerLineScore, 10);
-    const nPart = parseInt(measuresPerLinePart, 10);
-    const nLines = parseInt(linesPerPage, 10);
-    if ([nScore, nPart, nLines].some((n) => isNaN(n) || n < 1)) {
-      setSubmitError("Measures per line and lines per page must be positive numbers.");
-      return;
-    }
-
     if (staffSpacingStrategy === "override") {
       const spat = parseFloat(staffSpacingCustom.trim());
       if (Number.isNaN(spat) || spat <= 0) {
@@ -161,9 +150,6 @@ export default function CreateVersionFromCommitPage() {
     try {
       await apiService.createArrangementVersionFromCommit(effectiveCommitId, {
         version_type: versionType,
-        num_measures_per_line_score: nScore,
-        num_measures_per_line_part: nPart,
-        num_lines_per_page: nLines,
         staff_spacing_strategy: staffSpacingStrategy,
         ...(staffSpacingStrategy === "override"
           ? { staff_spacing_value: staffSpacingCustom.trim() }
@@ -282,32 +268,6 @@ export default function CreateVersionFromCommitPage() {
         </Center>
 
         <Collapse in={showAdvanced}>
-          <Text size="sm" mb="sm">
-            Defaults work for most charts. Adjust if your meter or page breaks need different density.
-          </Text>
-          <TextInput
-            label="Measures per line (score)"
-            value={measuresPerLineScore}
-            onChange={(e) => setMeasuresPerLineScore(e.currentTarget.value)}
-            type="number"
-            min={1}
-          />
-          <TextInput
-            label="Measures per line (part)"
-            value={measuresPerLinePart}
-            onChange={(e) => setMeasuresPerLinePart(e.currentTarget.value)}
-            type="number"
-            min={1}
-            mt="md"
-          />
-          <TextInput
-            label="Lines per page (part)"
-            value={linesPerPage}
-            onChange={(e) => setLinesPerPage(e.currentTarget.value)}
-            type="number"
-            min={1}
-            mt="md"
-          />
           <Radio.Group
             value={staffSpacingStrategy}
             onChange={(v) => setStaffSpacingStrategy(v as StaffSpacingStrategy)}
